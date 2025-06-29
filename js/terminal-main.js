@@ -39,7 +39,7 @@ term.writeln('proddb01sim login: root');
 term.writeln('Password: ');
 term.writeln('Last login: ' + new Date().toLocaleString());
 term.writeln('');
-term.writeln('Welcome to the Ignite2 Practice Environment');
+term.writeln('Welcome to the Oracle Installation Practice Environment');
 term.writeln('Type "oracle-help" for installation guide or "help" for available commands.');
 term.writeln('Type "ocp" to check your Oracle installation progress.');
 term.writeln('');
