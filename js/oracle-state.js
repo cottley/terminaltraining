@@ -99,9 +99,56 @@ class OracleManager {
                 return this.state.listenerConfigured && this.state.listenerStarted;
             case 'all_packages':
                 return Object.values(this.state.requiredPackages).every(installed => installed);
+            case 'kernel_parameters':
+                return this.validateKernelParameters();
+            case 'resource_limits':
+                return this.validateResourceLimits();
             default:
                 return true;
         }
+    }
+
+    validateKernelParameters() {
+        // Check if actual kernel parameters are correctly set in /etc/sysctl.conf
+        if (typeof filesystem === 'undefined') return false;
+        
+        const sysctlContent = filesystem.cat('/etc/sysctl.conf');
+        if (!sysctlContent) return false;
+        
+        const requiredParams = [
+            'fs.aio-max-nr = 1048576',
+            'fs.file-max = 6815744', 
+            'kernel.shmall = 2097152',
+            'kernel.shmmax = 536870912',
+            'kernel.shmmni = 4096',
+            'kernel.sem = 250 32000 100 128',
+            'net.ipv4.ip_local_port_range = 9000 65500',
+            'net.core.rmem_default = 262144',
+            'net.core.rmem_max = 4194304',
+            'net.core.wmem_default = 262144',
+            'net.core.wmem_max = 1048576'
+        ];
+        
+        return requiredParams.every(param => sysctlContent.includes(param));
+    }
+
+    validateResourceLimits() {
+        // Check if actual resource limits are correctly set in /etc/security/limits.conf
+        if (typeof filesystem === 'undefined') return false;
+        
+        const limitsContent = filesystem.cat('/etc/security/limits.conf');
+        if (!limitsContent) return false;
+        
+        const requiredLimits = [
+            'oracle soft nproc 2047',
+            'oracle hard nproc 16384',
+            'oracle soft nofile 1024',
+            'oracle hard nofile 65536',
+            'oracle soft stack 10240',
+            'oracle hard stack 32768'
+        ];
+        
+        return requiredLimits.every(limit => limitsContent.includes(limit));
     }
 
     updateState(key, value) {
@@ -198,8 +245,8 @@ class OracleManager {
             'Oracle Groups Created': this.state.oracleGroupsExist,
             'Oracle User Created': this.state.oracleUserExists,
             'Required Packages Installed': this.checkPrerequisites('all_packages'),
-            'Kernel Parameters Set': this.state.kernelParametersSet,
-            'Resource Limits Configured': this.state.limitsConfigured,
+            'Kernel Parameters Set': this.checkPrerequisites('kernel_parameters'),
+            'Resource Limits Configured': this.checkPrerequisites('resource_limits'),
             
             // Installation
             'Oracle Software Installed': this.state.softwareInstalled,
@@ -267,7 +314,18 @@ class OracleManager {
                 hint: 'Configure kernel parameters for Oracle',
                 commands: [
                     'vim /etc/sysctl.conf',
-                    '# Add the Oracle parameters (see oracle-help)',
+                    '# Add these Oracle parameters:',
+                    '# fs.aio-max-nr = 1048576',
+                    '# fs.file-max = 6815744',
+                    '# kernel.shmall = 2097152',
+                    '# kernel.shmmax = 536870912',
+                    '# kernel.shmmni = 4096',
+                    '# kernel.sem = 250 32000 100 128',
+                    '# net.ipv4.ip_local_port_range = 9000 65500',
+                    '# net.core.rmem_default = 262144',
+                    '# net.core.rmem_max = 4194304',
+                    '# net.core.wmem_default = 262144',
+                    '# net.core.wmem_max = 1048576',
                     'sysctl -p'
                 ]
             },
@@ -275,7 +333,13 @@ class OracleManager {
                 hint: 'Configure resource limits for the oracle user',
                 commands: [
                     'vim /etc/security/limits.conf',
-                    '# Add the Oracle limits (see oracle-help)'
+                    '# Add these Oracle limits:',
+                    '# oracle soft nproc 2047',
+                    '# oracle hard nproc 16384',
+                    '# oracle soft nofile 1024',
+                    '# oracle hard nofile 65536',
+                    '# oracle soft stack 10240',
+                    '# oracle hard stack 32768'
                 ]
             },
             'Oracle Software Installed': {

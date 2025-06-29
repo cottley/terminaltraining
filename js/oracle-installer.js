@@ -38,9 +38,20 @@ CommandProcessor.prototype.cmdRunInstaller = function(args) {
         return;
     }
     
-    if (!oracleManager.getState('kernelParametersSet')) {
-        this.terminal.writeln('Warning: Kernel parameters may not be properly set.');
-        this.terminal.writeln('Check /etc/sysctl.conf and run sysctl -p');
+    // Check kernel parameters
+    if (!oracleManager.checkPrerequisites('kernel_parameters')) {
+        this.terminal.writeln('Error: Kernel parameters not properly configured for Oracle.');
+        this.terminal.writeln('Required Oracle kernel parameters missing from /etc/sysctl.conf');
+        this.terminal.writeln('Run: ocp --hint-detail to see required parameters');
+        return;
+    }
+    
+    // Check resource limits
+    if (!oracleManager.checkPrerequisites('resource_limits')) {
+        this.terminal.writeln('Error: Resource limits not properly configured for Oracle.');
+        this.terminal.writeln('Required Oracle limits missing from /etc/security/limits.conf');
+        this.terminal.writeln('Run: ocp --hint-detail to see required limits');
+        return;
     }
     
     // Simulate installation process
