@@ -1,8 +1,8 @@
 // Oracle Integration - Ties all Oracle modules together
 
-// Initialize Oracle commands when CommandProcessor is created
-CommandProcessor.prototype.initOracleCommands = function() {
-    // Check if Oracle user exists when terminal starts
+// Refresh Oracle state (check current status dynamically)
+CommandProcessor.prototype.refreshOracleState = function() {
+    // Check if Oracle user exists
     const passwdContent = this.fs.cat('/etc/passwd');
     if (passwdContent && passwdContent.includes('oracle:x:')) {
         oracleManager.updateState('oracleUserExists', true);
@@ -38,6 +38,12 @@ CommandProcessor.prototype.initOracleCommands = function() {
     if (this.fs.exists('/u01/app/oracle/product/19.0.0/dbhome_1/bin/sqlplus')) {
         oracleManager.updateState('softwareInstalled', true);
     }
+};
+
+// Initialize Oracle commands when CommandProcessor is created
+CommandProcessor.prototype.initOracleCommands = function() {
+    // Use the refresh function to avoid code duplication
+    this.refreshOracleState();
     
     // Check installed packages from yum history
     const installedPackages = this.getInstalledPackages();

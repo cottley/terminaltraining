@@ -98,6 +98,14 @@ class CommandProcessor {
             
             vimStatus.textContent = 'File saved!';
             
+            // Refresh Oracle state if relevant files were modified
+            if (this.currentEditingFile === '/etc/passwd' || 
+                this.currentEditingFile === '/etc/group' ||
+                this.currentEditingFile === '/etc/sysctl.conf' ||
+                this.currentEditingFile === '/etc/security/limits.conf') {
+                this.refreshOracleState();
+            }
+            
             if (shouldClose) {
                 setTimeout(() => {
                     this.closeVimModal(true);
@@ -695,6 +703,9 @@ class CommandProcessor {
             this.fs.updateFile('/etc/group', updatedContent);
             
             this.terminal.writeln(`Group '${group}' added successfully.`);
+            
+            // Refresh Oracle state to update OCP status
+            this.refreshOracleState();
         }
     }
 
@@ -822,6 +833,9 @@ class CommandProcessor {
         }
         
         this.terminal.writeln(`User '${user}' added successfully.`);
+        
+        // Refresh Oracle state to update OCP status
+        this.refreshOracleState();
     }
 
     cmdPasswd(args) {
