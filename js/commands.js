@@ -291,12 +291,7 @@ class CommandProcessor {
         if (longFormat) {
             this.terminal.writeln(`total ${files.length * 4}`);
             files.forEach(file => {
-                const date = file.modified ? file.modified.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }) : 'Jan 1 00:00';
+                const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
                 this.terminal.writeln(
                     `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${file.size || 4096} ${date} ${file.name}`
                 );
@@ -1390,6 +1385,26 @@ class CommandProcessor {
             } else {
                 this.terminal.writeln(`${command}:`);
             }
+        }
+    }
+
+    formatDate(date) {
+        try {
+            if (!date || !(date instanceof Date)) {
+                return 'Jan  1 00:00';
+            }
+            
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            const month = months[date.getMonth()];
+            const day = date.getDate().toString().padStart(2, ' ');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            
+            return `${month} ${day} ${hours}:${minutes}`;
+        } catch (e) {
+            return 'Jan  1 00:00';
         }
     }
 }
