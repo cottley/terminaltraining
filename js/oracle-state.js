@@ -110,9 +110,9 @@ class OracleManager {
 
     validateKernelParameters() {
         // Check if actual kernel parameters are correctly set in /etc/sysctl.conf
-        if (typeof filesystem === 'undefined') return false;
+        if (typeof fs === 'undefined') return false;
         
-        const sysctlContent = filesystem.cat('/etc/sysctl.conf');
+        const sysctlContent = fs.cat('/etc/sysctl.conf');
         if (!sysctlContent) return false;
         
         const requiredParams = {
@@ -153,9 +153,9 @@ class OracleManager {
 
     validateResourceLimits() {
         // Check if actual resource limits are correctly set in /etc/security/limits.conf
-        if (typeof filesystem === 'undefined') return false;
+        if (typeof fs === 'undefined') return false;
         
-        const limitsContent = filesystem.cat('/etc/security/limits.conf');
+        const limitsContent = fs.cat('/etc/security/limits.conf');
         if (!limitsContent) return false;
         
         const requiredLimits = [
