@@ -902,18 +902,30 @@ class CommandProcessor {
     }
 
     cmdSu(args) {
+        let targetUser = 'root'; // Default to root if no user specified
+        
         if (args[0] === '-' && args[1]) {
-            // Save current user to stack
-            this.userStack.push(args[1]);
-            this.fs.currentUser = args[1];
-            this.environmentVars.USER = args[1];
-            this.environmentVars.HOME = args[1] === 'root' ? '/root' : `/home/${args[1]}`;
+            // su - username
+            targetUser = args[1];
+            this.userStack.push(targetUser);
+            this.fs.currentUser = targetUser;
+            this.environmentVars.USER = targetUser;
+            this.environmentVars.HOME = targetUser === 'root' ? '/root' : `/home/${targetUser}`;
             this.fs.cd(this.environmentVars.HOME);
         } else if (args[0] && args[0] !== '-') {
-            // Save current user to stack
-            this.userStack.push(args[0]);
-            this.fs.currentUser = args[0];
-            this.environmentVars.USER = args[0];
+            // su username
+            targetUser = args[0];
+            this.userStack.push(targetUser);
+            this.fs.currentUser = targetUser;
+            this.environmentVars.USER = targetUser;
+            this.environmentVars.HOME = targetUser === 'root' ? '/root' : `/home/${targetUser}`;
+        } else if (args.length === 0) {
+            // su (no arguments - default to root)
+            this.userStack.push(targetUser);
+            this.fs.currentUser = targetUser;
+            this.environmentVars.USER = targetUser;
+            this.environmentVars.HOME = '/root';
+            this.fs.cd('/root');
         }
     }
 
