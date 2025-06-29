@@ -258,6 +258,35 @@ term.onData(data => {
     }
 });
 
+// Auto-copy selection to clipboard
+term.onSelectionChange(() => {
+    const selection = term.getSelection();
+    if (selection && selection.trim().length > 0) {
+        // Use the modern Clipboard API if available
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(selection).catch(err => {
+                console.warn('Failed to copy selection to clipboard:', err);
+            });
+        } else {
+            // Fallback for older browsers
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = selection;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            } catch (err) {
+                console.warn('Failed to copy selection to clipboard:', err);
+            }
+        }
+    }
+});
+
 // Handle window resize
 window.addEventListener('resize', () => {
     fitTerminal();
