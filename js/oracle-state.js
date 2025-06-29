@@ -232,7 +232,8 @@ class OracleManager {
     clearState() {
         try {
             localStorage.removeItem('oracleManagerState');
-            localStorage.removeItem('fileSystemState');
+            // Keep fileSystemState to preserve file contents across reboots
+            // localStorage.removeItem('fileSystemState');
         } catch (e) {
             console.error('Failed to clear localStorage:', e);
         }
