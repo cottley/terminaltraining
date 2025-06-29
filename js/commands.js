@@ -5,6 +5,7 @@ class CommandProcessor {
         this.fs = fs;
         this.history = [];
         this.historyIndex = -1;
+        this.loadHistory();
         this.currentCommand = '';
         this.userStack = ['root']; // Stack to track user changes
         this.vimModal = null; // Reference to vim modal
@@ -21,6 +22,38 @@ class CommandProcessor {
             'LANG': 'en_US.UTF-8'
         };
         this.initializeVimModal();
+    }
+
+    loadHistory() {
+        try {
+            const savedHistory = localStorage.getItem('terminalCommandHistory');
+            if (savedHistory) {
+                this.history = JSON.parse(savedHistory);
+                this.historyIndex = this.history.length;
+            }
+        } catch (e) {
+            // If there's an error loading history, start with empty history
+            this.history = [];
+            this.historyIndex = -1;
+        }
+    }
+
+    saveHistory() {
+        try {
+            localStorage.setItem('terminalCommandHistory', JSON.stringify(this.history));
+        } catch (e) {
+            // Silently fail if localStorage is not available
+        }
+    }
+
+    clearHistory() {
+        this.history = [];
+        this.historyIndex = -1;
+        try {
+            localStorage.removeItem('terminalCommandHistory');
+        } catch (e) {
+            // Silently fail if localStorage is not available
+        }
     }
 
     initializeVimModal() {
@@ -100,6 +133,7 @@ class CommandProcessor {
     processCommand(input) {
         this.history.push(input);
         this.historyIndex = this.history.length;
+        this.saveHistory();
         
         const parts = input.trim().split(/\s+/);
         const command = parts[0];
@@ -939,6 +973,7 @@ class CommandProcessor {
         setTimeout(() => {
             oracleManager.clearState();
             localStorage.removeItem('fileSystemState');
+            this.clearHistory();
             location.reload();
         }, 1000);
     }
