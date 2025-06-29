@@ -261,6 +261,9 @@ class CommandProcessor {
             case 'oracle-help':
                 this.cmdOracleHelp();
                 break;
+            case 'whereis':
+                this.cmdWhereis(args);
+                break;
             case 'help':
                 this.cmdHelp();
                 break;
@@ -1273,7 +1276,7 @@ class CommandProcessor {
         this.terminal.writeln('  System:');
         this.terminal.writeln('    reboot - Reboot the system (clears state)');
         this.terminal.writeln('  Other:');
-        this.terminal.writeln('    clear, help');
+        this.terminal.writeln('    clear, help, whereis');
         this.terminal.writeln('');
         this.terminal.writeln('Tips:');
         this.terminal.writeln('  • Use Tab for command and path completion');
@@ -1290,5 +1293,91 @@ class CommandProcessor {
         const promptChar = user === 'root' ? '#' : '$';
         
         return `[${user}@${host} ${displayPath}]${promptChar} `;
+    }
+
+    cmdWhereis(args) {
+        if (args.length === 0) {
+            this.terminal.writeln('whereis: missing operand');
+            this.terminal.writeln('Try \'whereis --help\' for more information.');
+            return;
+        }
+
+        if (args[0] === '--help') {
+            this.terminal.writeln('Usage: whereis [options] name...');
+            this.terminal.writeln('Locate the binary, source, and manual page files for a command.');
+            this.terminal.writeln('');
+            this.terminal.writeln('Options:');
+            this.terminal.writeln('  -b    search only for binaries');
+            this.terminal.writeln('  -m    search only for manuals');
+            this.terminal.writeln('  -s    search only for sources');
+            return;
+        }
+
+        // Parse options
+        const searchBinaries = args.includes('-b') || (!args.includes('-m') && !args.includes('-s'));
+        const searchManuals = args.includes('-m') || (!args.includes('-b') && !args.includes('-s'));
+        const searchSources = args.includes('-s') || (!args.includes('-b') && !args.includes('-m'));
+        
+        // Get command names (filter out options)
+        const commands = args.filter(arg => !arg.startsWith('-'));
+        
+        if (commands.length === 0) {
+            this.terminal.writeln('whereis: missing operand');
+            return;
+        }
+
+        // Standard binary directories
+        const binaryPaths = ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin', '/usr/local/sbin'];
+        // Standard manual page directories
+        const manualPaths = ['/usr/share/man', '/usr/local/share/man'];
+        // Standard source directories
+        const sourcePaths = ['/usr/src', '/usr/local/src'];
+
+        for (const command of commands) {
+            const results = [];
+            
+            // Search for binaries
+            if (searchBinaries) {
+                for (const binPath of binaryPaths) {
+                    const fullPath = `${binPath}/${command}`;
+                    if (this.fs.exists(fullPath)) {
+                        results.push(fullPath);
+                    }
+                }
+            }
+
+            // Search for manual pages
+            if (searchManuals) {
+                for (const manPath of manualPaths) {
+                    // Check common manual sections
+                    for (const section of ['1', '2', '3', '4', '5', '6', '7', '8']) {
+                        const manFile = `${manPath}/man${section}/${command}.${section}`;
+                        const manFileGz = `${manFile}.gz`;
+                        if (this.fs.exists(manFile)) {
+                            results.push(manFile);
+                        } else if (this.fs.exists(manFileGz)) {
+                            results.push(manFileGz);
+                        }
+                    }
+                }
+            }
+
+            // Search for sources
+            if (searchSources) {
+                for (const srcPath of sourcePaths) {
+                    const srcDir = `${srcPath}/${command}`;
+                    if (this.fs.exists(srcDir)) {
+                        results.push(srcDir);
+                    }
+                }
+            }
+
+            // Output results
+            if (results.length > 0) {
+                this.terminal.writeln(`${command}: ${results.join(' ')}`);
+            } else {
+                this.terminal.writeln(`${command}:`);
+            }
+        }
     }
 }

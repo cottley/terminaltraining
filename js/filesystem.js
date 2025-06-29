@@ -19,7 +19,24 @@ class FileSystem {
                 size: 4096,
                 modified: new Date(),
                 children: {
-                    'bin': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
+                    'bin': { 
+                        type: 'directory', 
+                        permissions: 'drwxr-xr-x', 
+                        owner: 'root', 
+                        group: 'root', 
+                        size: 4096, 
+                        children: {
+                            'ls': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 12345, content: '' },
+                            'cat': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 8765, content: '' },
+                            'echo': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 5432, content: '' },
+                            'pwd': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 3456, content: '' },
+                            'mkdir': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 4567, content: '' },
+                            'rm': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 6789, content: '' },
+                            'touch': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 2345, content: '' },
+                            'bash': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 98765, content: '' },
+                            'sh': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 45678, content: '' }
+                        }
+                    },
                     'boot': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
                     'dev': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
                     'etc': { 
