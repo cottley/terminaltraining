@@ -6,12 +6,16 @@ CommandProcessor.prototype.initOracleCommands = function() {
     const passwdContent = this.fs.cat('/etc/passwd');
     if (passwdContent && passwdContent.includes('oracle:x:')) {
         oracleManager.updateState('oracleUserExists', true);
+    } else {
+        oracleManager.updateState('oracleUserExists', false);
     }
     
     // Check if Oracle groups exist
     const groupContent = this.fs.cat('/etc/group');
     if (groupContent && groupContent.includes('oinstall:x:') && groupContent.includes('dba:x:')) {
         oracleManager.updateState('oracleGroupsExist', true);
+    } else {
+        oracleManager.updateState('oracleGroupsExist', false);
     }
     
     // Check kernel parameters

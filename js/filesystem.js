@@ -32,8 +32,8 @@ class FileSystem {
                             'hosts': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 158, content: '127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4\n::1         localhost localhost.localdomain localhost6 localhost6.localdomain6\n192.168.1.100   proddb01sim' },
                             'hostname': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 20, content: 'proddb01sim' },
                             'redhat-release': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 45, content: 'Red Hat Enterprise Linux release 9.0 (Plow)' },
-                            'passwd': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 1024, content: 'root:x:0:0:root:/root:/bin/bash\nbin:x:1:1:bin:/bin:/sbin/nologin\ndaemon:x:2:2:daemon:/sbin:/sbin/nologin\nadm:x:3:4:adm:/var/adm:/sbin/nologin\nlp:x:4:7:lp:/var/spool/lpd:/sbin/nologin\nsync:x:5:0:sync:/sbin:/bin/sync\nshutdown:x:6:0:shutdown:/sbin:/sbin/shutdown\nhalt:x:7:0:halt:/sbin:/sbin/halt\nmail:x:8:12:mail:/var/spool/mail:/sbin/nologin\noperator:x:11:0:operator:/root:/sbin/nologin\ngames:x:12:100:games:/usr/games:/sbin/nologin\nftp:x:14:50:FTP User:/var/ftp:/sbin/nologin\nnobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin\ndbus:x:81:81:System message bus:/:/sbin/nologin\nsystemd-network:x:192:192:systemd Network Management:/:/sbin/nologin\noracle:x:1001:1001:Oracle Software Owner:/home/oracle:/bin/bash' },
-                            'group': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 512, content: 'root:x:0:\nbin:x:1:\ndaemon:x:2:\nsys:x:3:\nadm:x:4:\ntty:x:5:\ndisk:x:6:\nlp:x:7:\nmem:x:8:\nkmem:x:9:\nwheel:x:10:\ncdrom:x:11:\nmail:x:12:\nman:x:15:\ndialout:x:18:\nfloppy:x:19:\ngames:x:20:\ntape:x:33:\nvideo:x:39:\nftp:x:50:\nlock:x:54:\naudio:x:63:\nnobody:x:65534:\nusers:x:100:\nsystemd-network:x:192:\ndbus:x:81:\noinstall:x:1001:oracle\ndba:x:1002:oracle\noper:x:1003:oracle\nbackupdba:x:1004:oracle\ndgdba:x:1005:oracle\nkmdba:x:1006:oracle\nracdba:x:1007:oracle' },
+                            'passwd': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 950, content: 'root:x:0:0:root:/root:/bin/bash\nbin:x:1:1:bin:/bin:/sbin/nologin\ndaemon:x:2:2:daemon:/sbin:/sbin/nologin\nadm:x:3:4:adm:/var/adm:/sbin/nologin\nlp:x:4:7:lp:/var/spool/lpd:/sbin/nologin\nsync:x:5:0:sync:/sbin:/bin/sync\nshutdown:x:6:0:shutdown:/sbin:/sbin/shutdown\nhalt:x:7:0:halt:/sbin:/sbin/halt\nmail:x:8:12:mail:/var/spool/mail:/sbin/nologin\noperator:x:11:0:operator:/root:/sbin/nologin\ngames:x:12:100:games:/usr/games:/sbin/nologin\nftp:x:14:50:FTP User:/var/ftp:/sbin/nologin\nnobody:x:65534:65534:Kernel Overflow User:/:/sbin/nologin\ndbus:x:81:81:System message bus:/:/sbin/nologin\nsystemd-network:x:192:192:systemd Network Management:/:/sbin/nologin' },
+                            'group': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 350, content: 'root:x:0:\nbin:x:1:\ndaemon:x:2:\nsys:x:3:\nadm:x:4:\ntty:x:5:\ndisk:x:6:\nlp:x:7:\nmem:x:8:\nkmem:x:9:\nwheel:x:10:\ncdrom:x:11:\nmail:x:12:\nman:x:15:\ndialout:x:18:\nfloppy:x:19:\ngames:x:20:\ntape:x:33:\nvideo:x:39:\nftp:x:50:\nlock:x:54:\naudio:x:63:\nnobody:x:65534:\nusers:x:100:\nsystemd-network:x:192:\ndbus:x:81:' },
                             'sysctl.conf': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 280, content: '# System default kernel parameters\nfs.aio-max-nr = 65536\nfs.file-max = 1024000\nkernel.shmall = 268435456\nkernel.shmmax = 68719476736\nkernel.shmmni = 4096\nkernel.sem = 32000 1024000000 500 1024\nnet.ipv4.ip_local_port_range = 32768 65535\nnet.core.rmem_default = 212992\nnet.core.rmem_max = 212992\nnet.core.wmem_default = 212992\nnet.core.wmem_max = 212992' },
                             'security': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
                                 'limits.conf': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 200, content: '# System default resource limits\n# End of file' }
@@ -46,9 +46,7 @@ class FileSystem {
                         owner: 'root', 
                         group: 'root', 
                         size: 4096,
-                        children: {
-                            'oracle': { type: 'directory', permissions: 'drwx------', owner: 'oracle', group: 'oinstall', size: 4096, children: {} }
-                        }
+                        children: {}
                     },
                     'lib': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
                     'lib64': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
@@ -65,48 +63,10 @@ class FileSystem {
                     'u01': { 
                         type: 'directory', 
                         permissions: 'drwxr-xr-x', 
-                        owner: 'oracle', 
-                        group: 'oinstall', 
+                        owner: 'root', 
+                        group: 'root', 
                         size: 4096,
-                        children: {
-                            'app': { 
-                                type: 'directory', 
-                                permissions: 'drwxr-xr-x', 
-                                owner: 'oracle', 
-                                group: 'oinstall', 
-                                size: 4096,
-                                children: {
-                                    'oracle': { 
-                                        type: 'directory', 
-                                        permissions: 'drwxr-xr-x', 
-                                        owner: 'oracle', 
-                                        group: 'oinstall', 
-                                        size: 4096,
-                                        children: {
-                                            'product': { 
-                                                type: 'directory', 
-                                                permissions: 'drwxr-xr-x', 
-                                                owner: 'oracle', 
-                                                group: 'oinstall', 
-                                                size: 4096,
-                                                children: {
-                                                    '19.0.0': { 
-                                                        type: 'directory', 
-                                                        permissions: 'drwxr-xr-x', 
-                                                        owner: 'oracle', 
-                                                        group: 'oinstall', 
-                                                        size: 4096,
-                                                        children: {
-                                                            'dbhome_1': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'oracle', group: 'oinstall', size: 4096, children: {} }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        children: {}
                     },
                     'usr': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
                     'var': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} }
