@@ -938,6 +938,7 @@ class CommandProcessor {
         // Clear localStorage and reload
         setTimeout(() => {
             oracleManager.clearState();
+            localStorage.removeItem('fileSystemState');
             location.reload();
         }, 1000);
     }
