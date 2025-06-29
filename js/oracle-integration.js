@@ -12,8 +12,12 @@ CommandProcessor.prototype.initOracleCommands = function() {
     
     // Check if Oracle groups exist
     const groupContent = this.fs.cat('/etc/group');
-    if (groupContent && groupContent.includes('oinstall:x:') && groupContent.includes('dba:x:')) {
-        oracleManager.updateState('oracleGroupsExist', true);
+    if (groupContent) {
+        const requiredGroups = ['oinstall', 'dba'];
+        const hasAllRequiredGroups = requiredGroups.every(group => 
+            groupContent.includes(`${group}:x:`)
+        );
+        oracleManager.updateState('oracleGroupsExist', hasAllRequiredGroups);
     } else {
         oracleManager.updateState('oracleGroupsExist', false);
     }
