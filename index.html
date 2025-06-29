@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RHEL 9 Terminal - Oracle 19c Installation Practice</title>
+    <link rel="stylesheet" href="css/xterm.css" />
+    <link rel="stylesheet" href="css/terminal-styles.css" />
+</head>
+<body>
+    <div id="terminal-container">
+        <div id="terminal-header">
+            <span class="terminal-title">Terminal - root@proddb01sim</span>
+            <div class="terminal-controls">
+                <div class="control-btn minimize"></div>
+                <div class="control-btn maximize"></div>
+                <div class="control-btn close"></div>
+            </div>
+        </div>
+        <div id="terminal"></div>
+    </div>
+
+    <!-- Vim Editor Modal -->
+    <div id="vimModal" class="vim-modal">
+        <div class="vim-modal-content">
+            <div class="vim-header">
+                <span class="vim-title" id="vimFileName">VIM - filename</span>
+                <span class="vim-mode">-- INSERT --</span>
+            </div>
+            <textarea class="vim-editor" id="vimEditor"></textarea>
+            <div class="vim-footer">
+                <div class="vim-commands">
+                    <span class="vim-command"><kbd>Ctrl+S</kbd> Save</span>
+                    <span class="vim-command"><kbd>Ctrl+Q</kbd> Save & Quit</span>
+                    <span class="vim-command"><kbd>ESC</kbd> Exit without saving</span>
+                </div>
+                <span id="vimStatus">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/xterm.js"></script>
+    <script src="js/filesystem.js"></script>
+    <script src="js/commands.js"></script>
+    <script src="js/oracle-state.js"></script>
+    <script src="js/oracle-installer.js"></script>
+    <script src="js/oracle-listener.js"></script>
+    <script src="js/oracle-sqlplus.js"></script>
+    <script src="js/oracle-utilities.js"></script>
+    <script src="js/oracle-integration.js"></script>
+    <script src="js/oracle-help.js"></script>
+    <script src="js/terminal-main.js"></script>
+</body>
+</html>

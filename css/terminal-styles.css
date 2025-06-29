@@ -1,0 +1,160 @@
+/* Base styles */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    background-color: #1a1a1a;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+}
+
+/* Terminal container */
+#terminal-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+}
+
+#terminal-header {
+    background-color: #2a2a2a;
+    color: #fff;
+    padding: 5px 10px;
+    font-size: 14px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+#terminal {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.xterm {
+    height: 100%;
+    width: 100%;
+}
+
+.xterm-viewport {
+    height: 100% !important;
+    width: 100% !important;
+}
+
+.terminal-title {
+    font-weight: bold;
+}
+
+.terminal-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.close { background-color: #ff5f56; }
+.minimize { background-color: #ffbd2e; }
+.maximize { background-color: #27c93f; }
+
+/* Vim Modal styles */
+.vim-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.vim-modal-content {
+    background-color: #1e1e1e;
+    margin: 2% auto;
+    padding: 0;
+    border: 2px solid #444;
+    width: 90%;
+    height: 90%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.vim-header {
+    background-color: #2d2d2d;
+    color: #fff;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #444;
+}
+
+.vim-title {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.vim-editor {
+    flex: 1;
+    padding: 10px;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow-y: auto;
+}
+
+.vim-footer {
+    background-color: #2d2d2d;
+    color: #fff;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #444;
+    font-size: 12px;
+}
+
+.vim-mode {
+    color: #4ec9b0;
+}
+
+.vim-commands {
+    display: flex;
+    gap: 15px;
+}
+
+.vim-command {
+    color: #888;
+}
+
+.vim-command kbd {
+    background-color: #3a3a3a;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 2px 5px;
+    font-size: 11px;
+    color: #fff;
+}
