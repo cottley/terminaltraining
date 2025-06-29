@@ -80,11 +80,7 @@ class CommandProcessor {
         // Refocus terminal
         this.terminal.focus();
         
-        if (saved) {
-            this.terminal.writeln(':wq');
-        } else {
-            this.terminal.writeln(':q!');
-        }
+        // No terminal output when exiting vi
     }
 
     openVimModal(filename, content = '') {
