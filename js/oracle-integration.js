@@ -291,9 +291,15 @@ CommandProcessor.prototype.processOracleCommand = function(command, args) {
             this.cmdImpdp(args);
             return true;
         case 'oraenv':
-        case '. oraenv':
             this.cmdOraenv(args);
             return true;
+        case '.':
+            // Handle sourcing commands like '. oraenv'
+            if (args.length > 0 && args[0] === 'oraenv') {
+                this.cmdOraenv(args.slice(1));
+                return true;
+            }
+            return false;
             
         // PS app commands
         case 'ps-help':
