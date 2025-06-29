@@ -254,61 +254,6 @@ class FileSystem {
         return node && node.type === 'file';
     }
 
-    mkdir(path) {
-        const pathArray = this.resolvePath(path);
-        const dirName = pathArray.pop();
-        const parentNode = this.getNode(pathArray);
-        
-        if (parentNode && parentNode.type === 'directory') {
-            parentNode.children[dirName] = {
-                type: 'directory',
-                permissions: 'drwxr-xr-x',
-                owner: this.currentUser,
-                group: this.currentUser === 'root' ? 'root' : 'users',
-                size: 4096,
-                modified: new Date(),
-                children: {}
-            };
-            return true;
-        }
-        return false;
-    }
-
-    touch(path, content = '') {
-        const pathArray = this.resolvePath(path);
-        const fileName = pathArray.pop();
-        const parentNode = this.getNode(pathArray);
-        
-        if (parentNode && parentNode.type === 'directory') {
-            parentNode.children[fileName] = {
-                type: 'file',
-                permissions: '-rw-r--r--',
-                owner: this.currentUser,
-                group: this.currentUser === 'root' ? 'root' : 'users',
-                size: content.length,
-                modified: new Date(),
-                content: content
-            };
-            return true;
-        }
-        return false;
-    }
-
-    rm(path, recursive = false) {
-        const pathArray = this.resolvePath(path);
-        const name = pathArray.pop();
-        const parentNode = this.getNode(pathArray);
-        
-        if (parentNode && parentNode.type === 'directory' && parentNode.children[name]) {
-            const target = parentNode.children[name];
-            if (target.type === 'directory' && Object.keys(target.children).length > 0 && !recursive) {
-                return false;
-            }
-            delete parentNode.children[name];
-            return true;
-        }
-        return false;
-    }
 
     ls(path = '.') {
         const pathArray = this.resolvePath(path);
@@ -337,22 +282,6 @@ class FileSystem {
         return this.currentPath;
     }
 
-    cd(path) {
-        if (path === '~') {
-            this.currentPath = this.currentUser === 'root' ? '/root' : `/home/${this.currentUser}`;
-            return true;
-        }
-        
-        const newPath = path.startsWith('/') ? path : 
-            this.currentPath === '/' ? `/${path}` : `${this.currentPath}/${path}`;
-        const normalizedPath = '/' + this.resolvePath(newPath).join('/');
-        
-        if (this.isDirectory(normalizedPath)) {
-            this.currentPath = normalizedPath || '/';
-            return true;
-        }
-        return false;
-    }
 
     // Helper methods for user and group management
     getNextUid() {
@@ -391,17 +320,5 @@ class FileSystem {
         return maxGid + 1;
     }
 
-    updateFile(path, content) {
-        const pathArray = this.resolvePath(path);
-        const node = this.getNode(pathArray);
-        
-        if (node && node.type === 'file') {
-            node.content = content;
-            node.size = content.length;
-            node.modified = new Date();
-            return true;
-        }
-        return false;
-    }
 
 }
