@@ -366,7 +366,7 @@ class OracleManager {
                 hint: 'Extract and install Oracle software',
                 commands: [
                     'su - oracle',
-                    'cd /u01/app/oracle/product/19.0.0/dbhome_1',
+                    'cd /install',
                     'unzip /install/LINUX.X64_193000_db_home.zip',
                     './runInstaller'
                 ]
