@@ -23,6 +23,7 @@ class OracleManager {
             oracleEnvironmentSet: false,
             kernelParametersSet: false,
             limitsConfigured: false,
+            oratabPopulated: false,
             
             // Installation paths
             oracleBase: '/u01/app/oracle',
@@ -170,6 +171,17 @@ class OracleManager {
         return requiredLimits.every(limit => limitsContent.includes(limit));
     }
 
+    validateOratabPopulation() {
+        // Check if oratab has the database configured for automatic startup
+        if (typeof fs === 'undefined') return false;
+        
+        const oratabContent = fs.cat('/etc/oratab');
+        if (!oratabContent) return false;
+        
+        // Look for ORCL entry with Y flag for auto-start
+        return oratabContent.includes('ORCL:/u01/app/oracle/product/19.0.0/dbhome_1:Y');
+    }
+
     updateState(key, value) {
         if (key.includes('.')) {
             // Handle nested properties
@@ -277,7 +289,8 @@ class OracleManager {
             'Database Created': this.state.databaseCreated,
             'Listener Configured': this.state.listenerConfigured,
             'Database Started': this.state.databaseStarted,
-            'Listener Started': this.state.listenerStarted
+            'Listener Started': this.state.listenerStarted,
+            'Oratab Populated for Auto-Start': this.state.oratabPopulated
         };
         
         const completed = Object.values(tasks).filter(Boolean).length;
@@ -414,6 +427,15 @@ class OracleManager {
                 commands: [
                     'su - oracle',
                     'lsnrctl start'
+                ]
+            },
+            'Oratab Populated for Auto-Start': {
+                hint: 'Configure oratab for automatic database startup on boot',
+                commands: [
+                    'su - oracle',
+                    'vi /etc/oratab',
+                    '# Change the ORCL entry from :N to :Y',
+                    '# ORCL:/u01/app/oracle/product/19.0.0/dbhome_1:Y'
                 ]
             },
             'Oradata Partition Created': {

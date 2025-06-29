@@ -38,6 +38,9 @@ CommandProcessor.prototype.refreshOracleState = function() {
     if (this.fs.exists('/u01/app/oracle/product/19.0.0/dbhome_1/bin/sqlplus')) {
         oracleManager.updateState('softwareInstalled', true);
     }
+    
+    // Check if oratab is populated for auto-start
+    oracleManager.updateState('oratabPopulated', oracleManager.validateOratabPopulation());
 };
 
 // Initialize Oracle commands when CommandProcessor is created
