@@ -115,21 +115,40 @@ class OracleManager {
         const sysctlContent = filesystem.cat('/etc/sysctl.conf');
         if (!sysctlContent) return false;
         
-        const requiredParams = [
-            'fs.aio-max-nr = 1048576',
-            'fs.file-max = 6815744', 
-            'kernel.shmall = 2097152',
-            'kernel.shmmax = 536870912',
-            'kernel.shmmni = 4096',
-            'kernel.sem = 250 32000 100 128',
-            'net.ipv4.ip_local_port_range = 9000 65500',
-            'net.core.rmem_default = 262144',
-            'net.core.rmem_max = 4194304',
-            'net.core.wmem_default = 262144',
-            'net.core.wmem_max = 1048576'
-        ];
+        const requiredParams = {
+            'fs.aio-max-nr': '1048576',
+            'fs.file-max': '6815744', 
+            'kernel.shmall': '2097152',
+            'kernel.shmmax': '536870912',
+            'kernel.shmmni': '4096',
+            'kernel.sem': '250 32000 100 128',
+            'net.ipv4.ip_local_port_range': '9000 65500',
+            'net.core.rmem_default': '262144',
+            'net.core.rmem_max': '4194304',
+            'net.core.wmem_default': '262144',
+            'net.core.wmem_max': '1048576'
+        };
         
-        return requiredParams.every(param => sysctlContent.includes(param));
+        // Parse the sysctl.conf content to extract parameter values
+        const lines = sysctlContent.split('\n');
+        const actualParams = {};
+        
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#')) {
+                const match = trimmed.match(/^([^=]+?)\s*=\s*(.+)$/);
+                if (match) {
+                    const key = match[1].trim();
+                    const value = match[2].trim();
+                    actualParams[key] = value;
+                }
+            }
+        }
+        
+        // Check if all required parameters are present with correct values
+        return Object.entries(requiredParams).every(([key, expectedValue]) => {
+            return actualParams[key] === expectedValue;
+        });
     }
 
     validateResourceLimits() {
