@@ -194,6 +194,21 @@ CommandProcessor.prototype.cmdDbca = function(args) {
     this.fs.mkdir('/u01/app/oracle/admin/ORCL');
     this.fs.mkdir('/u01/app/oracle/admin/ORCL/adump');
     
+    // Create database files (DBF files)
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/system01.dbf', '');
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/sysaux01.dbf', '');
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/undotbs01.dbf', '');
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/users01.dbf', '');
+    
+    // Create control files
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/control01.ctl', '');
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/control02.ctl', '');
+    
+    // Create redo log files
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/redo01.log', '');
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/redo02.log', '');
+    this.fs.touch('/u01/app/oracle/oradata/ORCL/redo03.log', '');
+    
     // Add background processes
     oracleManager.state.backgroundProcesses = [
         'ora_pmon_ORCL',
