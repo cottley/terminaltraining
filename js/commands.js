@@ -273,6 +273,9 @@ class CommandProcessor {
             case 'whereis':
                 this.cmdWhereis(args);
                 break;
+            case './ArcGIS_Server_Setup':
+                this.cmdArcGISServerSetup(args);
+                break;
             case 'help':
                 this.cmdHelp();
                 break;
@@ -2063,5 +2066,96 @@ class CommandProcessor {
         } else {
             return `${lineCount} ${wordCount} ${charCount}`;
         }
+    }
+
+    // ArcGIS Server Setup Command
+    cmdArcGISServerSetup(args) {
+        // Check if running in correct directory
+        if (!this.fs.pwd().includes('/install')) {
+            this.terminal.writeln('ArcGIS Server Setup: Please run from /install directory');
+            this.terminal.writeln('Usage: cd /install && ./ArcGIS_Server_Setup');
+            return;
+        }
+
+        // Check if running as arcgis user
+        if (this.fs.currentUser !== 'arcgis') {
+            this.terminal.writeln('ArcGIS Server Setup: Must be run as arcgis user');
+            this.terminal.writeln('Usage: su - arcgis');
+            return;
+        }
+
+        // Check if Oracle is available (prerequisite)
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ArcGIS Server Setup: Oracle Database must be running');
+            this.terminal.writeln('Please start Oracle Database first with: sqlplus / as sysdba');
+            return;
+        }
+
+        this.terminal.writeln('');
+        this.terminal.writeln('ArcGIS Server 10.9.1 Setup');
+        this.terminal.writeln('===========================');
+        this.terminal.writeln('');
+        this.terminal.writeln('Welcome to the ArcGIS Server Installation Wizard');
+        this.terminal.writeln('');
+        this.terminal.writeln('Checking system requirements...');
+        this.terminal.writeln('✓ Operating System: Red Hat Enterprise Linux 9.0');
+        this.terminal.writeln('✓ Available disk space: 15 GB');
+        this.terminal.writeln('✓ Available memory: 8 GB');
+        this.terminal.writeln('✓ Oracle Database: Available');
+        this.terminal.writeln('');
+        this.terminal.writeln('Installing ArcGIS Server...');
+        this.terminal.writeln('');
+        this.terminal.writeln('[▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100% Complete');
+        this.terminal.writeln('');
+        this.terminal.writeln('Installing ArcSDE components...');
+        this.terminal.writeln('✓ SDE libraries installed to /opt/arcgis/server/lib/');
+        this.terminal.writeln('✓ Spatial data engine configured');
+        this.terminal.writeln('✓ Oracle spatial extensions enabled');
+        this.terminal.writeln('');
+        this.terminal.writeln('Configuring EXTPROC integration...');
+        this.terminal.writeln('✓ libsde.so library registered');
+        this.terminal.writeln('✓ Spatial function wrappers created');
+        this.terminal.writeln('✓ Oracle EXTPROC configuration updated');
+        this.terminal.writeln('');
+        this.terminal.writeln('Installation completed successfully!');
+        this.terminal.writeln('');
+        this.terminal.writeln('Next steps:');
+        this.terminal.writeln('1. Create SDE user in Oracle Database');
+        this.terminal.writeln('2. Register spatial libraries with Oracle');
+        this.terminal.writeln('3. Test spatial functions via EXTPROC');
+        this.terminal.writeln('');
+        this.terminal.writeln('For Oracle integration, run as oracle user:');
+        this.terminal.writeln('  sqlplus / as sysdba');
+        this.terminal.writeln('  CREATE USER sde IDENTIFIED BY sde;');
+        this.terminal.writeln('  GRANT CONNECT, RESOURCE TO sde;');
+        this.terminal.writeln("  CREATE OR REPLACE LIBRARY sde_util AS '/opt/arcgis/server/lib/libsde.so';");
+        this.terminal.writeln('');
+
+        // Create ArcGIS directory structure
+        this.fs.mkdir('/opt/arcgis');
+        this.fs.mkdir('/opt/arcgis/server');
+        this.fs.mkdir('/opt/arcgis/server/lib');
+        this.fs.mkdir('/opt/arcgis/server/bin');
+        this.fs.mkdir('/opt/arcgis/server/framework');
+        
+        // Create SDE library file (simulated)
+        this.fs.touch('/opt/arcgis/server/lib/libsde.so', '# ArcSDE Library for Oracle Spatial Integration');
+        this.fs.touch('/opt/arcgis/server/lib/libsde_util.so', '# ArcSDE Utility Library');
+        this.fs.touch('/opt/arcgis/server/bin/sdeconfig', '#!/bin/bash\n# SDE Configuration Tool');
+        
+        // Create configuration files
+        this.fs.touch('/opt/arcgis/server/framework/server.properties', 
+            'server.name=arcgis-server\n' +
+            'server.port=6080\n' +
+            'database.type=oracle\n' +
+            'spatial.engine=sde\n' +
+            'extproc.enabled=true\n');
+
+        // Update Oracle state
+        oracleManager.updateState('psAppRequirements.arcgisInstalled', true);
+        oracleManager.updateState('psAppRequirements.arcgisUserCreated', true);
+
+        this.terminal.writeln('ArcGIS Server installation logged to: /opt/arcgis/server/logs/install.log');
+        this.terminal.writeln('');
     }
 }

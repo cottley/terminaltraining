@@ -432,6 +432,92 @@ CommandProcessor.prototype.processCommand = function(input) {
     originalProcessCommandForSysctl.call(this, input);
 };
 
+// ArcGIS Server Installation Command
+CommandProcessor.prototype.cmdArcgisInstall = function(args) {
+    if (!this.fs.exists('/install/ArcGIS_Server_Setup')) {
+        this.terminal.writeln('ERROR: ArcGIS Server installer not found in /install/');
+        this.terminal.writeln('Please ensure the installer is available before proceeding.');
+        return;
+    }
+    
+    // Check if arcgis user exists
+    const passwdContent = this.fs.cat('/etc/passwd');
+    if (!passwdContent || !passwdContent.includes('arcgis:x:')) {
+        this.terminal.writeln('ERROR: arcgis user not found. Please create the arcgis user first:');
+        this.terminal.writeln('  useradd -u 54330 -g oinstall -G dba arcgis');
+        this.terminal.writeln('  passwd arcgis');
+        return;
+    }
+    
+    // Check if running as arcgis user
+    if (this.fs.currentUser !== 'arcgis') {
+        this.terminal.writeln('ERROR: ArcGIS Server must be installed as the arcgis user.');
+        this.terminal.writeln('Please switch to the arcgis user: su - arcgis');
+        return;
+    }
+    
+    // Check if /opt/arcgis directory exists
+    if (!this.fs.exists('/opt/arcgis')) {
+        this.terminal.writeln('ERROR: /opt/arcgis directory not found. Please create it first:');
+        this.terminal.writeln('  mkdir -p /opt/arcgis');
+        this.terminal.writeln('  chown arcgis:oinstall /opt/arcgis');
+        return;
+    }
+    
+    // Simulate ArcGIS Server installation
+    this.terminal.writeln('ArcGIS Server 10.9.1 Installation');
+    this.terminal.writeln('==================================');
+    this.terminal.writeln('');
+    this.terminal.writeln('Checking system requirements...');
+    this.terminal.writeln('✓ Operating System: Red Hat Enterprise Linux 9');
+    this.terminal.writeln('✓ Memory: 8GB RAM');
+    this.terminal.writeln('✓ Disk Space: 2GB available');
+    this.terminal.writeln('✓ Oracle Database: Available');
+    this.terminal.writeln('');
+    this.terminal.writeln('Installing ArcGIS Server components...');
+    this.terminal.writeln('  - Core server runtime');
+    this.terminal.writeln('  - Spatial Data Engine (SDE) libraries');
+    this.terminal.writeln('  - Oracle spatial extensions');
+    this.terminal.writeln('  - EXTPROC libraries');
+    this.terminal.writeln('');
+    
+    // Create ArcGIS directory structure
+    this.fs.mkdir('/opt/arcgis/server');
+    this.fs.mkdir('/opt/arcgis/server/lib');
+    this.fs.mkdir('/opt/arcgis/server/bin');
+    
+    // Create SDE library file
+    this.fs.touch('/opt/arcgis/server/lib/libsde.so', 'ArcSDE spatial library for Oracle EXTPROC integration');
+    
+    // Create configuration files
+    this.fs.touch('/opt/arcgis/server/arcgisserver.conf', 'ArcGIS Server configuration file');
+    
+    this.terminal.writeln('Creating library files...');
+    this.terminal.writeln('  ✓ /opt/arcgis/server/lib/libsde.so');
+    this.terminal.writeln('  ✓ Spatial function libraries');
+    this.terminal.writeln('');
+    this.terminal.writeln('Configuring Oracle integration...');
+    this.terminal.writeln('  ✓ EXTPROC library paths configured');
+    this.terminal.writeln('  ✓ Spatial data engine ready');
+    this.terminal.writeln('');
+    this.terminal.writeln('ArcGIS Server 10.9.1 installation completed successfully!');
+    this.terminal.writeln('');
+    this.terminal.writeln('Next steps:');
+    this.terminal.writeln('1. Create SDE user in Oracle:');
+    this.terminal.writeln('   sqlplus / as sysdba');
+    this.terminal.writeln('   CREATE USER sde IDENTIFIED BY sde;');
+    this.terminal.writeln('   GRANT CONNECT, RESOURCE TO sde;');
+    this.terminal.writeln('');
+    this.terminal.writeln('2. Register spatial library:');
+    this.terminal.writeln('   CREATE OR REPLACE LIBRARY sde_util AS \'/opt/arcgis/server/lib/libsde.so\';');
+    this.terminal.writeln('');
+    this.terminal.writeln('The ArcSDE library is now available for spatial functions via EXTPROC.');
+    
+    // Update Oracle state
+    oracleManager.updateState('psAppRequirements.arcgisInstalled', true);
+    oracleManager.updateState('psAppRequirements.arcgisUserCreated', true);
+};
+
 // Initialize installation files when terminal starts
 const terminalInitOriginal = CommandProcessor.prototype.initializeVimModal;
 CommandProcessor.prototype.initializeVimModal = function() {

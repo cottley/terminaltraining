@@ -292,7 +292,10 @@ class OracleManager {
             'Listener Configured': this.state.listenerConfigured,
             'Database Started': this.state.databaseStarted,
             'Listener Started': this.state.listenerStarted,
-            'Oratab Populated for Auto-Start': this.state.oratabPopulated
+            'Oratab Populated for Auto-Start': this.state.oratabPopulated,
+            
+            // ArcGIS Server for Spatial Extensions
+            'ArcGIS Server Installed': this.state.psAppRequirements.arcgisInstalled
         };
         
         const completed = Object.values(tasks).filter(Boolean).length;
@@ -577,6 +580,46 @@ class OracleManager {
                     {
                         problem: 'Cannot edit /etc/oratab',
                         solution: 'File requires root permissions. Use "sudo vi /etc/oratab"'
+                    }
+                ]
+            },
+            'ArcGIS Server Installed': {
+                title: 'Install ArcGIS Server for Spatial Extensions',
+                hint: 'Install ArcGIS Server to enable spatial functions via ArcSDE library and EXTPROC',
+                commands: [
+                    '# Create arcgis user',
+                    'useradd -u 54330 -g oinstall -G dba arcgis',
+                    'passwd arcgis',
+                    'mkdir -p /opt/arcgis',
+                    'chown arcgis:oinstall /opt/arcgis',
+                    '# Simulate ArcGIS Server installation',
+                    'su - arcgis',
+                    'cd /install',
+                    './ArcGIS_Server_Setup',
+                    '# Configure EXTPROC for spatial functions',
+                    'su - oracle',
+                    'sqlplus / as sysdba',
+                    "CREATE OR REPLACE LIBRARY sde_util AS '/opt/arcgis/server/lib/libsde.so';",
+                    'CREATE USER sde IDENTIFIED BY sde;',
+                    'GRANT CONNECT, RESOURCE TO sde;'
+                ],
+                explanation: 'ArcGIS Server provides the ArcSDE library which enables Oracle to use spatial functions through EXTPROC. The SDE user serves as the spatial data engine administrator for managing geodatabases and spatial operations.',
+                troubleshooting: [
+                    {
+                        problem: 'ArcGIS installer not found',
+                        solution: 'Ensure ArcGIS Server installation files are in /install directory'
+                    },
+                    {
+                        problem: 'Library creation fails',
+                        solution: 'Verify libsde.so exists in /opt/arcgis/server/lib/ and has proper permissions'
+                    },
+                    {
+                        problem: 'EXTPROC configuration issues',
+                        solution: 'Ensure listener.ora includes EXTPROC service and tnsnames.ora has EXTPROC entry'
+                    },
+                    {
+                        problem: 'Spatial functions not working',
+                        solution: 'Verify SDE schema objects are created and spatial packages are installed'
                     }
                 ]
             },

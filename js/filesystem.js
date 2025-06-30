@@ -65,6 +65,31 @@ class FileSystem {
                         size: 4096,
                         children: {}
                     },
+                    'install': {
+                        type: 'directory',
+                        permissions: 'drwxr-xr-x',
+                        owner: 'root',
+                        group: 'root',
+                        size: 4096,
+                        children: {
+                            'ArcGIS_Server_Setup': { 
+                                type: 'file', 
+                                permissions: '-rwxr-xr-x', 
+                                owner: 'root', 
+                                group: 'root', 
+                                size: 1024000, 
+                                content: '#!/bin/bash\n# ArcGIS Server 10.9.1 Installation Script\n# This installer sets up ArcGIS Server with Oracle spatial integration\n' 
+                            },
+                            'LINUX.X64_193000_db_home.zip': {
+                                type: 'file',
+                                permissions: '-rw-r--r--',
+                                owner: 'root',
+                                group: 'root',
+                                size: 3221225472,
+                                content: '# Oracle Database 19c Installation Archive\n# Binary content simulation'
+                            }
+                        }
+                    },
                     'lib': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
                     'lib64': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
                     'media': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
