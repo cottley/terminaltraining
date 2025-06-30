@@ -318,6 +318,7 @@ class OracleManager {
     getTaskHint(taskName) {
         const hints = {
             'Oracle Groups Created': {
+                title: 'Create Oracle Installation Groups',
                 hint: 'Create Oracle installation groups (oinstall, dba, etc.)',
                 commands: [
                     'groupadd -g 54321 oinstall',
@@ -327,25 +328,61 @@ class OracleManager {
                     'groupadd -g 54325 dgdba',
                     'groupadd -g 54326 kmdba',
                     'groupadd -g 54327 racdba'
+                ],
+                explanation: 'Oracle requires specific system groups for security and administration. The oinstall group owns Oracle software, while dba group provides SYSDBA privileges.',
+                troubleshooting: [
+                    {
+                        problem: 'Group already exists error',
+                        solution: 'Check existing groups with "cat /etc/group" and skip existing ones'
+                    },
+                    {
+                        problem: 'Permission denied',
+                        solution: 'Must run as root user. Use "su -" to switch to root'
+                    }
                 ]
             },
             'Oracle User Created': {
+                title: 'Create Oracle User Account',
                 hint: 'Create the oracle user with appropriate groups',
                 commands: [
                     'useradd -u 54321 -g oinstall -G dba,oper,backupdba,dgdba,kmdba,racdba oracle',
                     'passwd oracle'
+                ],
+                explanation: 'The oracle user is the software owner for Oracle Database. It must belong to oinstall (primary) and dba groups for proper installation and administration.',
+                troubleshooting: [
+                    {
+                        problem: 'User already exists',
+                        solution: 'Use "id oracle" to check. If exists, modify with "usermod" instead'
+                    },
+                    {
+                        problem: 'Groups not found',
+                        solution: 'Create Oracle groups first before creating the user'
+                    }
                 ]
             },
             'Required Packages Installed': {
+                title: 'Install Required Packages',
                 hint: 'Install all required packages for Oracle 19c',
                 commands: [
                     'yum install -y binutils gcc gcc-c++ glibc glibc-devel ksh libaio libaio-devel',
                     'yum install -y libgcc libstdc++ libstdc++-devel libxcb libX11 libXau libXi',
                     'yum install -y libXtst libXrender libXrender-devel make net-tools nfs-utils',
                     'yum install -y smartmontools sysstat unixODBC unixODBC-devel'
+                ],
+                explanation: 'Oracle Database requires specific system libraries and development tools for compilation and runtime operation.',
+                troubleshooting: [
+                    {
+                        problem: 'Package not found',
+                        solution: 'Check repository configuration or use alternatives like "yum search <package>"'
+                    },
+                    {
+                        problem: 'Dependency conflicts',
+                        solution: 'Use "yum clean all" and retry, or install packages individually'
+                    }
                 ]
             },
             'Kernel Parameters Set': {
+                title: 'Configure Kernel Parameters',
                 hint: 'Configure kernel parameters for Oracle',
                 commands: [
                     'vim /etc/sysctl.conf',
@@ -362,9 +399,21 @@ class OracleManager {
                     '# net.core.wmem_default = 262144',
                     '# net.core.wmem_max = 1048576',
                     'sysctl -p'
+                ],
+                explanation: 'Oracle requires specific kernel parameters for memory management, file handling, and network performance.',
+                troubleshooting: [
+                    {
+                        problem: 'sysctl -p shows errors',
+                        solution: 'Check parameter syntax and verify values are appropriate for your system'
+                    },
+                    {
+                        problem: 'Parameters not applied after reboot',
+                        solution: 'Ensure parameters are saved in /etc/sysctl.conf, not just applied temporarily'
+                    }
                 ]
             },
             'Resource Limits Configured': {
+                title: 'Configure Resource Limits',
                 hint: 'Configure resource limits for the oracle user',
                 commands: [
                     'vim /etc/security/limits.conf',
@@ -375,9 +424,17 @@ class OracleManager {
                     '# oracle hard nofile 65536',
                     '# oracle soft stack 10240',
                     '# oracle hard stack 32768'
+                ],
+                explanation: 'Oracle requires specific resource limits for processes, file descriptors, and stack size to operate properly.',
+                troubleshooting: [
+                    {
+                        problem: 'Limits not applied after login',
+                        solution: 'Log out and log back in, or restart the session to apply limits'
+                    }
                 ]
             },
             'Oracle Software Installed': {
+                title: 'Install Oracle Database Software',
                 hint: 'Extract and install Oracle software',
                 commands: [
                     'su - oracle',
@@ -385,70 +442,146 @@ class OracleManager {
                     'cd /u01/app/oracle/product/19.0.0/dbhome_1',
                     'unzip /install/LINUX.X64_193000_db_home.zip',
                     './runInstaller'
+                ],
+                explanation: 'The Oracle installer extracts and installs the database software binaries in the Oracle Home directory.',
+                troubleshooting: [
+                    {
+                        problem: 'Permission denied on directories',
+                        solution: 'Ensure oracle user owns /u01/app/oracle directory tree'
+                    },
+                    {
+                        problem: 'runInstaller fails',
+                        solution: 'Check prerequisites and run the installer in silent mode if needed'
+                    }
                 ]
             },
             'Root Scripts Executed': {
+                title: 'Execute Root Configuration Scripts',
                 hint: 'Run the post-installation root scripts',
                 commands: [
                     '/u01/app/oraInventory/orainstRoot.sh',
                     '/u01/app/oracle/product/19.0.0/dbhome_1/root.sh'
+                ],
+                explanation: 'Root scripts configure system-level Oracle settings and permissions that require root privileges.',
+                troubleshooting: [
+                    {
+                        problem: 'Script not found',
+                        solution: 'Verify Oracle software installation completed successfully'
+                    }
                 ]
             },
             'Oracle Environment Set': {
+                title: 'Configure Oracle Environment',
                 hint: 'Set Oracle environment variables',
                 commands: [
                     'su - oracle',
                     '. oraenv',
                     '# Or add to .bash_profile'
+                ],
+                explanation: 'Oracle environment variables (ORACLE_HOME, ORACLE_SID, PATH) must be set for proper operation.',
+                troubleshooting: [
+                    {
+                        problem: 'oraenv command not found',
+                        solution: 'Manually set ORACLE_HOME and add $ORACLE_HOME/bin to PATH'
+                    }
                 ]
             },
             'Database Created': {
+                title: 'Create Oracle Database',
                 hint: 'Create the Oracle database using DBCA',
                 commands: [
                     'su - oracle',
                     'dbca'
+                ],
+                explanation: 'DBCA (Database Configuration Assistant) creates the actual database instance with datafiles, control files, and redo logs.',
+                troubleshooting: [
+                    {
+                        problem: 'DBCA hangs or fails',
+                        solution: 'Check available disk space and memory. Use silent mode for automation'
+                    }
                 ]
             },
             'Listener Configured': {
+                title: 'Configure Oracle Listener',
                 hint: 'Configure the Oracle listener',
                 commands: [
                     'su - oracle',
                     'netca'
+                ],
+                explanation: 'The Oracle listener handles client connection requests and enables remote database access.',
+                troubleshooting: [
+                    {
+                        problem: 'Listener configuration fails',
+                        solution: 'Manually create listener.ora in $ORACLE_HOME/network/admin'
+                    }
                 ]
             },
             'Database Started': {
+                title: 'Start Oracle Database',
                 hint: 'Start the Oracle database',
                 commands: [
                     'su - oracle',
                     'sqlplus / as sysdba',
                     'SQL> startup'
+                ],
+                explanation: 'Starting the database opens it for user connections and normal operations.',
+                troubleshooting: [
+                    {
+                        problem: 'ORA-01034: ORACLE not available',
+                        solution: 'Check if instance is started with "startup" command in SQL*Plus'
+                    }
                 ]
             },
             'Listener Started': {
+                title: 'Start Oracle Listener',
                 hint: 'Start the Oracle listener',
                 commands: [
                     'su - oracle',
                     'lsnrctl start'
+                ],
+                explanation: 'The listener must be running to accept client connections from applications.',
+                troubleshooting: [
+                    {
+                        problem: 'TNS-01190: The user is not authorized',
+                        solution: 'Run as oracle user, or check listener.ora permissions'
+                    }
                 ]
             },
             'Firewall Port 1521 Opened': {
+                title: 'Configure Firewall for Oracle',
                 hint: 'Configure firewall to allow Oracle listener port 1521',
                 commands: [
                     'firewall-cmd --permanent --add-port=1521/tcp',
                     'firewall-cmd --reload',
                     'firewall-cmd --list-ports'
+                ],
+                explanation: 'Oracle listener uses port 1521 by default. Firewall must allow this port for remote connections.',
+                troubleshooting: [
+                    {
+                        problem: 'Firewall commands fail',
+                        solution: 'Run as root user, or use iptables if firewalld is not available'
+                    }
                 ]
             },
             'Oratab Populated for Auto-Start': {
+                title: 'Configure Automatic Database Startup',
                 hint: 'Configure oratab for automatic database startup on boot',
                 commands: [
                     'su - oracle',
                     'vi /etc/oratab',
                     '# Change the ORCL entry from :N to :Y',
                     '# ORCL:/u01/app/oracle/product/19.0.0/dbhome_1:Y'
+                ],
+                explanation: 'Oratab configuration enables automatic database startup during system boot.',
+                troubleshooting: [
+                    {
+                        problem: 'Cannot edit /etc/oratab',
+                        solution: 'File requires root permissions. Use "sudo vi /etc/oratab"'
+                    }
                 ]
             },
             'Oradata Partition Created': {
+                title: 'Create Oradata Directory',
                 hint: 'Create the /oradata directory for PS tablespaces',
                 commands: [
                     'mkdir /oradata',
