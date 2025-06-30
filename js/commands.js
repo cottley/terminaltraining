@@ -1841,6 +1841,9 @@ class CommandProcessor {
                 case 'id':
                     this.cmdId(args);
                     break;
+                case 'env':
+                    this.cmdEnv();
+                    break;
                 default:
                     // Restore original methods
                     this.terminal.writeln = originalWriteln;
