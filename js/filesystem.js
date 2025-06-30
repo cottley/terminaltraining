@@ -218,10 +218,11 @@ class FileSystem {
         
         const newPath = path.startsWith('/') ? path : 
             this.currentPath === '/' ? `/${path}` : `${this.currentPath}/${path}`;
-        const normalizedPath = '/' + this.resolvePath(newPath).join('/');
+        const resolvedArray = this.resolvePath(newPath);
+        const normalizedPath = resolvedArray.length === 0 ? '/' : '/' + resolvedArray.join('/');
         
         if (this.isDirectory(normalizedPath)) {
-            this.currentPath = normalizedPath || '/';
+            this.currentPath = normalizedPath;
             this.saveState();
             return true;
         }
@@ -261,7 +262,10 @@ class FileSystem {
             
             for (const part of parts) {
                 if (part === '..') {
-                    current.pop();
+                    // Only pop if not at root level
+                    if (current.length > 0) {
+                        current.pop();
+                    }
                 } else if (part !== '.') {
                     current.push(part);
                 }
