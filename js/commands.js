@@ -1092,7 +1092,7 @@ class CommandProcessor {
         this.gameActive = true;
         
         this.drawBoard();
-        this.terminal.writeln('Your move (1-9): ');
+        this.terminal.writeln('Your move (1-9):');
     }
 
     drawBoard() {
@@ -1234,6 +1234,7 @@ class CommandProcessor {
         const position = parseInt(input);
         if (isNaN(position) || position < 1 || position > 9) {
             this.terminal.writeln('Invalid input! Please enter a number between 1 and 9.');
+            this.terminal.writeln('Your move (1-9):');
             return;
         }
         
@@ -1272,7 +1273,10 @@ class CommandProcessor {
             }
             
             this.currentPlayer = 'X';
-            this.terminal.writeln('Your move (1-9): ');
+            this.terminal.writeln('Your move (1-9):');
+        } else {
+            // Position was already taken, prompt for another move
+            this.terminal.writeln('Your move (1-9):');
         }
     }
 
