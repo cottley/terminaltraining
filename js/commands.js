@@ -279,6 +279,9 @@ class CommandProcessor {
             case 'help':
                 this.cmdHelp();
                 break;
+            case 'ldconfig':
+                this.cmdLdconfig(args);
+                break;
             default:
                 this.terminal.writeln(`-bash: ${command}: command not found`);
         }
@@ -1636,6 +1639,7 @@ class CommandProcessor {
         this.terminal.writeln('    ocp --hint-detail - Get detailed commands for next task');
         this.terminal.writeln('  System:');
         this.terminal.writeln('    reboot - Reboot the system (clears state)');
+        this.terminal.writeln('    ldconfig - Configure dynamic linker run-time bindings');
         this.terminal.writeln('  Other:');
         this.terminal.writeln('    clear, help, whereis');
         this.terminal.writeln('');
@@ -2160,5 +2164,142 @@ class CommandProcessor {
 
         this.terminal.writeln('ArcGIS Server installation logged to: /opt/arcgis/server/logs/install.log');
         this.terminal.writeln('');
+    }
+
+    // ldconfig - Configure dynamic linker run-time bindings
+    cmdLdconfig(args) {
+        // Check if running as root (ldconfig typically requires root privileges)
+        if (this.fs.currentUser !== 'root') {
+            this.terminal.writeln('ldconfig: /etc/ld.so.cache: Permission denied');
+            this.terminal.writeln('ldconfig: Can\'t create temporary cache file /etc/ld.so.cache~: Permission denied');
+            return;
+        }
+
+        // Handle help option
+        if (args.includes('--help') || args.includes('-h')) {
+            this.terminal.writeln('Usage: ldconfig [OPTION...]');
+            this.terminal.writeln('Configure dynamic linker run-time bindings.');
+            this.terminal.writeln('');
+            this.terminal.writeln('  -p, --print-cache        Print cache');
+            this.terminal.writeln('  -v, --verbose           Verbose');
+            this.terminal.writeln('  -N, --nolinks           Don\'t build cache');
+            this.terminal.writeln('  -X, --no-links          Don\'t update links');
+            this.terminal.writeln('  -c FORMAT, --format=FORMAT   Format to use: old, new or compat');
+            this.terminal.writeln('  -C CACHE                 Use CACHE as cache file');
+            this.terminal.writeln('  -r ROOT                  Change to and use ROOT as root directory');
+            this.terminal.writeln('  -n                       Process only directories specified on command line');
+            this.terminal.writeln('  -l                       Manual link');
+            this.terminal.writeln('  -f CONF                  Use CONF as configuration file');
+            this.terminal.writeln('  -?, --help              Give this help list');
+            this.terminal.writeln('      --usage             Give a short usage message');
+            this.terminal.writeln('  -V, --version           Print program version');
+            this.terminal.writeln('');
+            return;
+        }
+
+        // Handle version option
+        if (args.includes('--version') || args.includes('-V')) {
+            this.terminal.writeln('ldconfig (GNU libc) 2.34');
+            this.terminal.writeln('Copyright (C) 2021 Free Software Foundation, Inc.');
+            this.terminal.writeln('This is free software; see the source for copying conditions.');
+            this.terminal.writeln('There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A');
+            this.terminal.writeln('PARTICULAR PURPOSE.');
+            this.terminal.writeln('Written by Andreas Jaeger.');
+            return;
+        }
+
+        // Handle print cache option
+        if (args.includes('-p') || args.includes('--print-cache')) {
+            this.terminal.writeln('        libc.so.6 (libc6,x86-64) => /lib64/libc.so.6');
+            this.terminal.writeln('        libpthread.so.0 (libc6,x86-64) => /lib64/libpthread.so.0');
+            this.terminal.writeln('        libdl.so.2 (libc6,x86-64) => /lib64/libdl.so.2');
+            this.terminal.writeln('        libm.so.6 (libc6,x86-64) => /lib64/libm.so.6');
+            this.terminal.writeln('        librt.so.1 (libc6,x86-64) => /lib64/librt.so.1');
+            this.terminal.writeln('        libresolv.so.2 (libc6,x86-64) => /lib64/libresolv.so.2');
+            this.terminal.writeln('        libnss_files.so.2 (libc6,x86-64) => /lib64/libnss_files.so.2');
+            this.terminal.writeln('        libnss_dns.so.2 (libc6,x86-64) => /lib64/libnss_dns.so.2');
+            
+            // Show Oracle libraries if Oracle is installed
+            if (oracleManager.getState('softwareInstalled')) {
+                this.terminal.writeln('        libclntsh.so.19.1 (libc6,x86-64) => /u01/app/oracle/product/19.0.0/dbhome_1/lib/libclntsh.so.19.1');
+                this.terminal.writeln('        libclntshcore.so.19.1 (libc6,x86-64) => /u01/app/oracle/product/19.0.0/dbhome_1/lib/libclntshcore.so.19.1');
+                this.terminal.writeln('        libociei.so (libc6,x86-64) => /u01/app/oracle/product/19.0.0/dbhome_1/lib/libociei.so');
+                this.terminal.writeln('        libons.so (libc6,x86-64) => /u01/app/oracle/product/19.0.0/dbhome_1/lib/libons.so');
+                this.terminal.writeln('        libocci.so.19.1 (libc6,x86-64) => /u01/app/oracle/product/19.0.0/dbhome_1/lib/libocci.so.19.1');
+            }
+            
+            // Show ArcGIS libraries if ArcGIS is installed
+            if (oracleManager.getState('psAppRequirements.arcgisInstalled')) {
+                this.terminal.writeln('        libsde.so (libc6,x86-64) => /opt/arcgis/server/lib/libsde.so');
+                this.terminal.writeln('        libsde_util.so (libc6,x86-64) => /opt/arcgis/server/lib/libsde_util.so');
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('8192 libs found in cache `/etc/ld.so.cache\'');
+            return;
+        }
+
+        // Handle verbose option
+        const verbose = args.includes('-v') || args.includes('--verbose');
+        
+        if (verbose) {
+            this.terminal.writeln('/sbin/ldconfig: Can\'t stat /lib: No such file or directory');
+            this.terminal.writeln('/sbin/ldconfig: Can\'t stat /usr/lib: No such file or directory');
+            this.terminal.writeln('/sbin/ldconfig: Checking /lib64');
+            this.terminal.writeln('/sbin/ldconfig: Checking /usr/lib64');
+            
+            // Check Oracle library paths if Oracle is installed
+            if (oracleManager.getState('softwareInstalled')) {
+                this.terminal.writeln('/sbin/ldconfig: Checking /u01/app/oracle/product/19.0.0/dbhome_1/lib');
+                this.terminal.writeln('        libclntsh.so.19.1 -> libclntsh.so.19.1');
+                this.terminal.writeln('        libclntshcore.so.19.1 -> libclntshcore.so.19.1');
+                this.terminal.writeln('        libociei.so -> libociei.so');
+            }
+            
+            // Check ArcGIS library paths if ArcGIS is installed
+            if (oracleManager.getState('psAppRequirements.arcgisInstalled')) {
+                this.terminal.writeln('/sbin/ldconfig: Checking /opt/arcgis/server/lib');
+                this.terminal.writeln('        libsde.so -> libsde.so');
+                this.terminal.writeln('        libsde_util.so -> libsde_util.so');
+            }
+            
+            this.terminal.writeln('/sbin/ldconfig: Creating cache file /etc/ld.so.cache');
+        }
+
+        // Create/update the ld.so.cache file simulation
+        const cacheContent = '# Dynamic linker cache (automatically generated)\n' +
+                           '# This file contains a cache of the libraries found in the directories\n' +
+                           '# specified in /etc/ld.so.conf and /etc/ld.so.conf.d/\n' +
+                           '# Generated by ldconfig\n';
+        
+        this.fs.touch('/etc/ld.so.cache', cacheContent);
+
+        // Also create/update ld.so.conf if it doesn't exist
+        if (!this.fs.exists('/etc/ld.so.conf')) {
+            let ldConfContent = 'include /etc/ld.so.conf.d/*.conf\n';
+            
+            // Add Oracle library paths if Oracle is installed
+            if (oracleManager.getState('softwareInstalled')) {
+                ldConfContent += '/u01/app/oracle/product/19.0.0/dbhome_1/lib\n';
+            }
+            
+            // Add ArcGIS library paths if ArcGIS is installed
+            if (oracleManager.getState('psAppRequirements.arcgisInstalled')) {
+                ldConfContent += '/opt/arcgis/server/lib\n';
+            }
+            
+            this.fs.touch('/etc/ld.so.conf', ldConfContent);
+        }
+
+        // Create ld.so.conf.d directory if it doesn't exist
+        if (!this.fs.exists('/etc/ld.so.conf.d')) {
+            this.fs.mkdir('/etc/ld.so.conf.d');
+        }
+
+        // Silent execution (default behavior)
+        if (!verbose && !args.includes('-p') && !args.includes('--print-cache')) {
+            // ldconfig runs silently by default when rebuilding cache
+            // No output unless there are warnings or errors
+        }
     }
 }
