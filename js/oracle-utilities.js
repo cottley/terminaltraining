@@ -241,9 +241,133 @@ CommandProcessor.prototype.enterRmanMode = function() {
             return;
         }
         
+        // Incremental backup commands
+        if (rmanCommand.includes('BACKUP INCREMENTAL')) {
+            const level = rmanCommand.includes('LEVEL 0') ? '0' : '1';
+            this.terminal.writeln('');
+            this.terminal.writeln(`Starting backup at ${new Date().toLocaleString()}`);
+            this.terminal.writeln('using channel ORA_DISK_1');
+            this.terminal.writeln(`channel ORA_DISK_1: starting incremental level ${level} datafile backup set`);
+            this.terminal.writeln('channel ORA_DISK_1: specifying datafile(s) in backup set');
+            this.terminal.writeln('input datafile file number=00001 name=/u01/app/oracle/oradata/ORCL/system01.dbf');
+            this.terminal.writeln('input datafile file number=00003 name=/u01/app/oracle/oradata/ORCL/sysaux01.dbf');
+            this.terminal.writeln('input datafile file number=00004 name=/u01/app/oracle/oradata/ORCL/undotbs01.dbf');
+            this.terminal.writeln('input datafile file number=00007 name=/u01/app/oracle/oradata/ORCL/users01.dbf');
+            this.terminal.writeln(`channel ORA_DISK_1: starting piece 1 at ${new Date().toLocaleString()}`);
+            this.terminal.writeln(`channel ORA_DISK_1: finished piece 1 at ${new Date().toLocaleString()}`);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '');
+            this.terminal.writeln(`piece handle=/u01/app/oracle/recovery_area/ORCL/backupset/${timestamp}_INCR${level}.bkp tag=INCR_LVL${level}_${Date.now()} comment=NONE`);
+            this.terminal.writeln(`channel ORA_DISK_1: backup set complete, elapsed time: 00:00:15`);
+            this.terminal.writeln(`Finished backup at ${new Date().toLocaleString()}`);
+            this.terminal.writeln('');
+            return;
+        }
+        
+        // Compressed backup
+        if (rmanCommand.includes('AS COMPRESSED BACKUPSET')) {
+            this.terminal.writeln('');
+            this.terminal.writeln(`Starting backup at ${new Date().toLocaleString()}`);
+            this.terminal.writeln('using channel ORA_DISK_1');
+            this.terminal.writeln('channel ORA_DISK_1: starting compressed full datafile backup set');
+            this.terminal.writeln('channel ORA_DISK_1: specifying datafile(s) in backup set');
+            this.terminal.writeln('input datafile file number=00001 name=/u01/app/oracle/oradata/ORCL/system01.dbf');
+            this.terminal.writeln('input datafile file number=00003 name=/u01/app/oracle/oradata/ORCL/sysaux01.dbf');
+            this.terminal.writeln('input datafile file number=00004 name=/u01/app/oracle/oradata/ORCL/undotbs01.dbf');
+            this.terminal.writeln('input datafile file number=00007 name=/u01/app/oracle/oradata/ORCL/users01.dbf');
+            this.terminal.writeln(`channel ORA_DISK_1: starting piece 1 at ${new Date().toLocaleString()}`);
+            this.terminal.writeln(`channel ORA_DISK_1: finished piece 1 at ${new Date().toLocaleString()}`);
+            const timestamp2 = new Date().toISOString().replace(/[:.]/g, '');
+            this.terminal.writeln(`piece handle=/u01/app/oracle/recovery_area/ORCL/backupset/${timestamp2}_COMP.bkp tag=COMPRESSED_${Date.now()} comment=NONE`);
+            this.terminal.writeln('channel ORA_DISK_1: backup set complete, elapsed time: 00:00:18');
+            this.terminal.writeln('Finished backup at ' + new Date().toLocaleString());
+            this.terminal.writeln('');
+            return;
+        }
+        
         if (rmanCommand === 'LIST BACKUP' || rmanCommand === 'LIST BACKUP;') {
             this.terminal.writeln('');
-            this.terminal.writeln('specification does not match any backup in the repository');
+            this.terminal.writeln('List of Backup Sets');
+            this.terminal.writeln('===================');
+            this.terminal.writeln('');
+            this.terminal.writeln('BS Key  Type LV Size       Device Type Elapsed Time Completion Time');
+            this.terminal.writeln('------- ---- -- ---------- ----------- ------------ ---------------');
+            this.terminal.writeln('1       Full    800.00M    DISK        00:00:25     ' + new Date().toLocaleDateString());
+            this.terminal.writeln('        BP Key: 1   Status: AVAILABLE  Compressed: NO  Tag: TAG' + Date.now());
+            this.terminal.writeln('        Piece Name: /u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set1.bkp');
+            this.terminal.writeln('  List of Datafiles in backup set 1');
+            this.terminal.writeln('  File LV Type Ckp SCN    Ckp Time  Name');
+            this.terminal.writeln('  ---- -- ---- ---------- --------- ----');
+            this.terminal.writeln('  1       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/system01.dbf');
+            this.terminal.writeln('  3       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/sysaux01.dbf');
+            this.terminal.writeln('  4       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/undotbs01.dbf');
+            this.terminal.writeln('  7       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/users01.dbf');
+            this.terminal.writeln('');
+            return;
+        }
+        
+        // Validate commands
+        if (rmanCommand.includes('VALIDATE')) {
+            if (rmanCommand.includes('BACKUPSET')) {
+                this.terminal.writeln('');
+                this.terminal.writeln('Starting validate at ' + new Date().toLocaleString());
+                this.terminal.writeln('using channel ORA_DISK_1');
+                this.terminal.writeln('channel ORA_DISK_1: starting validation of backup set');
+                this.terminal.writeln('channel ORA_DISK_1: reading from backup piece /u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set1.bkp');
+                this.terminal.writeln('channel ORA_DISK_1: piece handle=/u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set1.bkp tag=TAG' + Date.now());
+                this.terminal.writeln('channel ORA_DISK_1: restored backup piece 1');
+                this.terminal.writeln('channel ORA_DISK_1: validation complete, elapsed time: 00:00:05');
+                this.terminal.writeln('Finished validate at ' + new Date().toLocaleString());
+                this.terminal.writeln('');
+            } else if (rmanCommand.includes('DATABASE')) {
+                this.terminal.writeln('');
+                this.terminal.writeln('Starting validate at ' + new Date().toLocaleString());
+                this.terminal.writeln('using channel ORA_DISK_1');
+                this.terminal.writeln('channel ORA_DISK_1: starting validation of datafile');
+                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/system01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/sysaux01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/undotbs01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/users01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: validation complete, elapsed time: 00:00:08');
+                this.terminal.writeln('Finished validate at ' + new Date().toLocaleString());
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Restore commands
+        if (rmanCommand.includes('RESTORE')) {
+            if (rmanCommand.includes('DATABASE')) {
+                this.terminal.writeln('');
+                this.terminal.writeln('Starting restore at ' + new Date().toLocaleString());
+                this.terminal.writeln('using channel ORA_DISK_1');
+                this.terminal.writeln('channel ORA_DISK_1: starting datafile backup set restore');
+                this.terminal.writeln('channel ORA_DISK_1: specifying datafile(s) to restore from backup set');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00001 to /u01/app/oracle/oradata/ORCL/system01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00003 to /u01/app/oracle/oradata/ORCL/sysaux01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00004 to /u01/app/oracle/oradata/ORCL/undotbs01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00007 to /u01/app/oracle/oradata/ORCL/users01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: reading from backup piece /u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set1.bkp');
+                this.terminal.writeln('channel ORA_DISK_1: piece handle=/u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set1.bkp tag=TAG' + Date.now());
+                this.terminal.writeln('channel ORA_DISK_1: restored backup piece 1');
+                this.terminal.writeln('channel ORA_DISK_1: restore complete, elapsed time: 00:00:45');
+                this.terminal.writeln('Finished restore at ' + new Date().toLocaleString());
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Recovery commands
+        if (rmanCommand.includes('RECOVER DATABASE')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Starting recover at ' + new Date().toLocaleString());
+            this.terminal.writeln('using channel ORA_DISK_1');
+            this.terminal.writeln('starting media recovery');
+            this.terminal.writeln('archived log for thread 1 with sequence 1 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/archive_log_1.arc');
+            this.terminal.writeln('archived log for thread 1 with sequence 2 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/archive_log_2.arc');
+            this.terminal.writeln('archived log file name=/u01/app/oracle/recovery_area/ORCL/archivelog/archive_log_1.arc thread=1 sequence=1');
+            this.terminal.writeln('archived log file name=/u01/app/oracle/recovery_area/ORCL/archivelog/archive_log_2.arc thread=1 sequence=2');
+            this.terminal.writeln('media recovery complete, elapsed time: 00:00:03');
+            this.terminal.writeln('Finished recover at ' + new Date().toLocaleString());
             this.terminal.writeln('');
             return;
         }

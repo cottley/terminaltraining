@@ -204,6 +204,136 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
         
+        // V$ Performance Views
+        if (sqlCommand.match(/SELECT.*FROM\s+V\$SGA/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('NAME                      VALUE');
+                this.terminal.writeln('-------------------- ----------');
+                this.terminal.writeln('Fixed Size              8798312');
+                this.terminal.writeln('Variable Size        1191182336');
+                this.terminal.writeln('Database Buffers      838860800');
+                this.terminal.writeln('Redo Buffers           16945152');
+                this.terminal.writeln('');
+                this.terminal.writeln('4 rows selected.');
+            }
+            return;
+        }
+        
+        if (sqlCommand.match(/SELECT.*FROM\s+V\$PROCESS/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('ADDR         PID SPID       PROGRAM');
+                this.terminal.writeln('-------- ------- -------- ------------------------------');
+                this.terminal.writeln('00000000      0          PSEUDO');
+                this.terminal.writeln('7F8A1234      1 12345    oracle@localhost (PMON)');
+                this.terminal.writeln('7F8A5678      2 12346    oracle@localhost (PSP0)');
+                this.terminal.writeln('7F8A9ABC      3 12347    oracle@localhost (VKTM)');
+                this.terminal.writeln('7F8ADEF0      4 12348    oracle@localhost (GEN0)');
+                this.terminal.writeln('7F8B1234      5 12349    oracle@localhost (MMAN)');
+                this.terminal.writeln('');
+                this.terminal.writeln('6 rows selected.');
+            }
+            return;
+        }
+        
+        if (sqlCommand.match(/SELECT.*FROM\s+V\$SESSION/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('    SID    SERIAL# USERNAME  STATUS   PROGRAM');
+                this.terminal.writeln('------- ---------- --------- -------- ------------------------------');
+                this.terminal.writeln('      1          1           ACTIVE   oracle@localhost (PMON)');
+                this.terminal.writeln('      2          1           ACTIVE   oracle@localhost (PSP0)');
+                this.terminal.writeln('      3          1           ACTIVE   oracle@localhost (VKTM)');
+                this.terminal.writeln('    156         23 SYS       ACTIVE   sqlplus@localhost (TNS V1-V3)');
+                this.terminal.writeln('');
+                this.terminal.writeln('4 rows selected.');
+            }
+            return;
+        }
+        
+        if (sqlCommand.match(/SELECT.*FROM\s+V\$PARAMETER/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('NAME                     TYPE VALUE');
+                this.terminal.writeln('------------------------ ---- --------------------------------------------------');
+                this.terminal.writeln('sga_target                  2 2147483648');
+                this.terminal.writeln('pga_aggregate_target        2 536870912');
+                this.terminal.writeln('memory_target               2 0');
+                this.terminal.writeln('db_block_size               2 8192');
+                this.terminal.writeln('log_archive_dest_1          1 LOCATION=/u01/app/oracle/recovery_area/ORCL');
+                this.terminal.writeln('');
+                this.terminal.writeln('5 rows selected.');
+            }
+            return;
+        }
+        
+        // Show Parameter command
+        if (sqlCommand.match(/SHOW\s+PARAMETER/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                const paramMatch = sqlCommand.match(/SHOW\s+PARAMETER\s+(\w+)/i);
+                if (paramMatch) {
+                    const param = paramMatch[1].toLowerCase();
+                    this.terminal.writeln('');
+                    this.terminal.writeln('NAME                                 TYPE        VALUE');
+                    this.terminal.writeln('------------------------------------ ----------- ------------------------------');
+                    
+                    switch(param) {
+                        case 'sga':
+                        case 'sga_target':
+                            this.terminal.writeln('sga_target                           big integer 2G');
+                            break;
+                        case 'pga':
+                        case 'pga_aggregate_target':
+                            this.terminal.writeln('pga_aggregate_target                 big integer 512M');
+                            break;
+                        case 'memory':
+                        case 'memory_target':
+                            this.terminal.writeln('memory_target                        big integer 0');
+                            break;
+                        case 'archive':
+                            this.terminal.writeln('log_archive_dest_1                   string      LOCATION=/u01/app/oracle/recovery_area/ORCL');
+                            this.terminal.writeln('log_archive_format                   string      %t_%s_%r.dbf');
+                            break;
+                        default:
+                            this.terminal.writeln(`${param}                                string      (value not shown)`);
+                    }
+                } else {
+                    this.terminal.writeln('Usage: SHOW PARAMETER [parameter_name]');
+                }
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // ALTER SYSTEM commands
+        if (sqlCommand.match(/ALTER\s+SYSTEM/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('System altered.');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
         if (sqlCommand.startsWith('SELECT TABLESPACE_NAME FROM DBA_TABLESPACES')) {
             if (!oracleManager.getState('databaseStarted')) {
                 this.terminal.writeln('ERROR at line 1:');

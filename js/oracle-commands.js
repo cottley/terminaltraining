@@ -1161,4 +1161,263 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         if (sqlCommand.startsWith('SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE')) {
             if (!oracleManager.getState('databaseStarted')) {
                 this.terminal.writeln('ERROR at line 1:');
-                this
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('INSTANCE_NAME    STATUS');
+                this.terminal.writeln('---------------- ------------');
+                this.terminal.writeln('ORCL             OPEN');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+    }
+};
+
+// AWR Report Generation
+CommandProcessor.prototype.cmdAwrrpt = function(args) {
+    if (!oracleManager.checkPrerequisites('database')) {
+        this.terminal.writeln('-bash: awrrpt.sql: command not found');
+        return;
+    }
+    
+    if (!oracleManager.getState('databaseStarted')) {
+        this.terminal.writeln('ERROR:');
+        this.terminal.writeln('ORA-01034: ORACLE not available');
+        return;
+    }
+    
+    this.terminal.writeln('');
+    this.terminal.writeln('Current Instance');
+    this.terminal.writeln('~~~~~~~~~~~~~~~~');
+    this.terminal.writeln('   DB Id    DB Name      Inst Num Instance');
+    this.terminal.writeln('----------- ------------ -------- ------------');
+    this.terminal.writeln(' 1234567890 ORCL                1 ORCL');
+    this.terminal.writeln('');
+    this.terminal.writeln('Specify the Report Type');
+    this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~');
+    this.terminal.writeln('Would you like an HTML report, or a plain text report?');
+    this.terminal.writeln('Enter \'html\' for an HTML report, or \'text\' for plain text');
+    this.terminal.writeln('Defaults to \'html\'');
+    this.terminal.writeln('Enter value for report_type: html');
+    this.terminal.writeln('');
+    this.terminal.writeln('Type Specified:  html');
+    this.terminal.writeln('');
+    this.terminal.writeln('AWR HTML Report Generated: awrrpt_1_123_124.html');
+    this.terminal.writeln('Report location: /tmp/awrrpt_1_123_124.html');
+    this.terminal.writeln('');
+    
+    // Create AWR report file
+    const awrContent = `<!DOCTYPE html>
+<html><head><title>Automatic Workload Repository Report</title></head>
+<body>
+<h1>WORKLOAD REPOSITORY report for</h1>
+<h2>DB Name: ORCL  Inst Num: 1  Startup Time: ${new Date().toLocaleString()}</h2>
+<h3>Snap Id: 123  Snap Time: ${new Date(Date.now() - 3600000).toLocaleString()}</h3>
+<h3>Snap Id: 124  Snap Time: ${new Date().toLocaleString()}</h3>
+
+<h2>Report Summary</h2>
+<table border="1">
+<tr><th>Cache Sizes</th><th>Begin</th><th>End</th></tr>
+<tr><td>Buffer Cache:</td><td>800M</td><td>800M</td></tr>
+<tr><td>Shared Pool Size:</td><td>256M</td><td>256M</td></tr>
+</table>
+
+<h2>Load Profile</h2>
+<table border="1">
+<tr><th>Per Second</th><th>Per Transaction</th></tr>
+<tr><td>DB Time(s): 1.2</td><td>DB Time(s): 2.4</td></tr>
+<tr><td>DB CPU(s): 0.8</td><td>DB CPU(s): 1.6</td></tr>
+<tr><td>Redo size: 15,234</td><td>Redo size: 30,468</td></tr>
+<tr><td>Logical reads: 1,234</td><td>Logical reads: 2,468</td></tr>
+<tr><td>Physical reads: 45</td><td>Physical reads: 90</td></tr>
+</table>
+
+<h2>Top 5 Timed Foreground Events</h2>
+<table border="1">
+<tr><th>Event</th><th>Waits</th><th>Time(s)</th><th>Avg wait (ms)</th><th>% DB time</th></tr>
+<tr><td>CPU time</td><td></td><td>2,876</td><td></td><td>67.8</td></tr>
+<tr><td>db file sequential read</td><td>45,123</td><td>876</td><td>19.4</td><td>20.6</td></tr>
+<tr><td>log file sync</td><td>2,345</td><td>234</td><td>99.8</td><td>5.5</td></tr>
+</table>
+</body></html>`;
+    
+    this.fs.touch('/tmp/awrrpt_1_123_124.html', awrContent);
+};
+
+// ADDM Report Generation  
+CommandProcessor.prototype.cmdAddmrpt = function(args) {
+    if (!oracleManager.checkPrerequisites('database')) {
+        this.terminal.writeln('-bash: addmrpt.sql: command not found');
+        return;
+    }
+    
+    if (!oracleManager.getState('databaseStarted')) {
+        this.terminal.writeln('ERROR:');
+        this.terminal.writeln('ORA-01034: ORACLE not available');
+        return;
+    }
+    
+    this.terminal.writeln('');
+    this.terminal.writeln('Current Instance');
+    this.terminal.writeln('~~~~~~~~~~~~~~~~');
+    this.terminal.writeln('   DB Id    DB Name      Inst Num Instance');
+    this.terminal.writeln('----------- ------------ -------- ------------');
+    this.terminal.writeln(' 1234567890 ORCL                1 ORCL');
+    this.terminal.writeln('');
+    this.terminal.writeln('ADDM Report Generated: addmrpt_1_123_124.txt');
+    this.terminal.writeln('Report location: /tmp/addmrpt_1_123_124.txt');
+    this.terminal.writeln('');
+    
+    const addmContent = `ADDM Report for Task 'ADDM:1234567890_1_124'
+------------------------------------------
+
+Analysis Period: ${new Date(Date.now() - 3600000).toLocaleString()} to ${new Date().toLocaleString()}
+Database 'ORCL' with DB ID 1234567890.
+
+Activity During the Analysis Period
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Total database time was 4,321 seconds.
+The average number of active sessions was 1.2.
+
+Summary of Findings
+~~~~~~~~~~~~~~~~~~~
+   Description                 Active Sessions  Recommendation
+   --------------------------- --------------- --------------
+1. Top SQL Statements              0.8         SQL Tuning
+2. PGA Memory                      0.2         Increase PGA
+3. Buffer Cache                    0.1         Consider increase
+
+FINDING 1: 65% impact (0.8 active sessions)
+--------------------------------------------
+SQL statements were found to be the top consumer of database time.
+
+   RECOMMENDATION 1: SQL Tuning, 65% benefit (0.8 active sessions)
+   Action: Tune the following SQL statements with the SQL Tuning Advisor.
+   Rationale: The SQL statements with the highest impact are identified.
+`;
+    
+    this.fs.touch('/tmp/addmrpt_1_123_124.txt', addmContent);
+};
+
+// OPatch Utility for Patch Management
+CommandProcessor.prototype.cmdOpatch = function(args) {
+    if (!oracleManager.checkPrerequisites('software')) {
+        this.terminal.writeln('-bash: opatch: command not found');
+        return;
+    }
+    
+    const command = args[0] || 'help';
+    
+    switch(command.toLowerCase()) {
+        case 'lsinventory':
+            this.terminal.writeln('');
+            this.terminal.writeln('Oracle Interim Patch Installer version 12.2.0.1.19');
+            this.terminal.writeln('Copyright (c) 2023, Oracle Corporation.  All rights reserved.');
+            this.terminal.writeln('');
+            this.terminal.writeln('Oracle Home       : /u01/app/oracle/product/19.0.0/dbhome_1');
+            this.terminal.writeln('Central Inventory : /u01/app/oraInventory');
+            this.terminal.writeln('   from           : /u01/app/oracle/product/19.0.0/dbhome_1/oraInst.loc');
+            this.terminal.writeln('OPatch version    : 12.2.0.1.19');
+            this.terminal.writeln('OUI version       : 12.2.0.7.0');
+            this.terminal.writeln('Log file location : /u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/opatch/opatch_history.txt');
+            this.terminal.writeln('');
+            this.terminal.writeln('Lsinventory Output file location : /u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/opatch/lsinv/lsinventory2023-12-01_10-15-30AM.txt');
+            this.terminal.writeln('');
+            this.terminal.writeln('--------------------------------------------------------------------------------');
+            this.terminal.writeln('Local Machine Information::');
+            this.terminal.writeln('Hostname: localhost');
+            this.terminal.writeln('ARU platform id: 226');
+            this.terminal.writeln('ARU platform description: Linux x86-64');
+            this.terminal.writeln('');
+            this.terminal.writeln('Installed Top-level Products (1):');
+            this.terminal.writeln('');
+            this.terminal.writeln('Oracle Database 19c                                                  19.0.0.0.0');
+            this.terminal.writeln('There are 1 products installed in this Oracle Home.');
+            this.terminal.writeln('');
+            this.terminal.writeln('Interim patches (1) :');
+            this.terminal.writeln('');
+            this.terminal.writeln('Patch  33515361     : applied on Wed Dec 01 10:00:00 UTC 2023');
+            this.terminal.writeln('Unique Patch ID:  25078451');
+            this.terminal.writeln('Patch description:  "Database Release Update : 19.17.0.0.221018 (33515361)"');
+            this.terminal.writeln('   Bugs fixed:');
+            this.terminal.writeln('     33515361');
+            this.terminal.writeln('');
+            this.terminal.writeln('OPatch succeeded.');
+            break;
+            
+        case 'apply':
+            const patchId = args[1];
+            if (!patchId) {
+                this.terminal.writeln('Usage: opatch apply <patch_directory>');
+                return;
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('Oracle Interim Patch Installer version 12.2.0.1.19');
+            this.terminal.writeln('Copyright (c) 2023, Oracle Corporation.  All rights reserved.');
+            this.terminal.writeln('');
+            this.terminal.writeln(`Oracle Home       : /u01/app/oracle/product/19.0.0/dbhome_1`);
+            this.terminal.writeln(`Central Inventory : /u01/app/oraInventory`);
+            this.terminal.writeln(`   from           : /u01/app/oracle/product/19.0.0/dbhome_1/oraInst.loc`);
+            this.terminal.writeln(`OPatch version    : 12.2.0.1.19`);
+            this.terminal.writeln('');
+            this.terminal.writeln(`Applying patch ${patchId}...`);
+            this.terminal.writeln('');
+            this.terminal.writeln('ApplySession: Optional component(s) [oracle.rdbms.ic, 19.0.0.0.0] not present in the Oracle Home or a higher version is found.');
+            this.terminal.writeln('');
+            this.terminal.writeln('System is ready to apply the patch.');
+            this.terminal.writeln('');
+            this.terminal.writeln('Applying...');
+            this.terminal.writeln('');
+            this.terminal.writeln('ApplySession applying interim patch...');
+            this.terminal.writeln('');
+            this.terminal.writeln('Running prerequisite checks...');
+            this.terminal.writeln('');
+            this.terminal.writeln('Prerequisite check "CheckActiveFilesAndExecutables" passed.');
+            this.terminal.writeln('');
+            this.terminal.writeln('Patching component oracle.rdbms, 19.0.0.0.0...');
+            this.terminal.writeln('');
+            this.terminal.writeln('Patching component oracle.rdbms.rsf, 19.0.0.0.0...');
+            this.terminal.writeln('');
+            this.terminal.writeln('ApplySession successful.');
+            this.terminal.writeln('');
+            this.terminal.writeln(`Patch ${patchId} successfully applied.`);
+            this.terminal.writeln('Log file location: /u01/app/oracle/product/19.0.0/dbhome_1/cfgtoollogs/opatch/opatch2023-12-01_10-15-30AM.log');
+            this.terminal.writeln('');
+            this.terminal.writeln('OPatch succeeded.');
+            break;
+            
+        case 'rollback':
+            const rollbackId = args[2] || args[1];
+            if (!rollbackId) {
+                this.terminal.writeln('Usage: opatch rollback -id <patch_id>');
+                return;
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('Oracle Interim Patch Installer version 12.2.0.1.19');
+            this.terminal.writeln('Copyright (c) 2023, Oracle Corporation.  All rights reserved.');
+            this.terminal.writeln('');
+            this.terminal.writeln(`Rollback patch ${rollbackId}...`);
+            this.terminal.writeln('');
+            this.terminal.writeln('RollbackSession removing interim patch...');
+            this.terminal.writeln('');
+            this.terminal.writeln(`Patch ${rollbackId} successfully rolled back.`);
+            this.terminal.writeln('');
+            this.terminal.writeln('OPatch succeeded.');
+            break;
+            
+        default:
+            this.terminal.writeln('');
+            this.terminal.writeln('Usage: opatch [ -help ] [ -version ] <command> [<args>]');
+            this.terminal.writeln('');
+            this.terminal.writeln('where <command> is one of:');
+            this.terminal.writeln('  apply         Apply interim patch to Oracle Home');
+            this.terminal.writeln('  rollback      Rollback interim patch from Oracle Home');
+            this.terminal.writeln('  lsinventory   List patches in Oracle Home');
+            this.terminal.writeln('  version       Print OPatch version');
+            this.terminal.writeln('');
+            this.terminal.writeln('Use "opatch <command> -help" for help on specific commands');
+    }
+};

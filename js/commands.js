@@ -1050,24 +1050,86 @@ class CommandProcessor {
         });
         this.terminal.writeln('');
         
-        // Handle hints
-        if (args.includes('--hint') || args.includes('--hint-detail')) {
+        // Handle hints and learning guidance
+        if (args.includes('--hint') || args.includes('--hint-detail') || args.includes('--learn')) {
             const nextTask = oracleManager.getNextTask();
             if (nextTask) {
                 this.terminal.writeln('Next Task:');
                 this.terminal.writeln('----------');
+                this.terminal.writeln(`\x1b[33m${nextTask.title}\x1b[0m`);
                 this.terminal.writeln(nextTask.hint);
                 this.terminal.writeln('');
                 
-                if (args.includes('--hint-detail')) {
+                if (args.includes('--hint-detail') || args.includes('--learn')) {
                     this.terminal.writeln('Commands to execute:');
                     this.terminal.writeln('-------------------');
                     nextTask.commands.forEach(cmd => {
-                        this.terminal.writeln(`  ${cmd}`);
+                        this.terminal.writeln(`  \x1b[36m${cmd}\x1b[0m`);
                     });
                     this.terminal.writeln('');
+                    
+                    if (nextTask.explanation) {
+                        this.terminal.writeln('Why this is important:');
+                        this.terminal.writeln('---------------------');
+                        this.terminal.writeln(nextTask.explanation);
+                        this.terminal.writeln('');
+                    }
+                    
+                    if (nextTask.troubleshooting) {
+                        this.terminal.writeln('Common Issues & Solutions:');
+                        this.terminal.writeln('-------------------------');
+                        nextTask.troubleshooting.forEach(issue => {
+                            this.terminal.writeln(`\x1b[31mProblem:\x1b[0m ${issue.problem}`);
+                            this.terminal.writeln(`\x1b[32mSolution:\x1b[0m ${issue.solution}`);
+                            this.terminal.writeln('');
+                        });
+                    }
                 }
+            } else {
+                this.terminal.writeln('\x1b[32mAll primary tasks completed!\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('Advanced Practice Tasks:');
+                this.terminal.writeln('------------------------');
+                this.terminal.writeln('1. Performance Tuning: Run "awrrpt" to generate AWR report');
+                this.terminal.writeln('2. ADDM Analysis: Run "addmrpt" for database diagnostics');
+                this.terminal.writeln('3. Patch Management: Use "opatch lsinventory" to check patches');
+                this.terminal.writeln('4. Backup Strategy: Practice RMAN backup scenarios');
+                this.terminal.writeln('5. Troubleshooting: Run "ocp --scenarios" for error simulations');
+                this.terminal.writeln('');
             }
+        }
+        
+        // Show available scenarios for practice
+        if (args.includes('--scenarios')) {
+            this.terminal.writeln('Practice Scenarios Available:');
+            this.terminal.writeln('============================');
+            this.terminal.writeln('');
+            this.terminal.writeln('1. \x1b[33mDatabase Performance Issues\x1b[0m');
+            this.terminal.writeln('   Command: ocp --simulate performance');
+            this.terminal.writeln('   Practice SQL tuning, AWR analysis, and memory optimization');
+            this.terminal.writeln('');
+            this.terminal.writeln('2. \x1b[33mBackup and Recovery Scenarios\x1b[0m');
+            this.terminal.writeln('   Command: ocp --simulate recovery');
+            this.terminal.writeln('   Practice RMAN backups, point-in-time recovery, and corruption handling');
+            this.terminal.writeln('');
+            this.terminal.writeln('3. \x1b[33mSecurity Configuration\x1b[0m');
+            this.terminal.writeln('   Command: ocp --simulate security');
+            this.terminal.writeln('   Practice user management, auditing, and encryption setup');
+            this.terminal.writeln('');
+            this.terminal.writeln('4. \x1b[33mNetwork and Connectivity Issues\x1b[0m');
+            this.terminal.writeln('   Command: ocp --simulate network');
+            this.terminal.writeln('   Practice listener troubleshooting and TNS configuration');
+            this.terminal.writeln('');
+            this.terminal.writeln('5. \x1b[33mStorage Management\x1b[0m');
+            this.terminal.writeln('   Command: ocp --simulate storage');
+            this.terminal.writeln('   Practice tablespace management and space optimization');
+            this.terminal.writeln('');
+        }
+        
+        // Simulate specific scenarios
+        if (args.includes('--simulate')) {
+            const scenario = args[args.indexOf('--simulate') + 1];
+            this.simulateScenario(scenario);
         }
         
         // Check if all tasks are complete
@@ -1079,6 +1141,97 @@ class CommandProcessor {
             // Set up a flag to track if we're waiting for game response
             this.waitingForGameResponse = true;
         }
+    }
+
+    // Simulate practice scenarios
+    simulateScenario(scenario) {
+        switch(scenario) {
+            case 'performance':
+                this.terminal.writeln('\x1b[33m=== Performance Troubleshooting Scenario ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('Scenario: Database performance has degraded significantly.');
+                this.terminal.writeln('Users are complaining about slow response times.');
+                this.terminal.writeln('');
+                this.terminal.writeln('Your tasks:');
+                this.terminal.writeln('1. Generate AWR report: awrrpt');
+                this.terminal.writeln('2. Check current sessions: sqlplus / as sysdba');
+                this.terminal.writeln('   Then run: SELECT * FROM V$SESSION;');
+                this.terminal.writeln('3. Check SGA usage: SELECT * FROM V$SGA;');
+                this.terminal.writeln('4. Generate ADDM report: addmrpt');
+                this.terminal.writeln('5. Check database parameters: SHOW PARAMETER sga');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[32mHint: Start with AWR report to identify top wait events\x1b[0m');
+                break;
+                
+            case 'recovery':
+                this.terminal.writeln('\x1b[33m=== Backup & Recovery Scenario ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('Scenario: Critical datafile corruption detected!');
+                this.terminal.writeln('You need to restore the database from backup.');
+                this.terminal.writeln('');
+                this.terminal.writeln('Your tasks:');
+                this.terminal.writeln('1. Connect to RMAN: rman target /');
+                this.terminal.writeln('2. Check backup status: LIST BACKUP;');
+                this.terminal.writeln('3. Validate backups: VALIDATE BACKUPSET;');
+                this.terminal.writeln('4. Practice full backup: BACKUP DATABASE;');
+                this.terminal.writeln('5. Practice incremental backup: BACKUP INCREMENTAL LEVEL 1 DATABASE;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[32mHint: Always validate backups before attempting recovery\x1b[0m');
+                break;
+                
+            case 'security':
+                this.terminal.writeln('\x1b[33m=== Security Configuration Scenario ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('Scenario: Configure database security for production deployment.');
+                this.terminal.writeln('Implement user management and auditing.');
+                this.terminal.writeln('');
+                this.terminal.writeln('Your tasks:');
+                this.terminal.writeln('1. Connect as SYSDBA: sqlplus / as sysdba');
+                this.terminal.writeln('2. Create user: CREATE USER testuser IDENTIFIED BY password123;');
+                this.terminal.writeln('3. Grant privileges: GRANT CONNECT, RESOURCE TO testuser;');
+                this.terminal.writeln('4. Enable auditing: ALTER SYSTEM SET audit_trail=DB SCOPE=SPFILE;');
+                this.terminal.writeln('5. Create role: CREATE ROLE app_role;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[32mHint: Follow principle of least privilege for user access\x1b[0m');
+                break;
+                
+            case 'network':
+                this.terminal.writeln('\x1b[33m=== Network Troubleshooting Scenario ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('Scenario: Applications cannot connect to the database.');
+                this.terminal.writeln('TNS and listener issues need to be resolved.');
+                this.terminal.writeln('');
+                this.terminal.writeln('Your tasks:');
+                this.terminal.writeln('1. Check listener status: lsnrctl status');
+                this.terminal.writeln('2. Start listener if needed: lsnrctl start');
+                this.terminal.writeln('3. Test connectivity: tnsping ORCL');
+                this.terminal.writeln('4. Check listener services: lsnrctl services');
+                this.terminal.writeln('5. Test SQL*Plus connection: sqlplus hr/hr@ORCL');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[32mHint: Listener must be running for remote connections\x1b[0m');
+                break;
+                
+            case 'storage':
+                this.terminal.writeln('\x1b[33m=== Storage Management Scenario ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('Scenario: Tablespace is running out of space.');
+                this.terminal.writeln('Applications are failing with space-related errors.');
+                this.terminal.writeln('');
+                this.terminal.writeln('Your tasks:');
+                this.terminal.writeln('1. Check tablespace usage: sqlplus / as sysdba');
+                this.terminal.writeln('2. Query space usage: SELECT TABLESPACE_NAME FROM DBA_TABLESPACES;');
+                this.terminal.writeln('3. Check datafile sizes: SELECT * FROM V$DATAFILE;');
+                this.terminal.writeln('4. Add datafile: ALTER TABLESPACE USERS ADD DATAFILE \'/u01/app/oracle/oradata/ORCL/users02.dbf\' SIZE 100M;');
+                this.terminal.writeln('5. Monitor space usage: SELECT * FROM DBA_FREE_SPACE;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[32mHint: Monitor tablespace usage proactively to prevent outages\x1b[0m');
+                break;
+                
+            default:
+                this.terminal.writeln('Available scenarios: performance, recovery, security, network, storage');
+                this.terminal.writeln('Usage: ocp --simulate <scenario_name>');
+        }
+        this.terminal.writeln('');
     }
 
     cmdTicTacToe() {
