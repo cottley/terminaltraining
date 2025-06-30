@@ -41,6 +41,18 @@ class CommandProcessor {
             'dnf': { version: '4.10.0-5.el9', repo: 'rhel-9-baseos', arch: 'noarch' }
         };
         this.loadPackageState();
+        
+        // Service management state
+        this.serviceStates = {
+            'firewalld': { status: 'active', enabled: true },
+            'sshd': { status: 'active', enabled: true },
+            'chronyd': { status: 'active', enabled: true },
+            'httpd': { status: 'inactive', enabled: false },
+            'oracle-db': { status: 'inactive', enabled: false },
+            'oracle-listener': { status: 'inactive', enabled: false }
+        };
+        this.loadServiceStates();
+        
         this.initializeVimModal();
     }
 
@@ -311,6 +323,9 @@ class CommandProcessor {
                 break;
             case 'ldconfig':
                 this.cmdLdconfig(args);
+                break;
+            case 'service':
+                this.cmdService(args);
                 break;
             default:
                 this.terminal.writeln(`-bash: ${command}: command not found`);
@@ -1116,6 +1131,44 @@ class CommandProcessor {
 
     isPackageInstalled(packageName) {
         return this.installedPackages.hasOwnProperty(packageName);
+    }
+
+    // Service state management
+    loadServiceStates() {
+        try {
+            const saved = localStorage.getItem('systemdServiceStates');
+            if (saved) {
+                this.serviceStates = { ...this.serviceStates, ...JSON.parse(saved) };
+            }
+        } catch (e) {
+            // Use default states if loading fails
+        }
+    }
+
+    saveServiceStates() {
+        try {
+            localStorage.setItem('systemdServiceStates', JSON.stringify(this.serviceStates));
+        } catch (e) {
+            // Silently fail if localStorage is not available
+        }
+    }
+
+    getServiceStatus(serviceName) {
+        // Remove .service suffix if present
+        const name = serviceName.replace(/\.service$/, '');
+        return this.serviceStates[name] || { status: 'not-found', enabled: false };
+    }
+
+    setServiceStatus(serviceName, status, enabled = null) {
+        const name = serviceName.replace(/\.service$/, '');
+        if (!this.serviceStates[name]) {
+            this.serviceStates[name] = { status: 'inactive', enabled: false };
+        }
+        this.serviceStates[name].status = status;
+        if (enabled !== null) {
+            this.serviceStates[name].enabled = enabled;
+        }
+        this.saveServiceStates();
     }
 
     cmdSet(args) {
@@ -2297,6 +2350,138 @@ class CommandProcessor {
         
         this.terminal.writeln('');
         this.terminal.writeln('\x1b[96mFor more help, try: ocp --hint-detail\x1b[0m');
+    }
+
+    cmdService(args) {
+        if (args.length === 0) {
+            this.terminal.writeln('Usage: service <service_name> <action>');
+            this.terminal.writeln('');
+            this.terminal.writeln('Actions:');
+            this.terminal.writeln('  start    - Start the service');
+            this.terminal.writeln('  stop     - Stop the service');
+            this.terminal.writeln('  restart  - Restart the service');
+            this.terminal.writeln('  reload   - Reload service configuration');
+            this.terminal.writeln('  status   - Show service status');
+            this.terminal.writeln('  enable   - Enable service to start at boot');
+            this.terminal.writeln('  disable  - Disable service from starting at boot');
+            this.terminal.writeln('');
+            this.terminal.writeln('Available services:');
+            this.terminal.writeln('  firewalld, sshd, chronyd, httpd, oracle-db, oracle-listener');
+            this.terminal.writeln('');
+            this.terminal.writeln('Examples:');
+            this.terminal.writeln('  service firewalld status');
+            this.terminal.writeln('  service httpd start');
+            this.terminal.writeln('  service oracle-db enable');
+            return;
+        }
+
+        if (args.length < 2) {
+            this.terminal.writeln('service: missing action');
+            this.terminal.writeln('Usage: service <service_name> <action>');
+            return;
+        }
+
+        const serviceName = args[0];
+        const action = args[1];
+        const serviceStatus = this.getServiceStatus(serviceName);
+
+        // Check if service exists
+        if (serviceStatus.status === 'not-found') {
+            this.terminal.writeln(`service: ${serviceName}: unrecognized service`);
+            return;
+        }
+
+        // Check if user has root privileges for most actions
+        if (['start', 'stop', 'restart', 'reload', 'enable', 'disable'].includes(action) && 
+            this.fs.currentUser !== 'root') {
+            this.terminal.writeln(`service: ${serviceName}: permission denied (you must be root)`);
+            return;
+        }
+
+        switch (action) {
+            case 'start':
+                if (serviceStatus.status === 'active') {
+                    this.terminal.writeln(`service: ${serviceName}: is already running`);
+                } else {
+                    this.terminal.writeln(`Starting ${serviceName}:                                        [  OK  ]`);
+                    this.setServiceStatus(serviceName, 'active');
+                    
+                    // Special handling for Oracle services
+                    if (serviceName === 'oracle-db') {
+                        this.terminal.writeln('Oracle Database 19c started.');
+                    } else if (serviceName === 'oracle-listener') {
+                        this.terminal.writeln('Oracle Net Listener started.');
+                    }
+                }
+                break;
+
+            case 'stop':
+                if (serviceStatus.status === 'inactive') {
+                    this.terminal.writeln(`service: ${serviceName}: is already stopped`);
+                } else {
+                    this.terminal.writeln(`Shutting down ${serviceName}:                                   [  OK  ]`);
+                    this.setServiceStatus(serviceName, 'inactive');
+                    
+                    // Special handling for Oracle services
+                    if (serviceName === 'oracle-db') {
+                        this.terminal.writeln('Oracle Database 19c stopped.');
+                    } else if (serviceName === 'oracle-listener') {
+                        this.terminal.writeln('Oracle Net Listener stopped.');
+                    }
+                }
+                break;
+
+            case 'restart':
+                this.terminal.writeln(`Shutting down ${serviceName}:                                   [  OK  ]`);
+                this.terminal.writeln(`Starting ${serviceName}:                                        [  OK  ]`);
+                this.setServiceStatus(serviceName, 'active');
+                
+                if (serviceName === 'oracle-db') {
+                    this.terminal.writeln('Oracle Database 19c restarted.');
+                } else if (serviceName === 'oracle-listener') {
+                    this.terminal.writeln('Oracle Net Listener restarted.');
+                }
+                break;
+
+            case 'reload':
+                if (serviceStatus.status === 'active') {
+                    this.terminal.writeln(`Reloading ${serviceName}:                                       [  OK  ]`);
+                } else {
+                    this.terminal.writeln(`service: ${serviceName}: is not running`);
+                }
+                break;
+
+            case 'status':
+                const statusText = serviceStatus.status === 'active' ? 'running' : 'stopped';
+                const enabledText = serviceStatus.enabled ? 'enabled' : 'disabled';
+                
+                this.terminal.writeln(`${serviceName} (pid  12345) is ${statusText}...`);
+                this.terminal.writeln(`${serviceName} is ${enabledText}`);
+                
+                // Enhanced status for Oracle services
+                if (serviceName === 'oracle-db' && serviceStatus.status === 'active') {
+                    this.terminal.writeln('Database Status: OPEN');
+                    this.terminal.writeln('Instance Status: STARTED');
+                } else if (serviceName === 'oracle-listener' && serviceStatus.status === 'active') {
+                    this.terminal.writeln('Listener Status: READY');
+                    this.terminal.writeln('Listening on port: 1521');
+                }
+                break;
+
+            case 'enable':
+                this.setServiceStatus(serviceName, serviceStatus.status, true);
+                this.terminal.writeln(`${serviceName} enabled for auto-start at boot time`);
+                break;
+
+            case 'disable':
+                this.setServiceStatus(serviceName, serviceStatus.status, false);
+                this.terminal.writeln(`${serviceName} disabled for auto-start at boot time`);
+                break;
+
+            default:
+                this.terminal.writeln(`service: ${serviceName}: unrecognized action: ${action}`);
+                this.terminal.writeln('Valid actions are: start, stop, restart, reload, status, enable, disable');
+        }
     }
 
     cmdTicTacToe() {

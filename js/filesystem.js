@@ -57,6 +57,58 @@ class FileSystem {
                             }},
                             'selinux': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
                                 'config': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 458, content: '# This file controls the state of SELinux on the system.\n# SELINUX= can take one of these three values:\n#     enforcing - SELinux security policy is enforced.\n#     permissive - SELinux prints warnings instead of enforcing.\n#     disabled - No SELinux policy is loaded.\nSELINUX=permissive\n# SELINUXTYPE= can take one of these three values:\n#     targeted - Targeted processes are protected,\n#     minimum - Modification of targeted policy. Only selected processes are protected.\n#     mls - Multi Level Security protection.\nSELINUXTYPE=targeted' }
+                            }},
+                            'systemd': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
+                                'system': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
+                                    'oracle-db.service': { 
+                                        type: 'file', 
+                                        permissions: '-rw-r--r--', 
+                                        owner: 'root', 
+                                        group: 'root', 
+                                        size: 456, 
+                                        content: '[Unit]\nDescription=Oracle Database Service\nAfter=network.target\n\n[Service]\nType=forking\nUser=oracle\nGroup=oinstall\nExecStart=/u01/app/oracle/product/19.0.0/dbhome_1/bin/dbstart\nExecStop=/u01/app/oracle/product/19.0.0/dbhome_1/bin/dbshut\nRestart=on-failure\n\n[Install]\nWantedBy=multi-user.target' 
+                                    },
+                                    'oracle-listener.service': { 
+                                        type: 'file', 
+                                        permissions: '-rw-r--r--', 
+                                        owner: 'root', 
+                                        group: 'root', 
+                                        size: 412, 
+                                        content: '[Unit]\nDescription=Oracle Net Listener\nAfter=network.target\n\n[Service]\nType=forking\nUser=oracle\nGroup=oinstall\nExecStart=/u01/app/oracle/product/19.0.0/dbhome_1/bin/lsnrctl start\nExecStop=/u01/app/oracle/product/19.0.0/dbhome_1/bin/lsnrctl stop\nRestart=on-failure\n\n[Install]\nWantedBy=multi-user.target' 
+                                    },
+                                    'firewalld.service': { 
+                                        type: 'file', 
+                                        permissions: '-rw-r--r--', 
+                                        owner: 'root', 
+                                        group: 'root', 
+                                        size: 280, 
+                                        content: '[Unit]\nDescription=firewalld - dynamic firewall daemon\nBefore=network-pre.target\nWants=network-pre.target\n\n[Service]\nType=dbus\nBusName=org.fedoraproject.FirewallD1\nExecStart=/usr/sbin/firewalld --nofork\nExecReload=/bin/kill -HUP $MAINPID\n\n[Install]\nWantedBy=multi-user.target' 
+                                    },
+                                    'sshd.service': { 
+                                        type: 'file', 
+                                        permissions: '-rw-r--r--', 
+                                        owner: 'root', 
+                                        group: 'root', 
+                                        size: 312, 
+                                        content: '[Unit]\nDescription=OpenSSH server daemon\nDocumentation=man:sshd(8) man:sshd_config(5)\nAfter=network.target sshd-keygen.service\nWants=sshd-keygen.service\n\n[Service]\nType=notify\nExecStart=/usr/sbin/sshd -D\nExecReload=/bin/kill -HUP $MAINPID\nKillMode=process\nRestart=on-failure\n\n[Install]\nWantedBy=multi-user.target' 
+                                    },
+                                    'httpd.service': { 
+                                        type: 'file', 
+                                        permissions: '-rw-r--r--', 
+                                        owner: 'root', 
+                                        group: 'root', 
+                                        size: 298, 
+                                        content: '[Unit]\nDescription=The Apache HTTP Server\nAfter=network.target remote-fs.target nss-lookup.target\n\n[Service]\nType=notify\nExecStart=/usr/sbin/httpd $OPTIONS -DFOREGROUND\nExecReload=/usr/sbin/httpd $OPTIONS -k graceful\nExecStop=/bin/kill -WINCH ${MAINPID}\nKillSignal=SIGCONT\nPrivateTmp=true\n\n[Install]\nWantedBy=multi-user.target' 
+                                    },
+                                    'chronyd.service': { 
+                                        type: 'file', 
+                                        permissions: '-rw-r--r--', 
+                                        owner: 'root', 
+                                        group: 'root', 
+                                        size: 267, 
+                                        content: '[Unit]\nDescription=NTP client/server\nDocumentation=man:chronyd(8) man:chrony.conf(5)\nAfter=ntpdate.service sntp.service ntpd.service\nConflicts=ntpd.service systemd-timesyncd.service\n\n[Service]\nType=forking\nPIDFile=/var/run/chronyd.pid\nExecStart=/usr/sbin/chronyd\n\n[Install]\nWantedBy=multi-user.target' 
+                                    }
+                                }}
                             }}
                         }
                     },
@@ -113,7 +165,55 @@ class FileSystem {
                         size: 4096,
                         children: {}
                     },
-                    'usr': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
+                    'usr': { 
+                        type: 'directory', 
+                        permissions: 'drwxr-xr-x', 
+                        owner: 'root', 
+                        group: 'root', 
+                        size: 4096, 
+                        children: {
+                            'lib': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
+                                'systemd': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
+                                    'system': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
+                                        'basic.target': { 
+                                            type: 'file', 
+                                            permissions: '-rw-r--r--', 
+                                            owner: 'root', 
+                                            group: 'root', 
+                                            size: 456, 
+                                            content: '[Unit]\nDescription=Basic System\nDocumentation=man:systemd.special(7)\nRequires=sysinit.target\nWants=sockets.target timers.target paths.target slices.target\nAfter=sysinit.target sockets.target paths.target slices.target tmp.mount\nConflicts=rescue.service rescue.target\nAllowIsolate=yes' 
+                                        },
+                                        'multi-user.target': { 
+                                            type: 'file', 
+                                            permissions: '-rw-r--r--', 
+                                            owner: 'root', 
+                                            group: 'root', 
+                                            size: 398, 
+                                            content: '[Unit]\nDescription=Multi-User System\nDocumentation=man:systemd.special(7)\nRequires=basic.target\nConflicts=rescue.service rescue.target graphical.target\nAfter=basic.target rescue.service rescue.target\nAllowIsolate=yes' 
+                                        },
+                                        'network.target': { 
+                                            type: 'file', 
+                                            permissions: '-rw-r--r--', 
+                                            owner: 'root', 
+                                            group: 'root', 
+                                            size: 278, 
+                                            content: '[Unit]\nDescription=Network\nDocumentation=man:systemd.special(7)\nRefuseManualStart=yes\nAfter=network-pre.target\nBefore=network-online.target' 
+                                        },
+                                        'sysinit.target': { 
+                                            type: 'file', 
+                                            permissions: '-rw-r--r--', 
+                                            owner: 'root', 
+                                            group: 'root', 
+                                            size: 312, 
+                                            content: '[Unit]\nDescription=System Initialization\nDocumentation=man:systemd.special(7)\nConflicts=emergency.service emergency.target\nWants=local-fs.target swap.target\nAfter=local-fs.target swap.target emergency.service emergency.target' 
+                                        }
+                                    }}
+                                }}
+                            }},
+                            'sbin': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
+                            'bin': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} }
+                        }
+                    },
                     'var': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} }
                 }
             };

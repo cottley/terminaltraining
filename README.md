@@ -104,10 +104,26 @@ id [user]             # User/group information
 
 ### Package & Service Management
 ```bash
+# Package Management
 yum install <pkg>     # Install packages
 yum update            # Update packages
-systemctl <action>    # Service management
-firewall-cmd          # Firewall configuration
+yum list installed    # List installed packages
+
+# Service Management (Traditional SysV style)
+service <name> start      # Start a service
+service <name> stop       # Stop a service
+service <name> restart    # Restart a service
+service <name> status     # Check service status
+service <name> enable     # Enable service for auto-start
+service <name> disable    # Disable service auto-start
+
+# Systemd Service Management
+systemctl <action>        # Modern systemd service control
+firewall-cmd              # Firewall configuration
+
+# Available Services
+# System services: firewalld, sshd, chronyd, httpd
+# Oracle services: oracle-db, oracle-listener
 ```
 
 ### User & Group Management
@@ -266,11 +282,35 @@ CREATE OR REPLACE LIBRARY sde_util AS '/opt/arcgis/server/lib/libsde.so';
 The simulation includes a complete RHEL 9 filesystem:
 - `/bin`, `/sbin` - System binaries
 - `/etc` - Configuration files (passwd, group, hosts, etc.)
+- `/etc/systemd/system/` - Custom systemd service files
+- `/usr/lib/systemd/system/` - System-provided systemd service files
 - `/home` - User directories
 - `/u01` - Oracle software directory
 - `/install` - Installation files (Oracle, ArcGIS)
 - `/opt` - Optional software packages
 - Standard Linux directory tree
+
+### Systemd Service Files
+
+The environment includes realistic systemd service definitions:
+
+**System Services** (`/etc/systemd/system/`):
+- `firewalld.service` - Dynamic firewall daemon
+- `sshd.service` - OpenSSH server daemon
+- `chronyd.service` - NTP client/server
+- `httpd.service` - Apache HTTP Server
+
+**Oracle Services** (`/etc/systemd/system/`):
+- `oracle-db.service` - Oracle Database service
+- `oracle-listener.service` - Oracle Net Listener service
+
+**System Targets** (`/usr/lib/systemd/system/`):
+- `basic.target` - Basic system initialization
+- `multi-user.target` - Multi-user system mode
+- `network.target` - Network availability target
+- `sysinit.target` - System initialization target
+
+Service states persist across sessions and can be managed with the `service` command.
 
 ## Persistent State Management
 
