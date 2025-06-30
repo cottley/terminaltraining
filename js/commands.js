@@ -1991,10 +1991,10 @@ class CommandProcessor {
                 this.terminal.writeln('');
                 this.terminal.writeln('\x1b[94mSolutions:\x1b[0m');
                 this.terminal.writeln('• Add datafile: ALTER TABLESPACE USERS ADD DATAFILE');
-                this.terminal.writeln('  \\'/u01/app/oracle/oradata/ORCL/users02.dbf\\' SIZE 100M;');
-                this.terminal.writeln('• Enable autoextend: ALTER DATABASE DATAFILE \\'/path/file.dbf\\'');
+                this.terminal.writeln('  \'/u01/app/oracle/oradata/ORCL/users02.dbf\' SIZE 100M;');
+                this.terminal.writeln('• Enable autoextend: ALTER DATABASE DATAFILE \'/path/file.dbf\'');
                 this.terminal.writeln('  AUTOEXTEND ON NEXT 10M MAXSIZE 1G;');
-                this.terminal.writeln('• Resize existing datafile: ALTER DATABASE DATAFILE \\'/path/file.dbf\\'');
+                this.terminal.writeln('• Resize existing datafile: ALTER DATABASE DATAFILE \'/path/file.dbf\'');
                 this.terminal.writeln('  RESIZE 500M;');
                 break;
                 
@@ -2016,7 +2016,7 @@ class CommandProcessor {
                 this.terminal.writeln('');
                 this.terminal.writeln('2. Check active sessions:');
                 this.terminal.writeln('   SELECT sid, serial#, username, status, program');
-                this.terminal.writeln('   FROM v$session WHERE status = \\'ACTIVE\\';');
+                this.terminal.writeln('   FROM v$session WHERE status = \'ACTIVE\';');
                 this.terminal.writeln('');
                 this.terminal.writeln('3. Generate AWR report:');
                 this.terminal.writeln('   awrrpt');
@@ -2087,7 +2087,7 @@ class CommandProcessor {
                 this.terminal.writeln('');
                 this.terminal.writeln('3. Check shared pool usage:');
                 this.terminal.writeln('   SELECT pool, name, bytes/1024/1024 MB FROM v$sgastat');
-                this.terminal.writeln('   WHERE pool = \\'shared pool\\';');
+                this.terminal.writeln('   WHERE pool = \'shared pool\';');
                 this.terminal.writeln('');
                 this.terminal.writeln('\x1b[94mSolutions:\x1b[0m');
                 this.terminal.writeln('• Reduce SGA size: ALTER SYSTEM SET sga_target=512M;');
