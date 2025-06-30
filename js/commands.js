@@ -537,6 +537,13 @@ class CommandProcessor {
             return;
         }
 
+        // Check for root privileges for package management operations
+        const privilegedOperations = ['install', 'update', 'upgrade', 'remove', 'erase', 'autoremove', 'clean', 'makecache'];
+        if (privilegedOperations.includes(subcommand) && this.fs.currentUser !== 'root') {
+            this.terminal.writeln('Error: This command has to be run with superuser privileges (under the root user on most systems).');
+            return;
+        }
+
         switch (subcommand) {
             case 'install':
                 const packages = args.slice(1).filter(arg => !arg.startsWith('-'));
@@ -558,10 +565,48 @@ class CommandProcessor {
                 }
                 break;
             case 'update':
+            case 'upgrade':
                 this.terminal.writeln('Last metadata expiration check: 0:15:32 ago on ' + new Date().toLocaleString());
                 this.terminal.writeln('Dependencies resolved.');
                 this.terminal.writeln('Nothing to do.');
                 this.terminal.writeln('Complete!');
+                break;
+            case 'remove':
+            case 'erase':
+                const removePackages = args.slice(1).filter(arg => !arg.startsWith('-'));
+                if (removePackages.length === 0) {
+                    this.terminal.writeln('Error: Need to pass a list of pkgs to remove');
+                } else {
+                    this.terminal.writeln('Dependencies resolved.');
+                    this.terminal.writeln('================================================================================');
+                    this.terminal.writeln(' Package            Architecture    Version              Repository        Size');
+                    this.terminal.writeln('================================================================================');
+                    this.terminal.writeln('Removing:');
+                    removePackages.forEach(pkg => {
+                        this.terminal.writeln(` ${pkg.padEnd(18)} x86_64          1.0-1.el9           @rhel-9-appstream  1.2 M`);
+                    });
+                    this.terminal.writeln('\nTransaction Summary');
+                    this.terminal.writeln('================================================================================');
+                    this.terminal.writeln(`Remove  ${removePackages.length} Package${removePackages.length > 1 ? 's' : ''}`);
+                    this.terminal.writeln('\nComplete!');
+                }
+                break;
+            case 'clean':
+                const cleanArg = args[1] || 'all';
+                this.terminal.writeln(`Cleaning repos: rhel-9-baseos rhel-9-appstream`);
+                this.terminal.writeln(`Cleaning up list of fastest mirrors`);
+                this.terminal.writeln(`Other repos take up 0 M of disk space (use --verbose for details)`);
+                break;
+            case 'autoremove':
+                this.terminal.writeln('Dependencies resolved.');
+                this.terminal.writeln('Nothing to do.');
+                this.terminal.writeln('Complete!');
+                break;
+            case 'makecache':
+                this.terminal.writeln('Updating Subscription Management repositories.');
+                this.terminal.writeln('Red Hat Enterprise Linux 9 for x86_64 - BaseOS (RPMs)         12 kB/s | 4.1 kB     00:00');
+                this.terminal.writeln('Red Hat Enterprise Linux 9 for x86_64 - AppStream (RPMs)     15 kB/s | 4.5 kB     00:00');
+                this.terminal.writeln('Metadata cache created.');
                 break;
             case 'list':
                 if (args.includes('installed')) {
