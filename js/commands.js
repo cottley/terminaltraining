@@ -605,7 +605,11 @@ class CommandProcessor {
                 this.terminal.writeln('  interfaces: eth0');
                 this.terminal.writeln('  sources: ');
                 this.terminal.writeln('  services: dhcpv6-client ssh');
-                this.terminal.writeln('  ports: ');
+                const allPorts = [];
+                if (oracleManager.getState('firewallConfigured')) {
+                    allPorts.push('1521/tcp');
+                }
+                this.terminal.writeln('  ports: ' + allPorts.join(' '));
                 this.terminal.writeln('  protocols: ');
                 this.terminal.writeln('  masquerade: no');
                 break;
@@ -613,10 +617,22 @@ class CommandProcessor {
                 if (args[1] && args[1].startsWith('--add-port=')) {
                     const port = args[1].split('=')[1];
                     this.terminal.writeln('success');
+                    
+                    // Track if Oracle port 1521 was opened
+                    if (port === '1521/tcp') {
+                        oracleManager.updateState('firewallConfigured', true);
+                    }
                 }
                 break;
             case '--reload':
                 this.terminal.writeln('success');
+                break;
+            case '--list-ports':
+                const ports = [];
+                if (oracleManager.getState('firewallConfigured')) {
+                    ports.push('1521/tcp');
+                }
+                this.terminal.writeln(ports.join(' '));
                 break;
             default:
                 this.terminal.writeln('Usage: see firewall-cmd --help');

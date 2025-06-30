@@ -24,6 +24,7 @@ class OracleManager {
             kernelParametersSet: false,
             limitsConfigured: false,
             oratabPopulated: false,
+            firewallConfigured: false,
             
             // Installation paths
             oracleBase: '/u01/app/oracle',
@@ -279,6 +280,7 @@ class OracleManager {
             'Required Packages Installed': this.checkPrerequisites('all_packages'),
             'Kernel Parameters Set': this.checkPrerequisites('kernel_parameters'),
             'Resource Limits Configured': this.checkPrerequisites('resource_limits'),
+            'Firewall Port 1521 Opened': this.state.firewallConfigured,
             
             // Installation
             'Oracle Software Installed': this.state.softwareInstalled,
@@ -427,6 +429,14 @@ class OracleManager {
                 commands: [
                     'su - oracle',
                     'lsnrctl start'
+                ]
+            },
+            'Firewall Port 1521 Opened': {
+                hint: 'Configure firewall to allow Oracle listener port 1521',
+                commands: [
+                    'firewall-cmd --permanent --add-port=1521/tcp',
+                    'firewall-cmd --reload',
+                    'firewall-cmd --list-ports'
                 ]
             },
             'Oratab Populated for Auto-Start': {
