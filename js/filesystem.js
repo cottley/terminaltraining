@@ -254,24 +254,32 @@ class FileSystem {
     }
 
     resolvePath(path) {
+        let parts;
+        let current;
+        
         if (path.startsWith('/')) {
-            return path.split('/').filter(p => p);
+            // Absolute path - start from root
+            parts = path.split('/').filter(p => p);
+            current = [];
         } else {
-            const current = this.currentPath.split('/').filter(p => p);
-            const parts = path.split('/').filter(p => p);
-            
-            for (const part of parts) {
-                if (part === '..') {
-                    // Only pop if not at root level
-                    if (current.length > 0) {
-                        current.pop();
-                    }
-                } else if (part !== '.') {
-                    current.push(part);
-                }
-            }
-            return current;
+            // Relative path - start from current directory
+            parts = path.split('/').filter(p => p);
+            current = this.currentPath.split('/').filter(p => p);
         }
+        
+        // Process all path parts (both absolute and relative need .. processing)
+        for (const part of parts) {
+            if (part === '..') {
+                // Only pop if not at root level
+                if (current.length > 0) {
+                    current.pop();
+                }
+            } else if (part !== '.') {
+                current.push(part);
+            }
+        }
+        
+        return current;
     }
 
     getNode(pathArray) {
