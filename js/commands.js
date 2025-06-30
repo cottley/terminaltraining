@@ -143,6 +143,12 @@ class CommandProcessor {
         this.historyIndex = this.history.length;
         this.saveHistory();
         
+        // Handle pipes
+        if (input.includes('|')) {
+            this.processPipedCommand(input);
+            return;
+        }
+        
         const parts = input.trim().split(/\s+/);
         const command = parts[0];
         const args = parts.slice(1);
@@ -170,6 +176,9 @@ class CommandProcessor {
                 break;
             case 'cat':
                 this.cmdCat(args);
+                break;
+            case 'grep':
+                this.cmdGrep(args);
                 break;
             case 'echo':
                 this.cmdEcho(args);
@@ -1747,6 +1756,312 @@ class CommandProcessor {
             return `${month} ${day} ${hours}:${minutes}`;
         } catch (e) {
             return 'Jan  1 00:00';
+        }
+    }
+
+    // Process piped commands
+    processPipedCommand(input) {
+        const commands = input.split('|').map(cmd => cmd.trim());
+        let output = '';
+        
+        for (let i = 0; i < commands.length; i++) {
+            const cmd = commands[i];
+            const parts = cmd.split(/\s+/);
+            const command = parts[0];
+            const args = parts.slice(1);
+            
+            if (i === 0) {
+                // First command - capture its output
+                output = this.executeCommandAndCapture(command, args);
+            } else {
+                // Subsequent commands - process with input from previous command
+                output = this.executeCommandWithInput(command, args, output);
+            }
+            
+            // If any command fails or returns empty, break the pipe
+            if (output === null) {
+                return;
+            }
+        }
+        
+        // Display final output
+        if (output && output.trim()) {
+            this.terminal.writeln(output.trim());
+        }
+    }
+
+    // Execute a command and capture its output instead of displaying it
+    executeCommandAndCapture(command, args) {
+        // Save original terminal.writeln to capture output
+        const originalWriteln = this.terminal.writeln;
+        const originalWrite = this.terminal.write;
+        let capturedOutput = '';
+        
+        // Override terminal output methods to capture
+        this.terminal.writeln = (text) => {
+            capturedOutput += (text || '') + '\n';
+        };
+        this.terminal.write = (text) => {
+            capturedOutput += (text || '');
+        };
+        
+        try {
+            // Execute the command
+            switch (command) {
+                case 'cat':
+                    this.cmdCat(args);
+                    break;
+                case 'ls':
+                    this.cmdLs(args);
+                    break;
+                case 'echo':
+                    this.cmdEcho(args);
+                    break;
+                case 'ps':
+                    this.cmdPs(args);
+                    break;
+                case 'df':
+                    this.cmdDf(args);
+                    break;
+                case 'free':
+                    this.cmdFree(args);
+                    break;
+                case 'date':
+                    capturedOutput += new Date().toString() + '\n';
+                    break;
+                case 'whoami':
+                    capturedOutput += this.fs.currentUser + '\n';
+                    break;
+                case 'hostname':
+                    capturedOutput += 'proddb01sim\n';
+                    break;
+                case 'id':
+                    this.cmdId(args);
+                    break;
+                default:
+                    // Restore original methods
+                    this.terminal.writeln = originalWriteln;
+                    this.terminal.write = originalWrite;
+                    this.terminal.writeln(`bash: ${command}: command not found`);
+                    return null;
+            }
+        } catch (error) {
+            // Restore original methods
+            this.terminal.writeln = originalWriteln;
+            this.terminal.write = originalWrite;
+            this.terminal.writeln(`Error executing ${command}: ${error.message}`);
+            return null;
+        }
+        
+        // Restore original methods
+        this.terminal.writeln = originalWriteln;
+        this.terminal.write = originalWrite;
+        
+        return capturedOutput;
+    }
+
+    // Execute a command with input from previous command in pipe
+    executeCommandWithInput(command, args, input) {
+        switch (command) {
+            case 'grep':
+                return this.grepFromInput(args, input);
+            case 'head':
+                return this.headFromInput(args, input);
+            case 'tail':
+                return this.tailFromInput(args, input);
+            case 'sort':
+                return this.sortFromInput(args, input);
+            case 'uniq':
+                return this.uniqFromInput(args, input);
+            case 'wc':
+                return this.wcFromInput(args, input);
+            default:
+                this.terminal.writeln(`bash: ${command}: command not found`);
+                return null;
+        }
+    }
+
+    // Grep command implementation
+    cmdGrep(args) {
+        if (args.length === 0) {
+            this.terminal.writeln('Usage: grep [OPTION]... PATTERN [FILE]...');
+            return;
+        }
+        
+        let caseInsensitive = false;
+        let invert = false;
+        let lineNumber = false;
+        let pattern = '';
+        let files = [];
+        
+        // Parse arguments
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (arg.startsWith('-')) {
+                if (arg.includes('i')) caseInsensitive = true;
+                if (arg.includes('v')) invert = true;
+                if (arg.includes('n')) lineNumber = true;
+            } else if (!pattern) {
+                pattern = arg;
+            } else {
+                files.push(arg);
+            }
+        }
+        
+        if (!pattern) {
+            this.terminal.writeln('grep: no pattern specified');
+            return;
+        }
+        
+        if (files.length === 0) {
+            this.terminal.writeln('Usage: grep [OPTION]... PATTERN [FILE]...');
+            return;
+        }
+        
+        // Process each file
+        for (const file of files) {
+            const content = this.fs.cat(file);
+            if (content === null) {
+                this.terminal.writeln(`grep: ${file}: No such file or directory`);
+                continue;
+            }
+            
+            this.grepInContent(pattern, content, caseInsensitive, invert, lineNumber, files.length > 1 ? file : null);
+        }
+    }
+
+    // Grep from input (for pipes)
+    grepFromInput(args, input) {
+        if (args.length === 0) {
+            return null;
+        }
+        
+        let caseInsensitive = false;
+        let invert = false;
+        let lineNumber = false;
+        let pattern = '';
+        
+        // Parse arguments
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (arg.startsWith('-')) {
+                if (arg.includes('i')) caseInsensitive = true;
+                if (arg.includes('v')) invert = true;
+                if (arg.includes('n')) lineNumber = true;
+            } else if (!pattern) {
+                pattern = arg;
+            }
+        }
+        
+        if (!pattern) {
+            return null;
+        }
+        
+        return this.grepInContent(pattern, input, caseInsensitive, invert, lineNumber, null, true);
+    }
+
+    // Core grep functionality
+    grepInContent(pattern, content, caseInsensitive, invert, lineNumber, filename, returnOutput = false) {
+        const lines = content.split('\n');
+        const results = [];
+        
+        // Create regex pattern
+        const flags = caseInsensitive ? 'i' : '';
+        let regex;
+        try {
+            regex = new RegExp(pattern, flags);
+        } catch (e) {
+            // If pattern is not valid regex, treat as literal string
+            const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            regex = new RegExp(escapedPattern, flags);
+        }
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const matches = regex.test(line);
+            
+            if ((matches && !invert) || (!matches && invert)) {
+                let output = '';
+                
+                if (filename) {
+                    output += filename + ':';
+                }
+                if (lineNumber) {
+                    output += (i + 1) + ':';
+                }
+                output += line;
+                
+                if (returnOutput) {
+                    results.push(output);
+                } else {
+                    this.terminal.writeln(output);
+                }
+            }
+        }
+        
+        if (returnOutput) {
+            return results.join('\n');
+        }
+    }
+
+    // Additional pipe-friendly commands
+    headFromInput(args, input) {
+        const lines = input.split('\n');
+        const numLines = args.length > 0 && args[0].startsWith('-') ? 
+            parseInt(args[0].substring(1)) || 10 : 10;
+        
+        return lines.slice(0, numLines).join('\n');
+    }
+
+    tailFromInput(args, input) {
+        const lines = input.split('\n');
+        const numLines = args.length > 0 && args[0].startsWith('-') ? 
+            parseInt(args[0].substring(1)) || 10 : 10;
+        
+        return lines.slice(-numLines).join('\n');
+    }
+
+    sortFromInput(args, input) {
+        const lines = input.split('\n').filter(line => line.trim() !== '');
+        const reverse = args.includes('-r');
+        
+        lines.sort();
+        if (reverse) {
+            lines.reverse();
+        }
+        
+        return lines.join('\n');
+    }
+
+    uniqFromInput(args, input) {
+        const lines = input.split('\n');
+        const unique = [];
+        let lastLine = '';
+        
+        for (const line of lines) {
+            if (line !== lastLine) {
+                unique.push(line);
+                lastLine = line;
+            }
+        }
+        
+        return unique.join('\n');
+    }
+
+    wcFromInput(args, input) {
+        const lines = input.split('\n');
+        const lineCount = lines.length;
+        const wordCount = input.split(/\s+/).filter(word => word.length > 0).length;
+        const charCount = input.length;
+        
+        if (args.includes('-l')) {
+            return lineCount.toString();
+        } else if (args.includes('-w')) {
+            return wordCount.toString();
+        } else if (args.includes('-c')) {
+            return charCount.toString();
+        } else {
+            return `${lineCount} ${wordCount} ${charCount}`;
         }
     }
 }

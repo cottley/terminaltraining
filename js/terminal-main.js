@@ -213,7 +213,8 @@ term.onData(data => {
                                 'dbca', 'netca', 'lsnrctl', 'sqlplus', 'adrci', 'rman',
                                 'srvctl', 'orapwd', 'tnsping', 'expdp', 'impdp', 'oraenv',
                                 'unzip', 'sysctl', 'ps-help', './ArcGIS_Server_Setup',
-                                'reboot', 'ocp', 'tictactoe', 'tic-tac-toe', 'whereis'];
+                                'reboot', 'ocp', 'tictactoe', 'tic-tac-toe', 'whereis',
+                                'grep', 'head', 'tail', 'sort', 'uniq', 'wc'];
                 
                 const matches = commands.filter(cmd => cmd.startsWith(currentLine));
                 if (matches.length === 1) {
