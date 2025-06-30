@@ -918,29 +918,79 @@ class CommandProcessor {
 
     cmdSu(args) {
         let targetUser = 'root'; // Default to root if no user specified
+        let loginShell = false; // Whether to use login shell (with -)
         
+        // Parse arguments
         if (args[0] === '-' && args[1]) {
             // su - username
             targetUser = args[1];
-            this.userStack.push(targetUser);
-            this.fs.currentUser = targetUser;
-            this.environmentVars.USER = targetUser;
-            this.environmentVars.HOME = targetUser === 'root' ? '/root' : `/home/${targetUser}`;
-            this.fs.cd(this.environmentVars.HOME);
+            loginShell = true;
         } else if (args[0] && args[0] !== '-') {
             // su username
             targetUser = args[0];
-            this.userStack.push(targetUser);
-            this.fs.currentUser = targetUser;
-            this.environmentVars.USER = targetUser;
-            this.environmentVars.HOME = targetUser === 'root' ? '/root' : `/home/${targetUser}`;
         } else if (args.length === 0) {
             // su (no arguments - default to root)
-            this.userStack.push(targetUser);
-            this.fs.currentUser = targetUser;
-            this.environmentVars.USER = targetUser;
-            this.environmentVars.HOME = '/root';
-            this.fs.cd('/root');
+            targetUser = 'root';
+        }
+        
+        // Validate user exists by checking /etc/passwd
+        const passwdContent = this.fs.cat('/etc/passwd');
+        if (!passwdContent) {
+            this.terminal.writeln('su: Authentication failure');
+            return;
+        }
+        
+        // Check if target user exists in passwd file
+        const userExists = passwdContent.split('\n').some(line => {
+            if (line.trim() === '') return false;
+            const username = line.split(':')[0];
+            return username === targetUser;
+        });
+        
+        if (!userExists) {
+            this.terminal.writeln(`su: user ${targetUser} does not exist`);
+            return;
+        }
+        
+        // Special handling for oracle user - check if home directory exists
+        if (targetUser === 'oracle') {
+            if (!this.fs.exists('/home/oracle')) {
+                this.terminal.writeln(`su: warning: cannot change directory to /home/oracle: No such file or directory`);
+                this.terminal.writeln(`su: user ${targetUser} does not exist or no home directory`);
+                return;
+            }
+        }
+        
+        // If we get here, user is valid - proceed with user switch
+        this.userStack.push(targetUser);
+        this.fs.currentUser = targetUser;
+        this.environmentVars.USER = targetUser;
+        
+        if (loginShell || args.length === 0) {
+            // Login shell - change to user's home directory and set full environment
+            if (targetUser === 'root') {
+                this.environmentVars.HOME = '/root';
+                this.fs.cd('/root');
+            } else {
+                this.environmentVars.HOME = `/home/${targetUser}`;
+                if (this.fs.exists(`/home/${targetUser}`)) {
+                    this.fs.cd(`/home/${targetUser}`);
+                } else {
+                    // Fallback to root if home doesn't exist
+                    this.fs.cd('/');
+                }
+            }
+            
+            // Set additional environment variables for login shell
+            if (targetUser === 'oracle') {
+                this.environmentVars.ORACLE_BASE = '/u01/app/oracle';
+                this.environmentVars.ORACLE_HOME = '/u01/app/oracle/product/19.0.0/dbhome_1';
+                this.environmentVars.ORACLE_SID = 'ORCL';
+                this.environmentVars.PATH = this.environmentVars.PATH + ':/u01/app/oracle/product/19.0.0/dbhome_1/bin';
+            }
+        } else {
+            // Non-login shell - keep current directory and minimal environment changes
+            this.environmentVars.HOME = targetUser === 'root' ? '/root' : `/home/${targetUser}`;
         }
     }
 
