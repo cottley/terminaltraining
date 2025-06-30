@@ -46,6 +46,7 @@ term.writeln('');
 
 // Command input handling
 let currentLine = '';
+let cursorPosition = 0; // Track cursor position within current line
 term.write(cmdProcessor.getPrompt());
 
 term.onData(data => {
@@ -57,6 +58,7 @@ term.onData(data => {
                 term.write('\r\n');
                 cmdProcessor.handleGameInput(currentLine);
                 currentLine = '';
+                cursorPosition = 0;
                 if (!cmdProcessor.gameActive) {
                     term.write(cmdProcessor.getPrompt());
                 }
@@ -65,18 +67,21 @@ term.onData(data => {
                 term.write('^C\r\n');
                 cmdProcessor.gameActive = false;
                 currentLine = '';
+                cursorPosition = 0;
                 term.write(cmdProcessor.getPrompt());
                 break;
             case '\u007F': // Backspace
             case '\b':
                 if (currentLine.length > 0) {
                     currentLine = currentLine.slice(0, -1);
+                    cursorPosition = currentLine.length;
                     term.write('\b \b');
                 }
                 break;
             default:
                 if (data >= ' ' && data <= '~') {
                     currentLine += data;
+                    cursorPosition = currentLine.length;
                     term.write(data);
                 }
         }
@@ -97,17 +102,20 @@ term.onData(data => {
                     term.write(cmdProcessor.getPrompt());
                 }
                 currentLine = '';
+                cursorPosition = 0;
                 break;
             case '\u007F': // Backspace
             case '\b':
                 if (currentLine.length > 0) {
                     currentLine = currentLine.slice(0, -1);
+                    cursorPosition = currentLine.length;
                     term.write('\b \b');
                 }
                 break;
             default:
                 if (data >= ' ' && data <= '~') {
                     currentLine += data;
+                    cursorPosition = currentLine.length;
                     term.write(data);
                 }
         }
@@ -121,18 +129,42 @@ term.onData(data => {
             term.write('\r\n');
             cmdProcessor.processCommand(currentLine);
             currentLine = '';
+            cursorPosition = 0;
             term.write(cmdProcessor.getPrompt());
             break;
         case '\u0003': // Ctrl+C
             term.write('^C\r\n');
             currentLine = '';
+            cursorPosition = 0;
             term.write(cmdProcessor.getPrompt());
             break;
         case '\u007F': // Backspace
         case '\b':
-            if (currentLine.length > 0) {
-                currentLine = currentLine.slice(0, -1);
-                term.write('\b \b');
+            if (cursorPosition > 0) {
+                // Remove character at cursor position - 1
+                currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
+                cursorPosition--;
+                
+                // Redraw the line from cursor position
+                const restOfLine = currentLine.slice(cursorPosition);
+                term.write('\b' + restOfLine + ' \b');
+                
+                // Move cursor back to correct position
+                for (let i = 0; i < restOfLine.length; i++) {
+                    term.write('\b');
+                }
+            }
+            break;
+        case '\u001b[C': // Right arrow
+            if (cursorPosition < currentLine.length) {
+                cursorPosition++;
+                term.write('\u001b[C'); // Move cursor right
+            }
+            break;
+        case '\u001b[D': // Left arrow
+            if (cursorPosition > 0) {
+                cursorPosition--;
+                term.write('\u001b[D'); // Move cursor left
             }
             break;
         case '\u001b[A': // Up arrow
@@ -143,6 +175,7 @@ term.onData(data => {
                 
                 cmdProcessor.historyIndex--;
                 currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
+                cursorPosition = currentLine.length; // Set cursor to end of line
                 term.write(currentLine);
             }
             break;
@@ -154,7 +187,16 @@ term.onData(data => {
                 
                 cmdProcessor.historyIndex++;
                 currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
+                cursorPosition = currentLine.length; // Set cursor to end of line
                 term.write(currentLine);
+            } else if (cmdProcessor.historyIndex === cmdProcessor.history.length - 1) {
+                // Clear current line and go to empty line
+                term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
+                term.write('\r' + cmdProcessor.getPrompt());
+                
+                cmdProcessor.historyIndex++;
+                currentLine = '';
+                cursorPosition = 0;
             }
             break;
         case '\t': // Tab (autocomplete for commands and directories)
@@ -177,6 +219,7 @@ term.onData(data => {
                 if (matches.length === 1) {
                     const completion = matches[0].slice(currentLine.length);
                     currentLine += completion;
+                    cursorPosition = currentLine.length;
                     term.write(completion);
                 } else if (matches.length > 1) {
                     term.write('\r\n');
@@ -207,12 +250,14 @@ term.onData(data => {
                         if (matches.length === 1) {
                             const completion = matches[0].slice(searchTerm.length);
                             currentLine += completion;
+                            cursorPosition = currentLine.length;
                             term.write(completion);
                             
                             // Add trailing slash for directories
                             const fullPath = searchPath === '/' ? `/${matches[0]}` : `${searchPath}/${matches[0]}`;
                             if (fs.isDirectory(fullPath)) {
                                 currentLine += '/';
+                                cursorPosition = currentLine.length;
                                 term.write('/');
                             }
                         } else if (matches.length > 1) {
@@ -233,11 +278,13 @@ term.onData(data => {
                         if (matches.length === 1) {
                             const completion = matches[0].slice(lastPart.length);
                             currentLine += completion;
+                            cursorPosition = currentLine.length;
                             term.write(completion);
                             
                             // Add trailing slash for directories
                             if (fs.isDirectory(matches[0])) {
                                 currentLine += '/';
+                                cursorPosition = currentLine.length;
                                 term.write('/');
                             }
                         } else if (matches.length > 1) {
@@ -252,8 +299,18 @@ term.onData(data => {
             break;
         default:
             if (data >= ' ' && data <= '~') {
-                currentLine += data;
-                term.write(data);
+                // Insert character at cursor position
+                currentLine = currentLine.slice(0, cursorPosition) + data + currentLine.slice(cursorPosition);
+                cursorPosition++;
+                
+                // Redraw line from cursor position
+                const restOfLine = currentLine.slice(cursorPosition - 1);
+                term.write(restOfLine);
+                
+                // Move cursor back to correct position
+                for (let i = 0; i < restOfLine.length - 1; i++) {
+                    term.write('\b');
+                }
             }
     }
 });
