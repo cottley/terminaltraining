@@ -1237,9 +1237,7 @@ class CommandProcessor {
             return;
         }
         
-        if (this.makeMove(position)) {
-            this.drawBoard();
-            
+        if (this.makeMove(position)) {           
             const winner = this.checkWinner();
             if (winner) {
                 this.gameActive = false;
@@ -1257,7 +1255,6 @@ class CommandProcessor {
             // Computer's turn
             this.currentPlayer = 'O';
             this.computerMove();
-            this.terminal.writeln('Computer\'s move:');
             this.drawBoard();
             
             const winnerAfterComputer = this.checkWinner();
