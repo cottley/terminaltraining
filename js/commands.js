@@ -1091,23 +1091,24 @@ class CommandProcessor {
         this.currentPlayer = 'X';
         this.gameActive = true;
         
-        this.terminal.writeln('');
+        this.drawBoard();
+        this.terminal.writeln('Your move (1-9): ');
+    }
+
+    drawBoard() {
+        // Clear previous board display and redraw everything in one place
+        this.terminal.clear();
         this.terminal.writeln('=== Tic-Tac-Toe ===');
         this.terminal.writeln('You are X, Computer is O');
-        this.terminal.writeln('Enter position (1-9):');
         this.terminal.writeln('');
+        this.terminal.writeln('Position reference:');
         this.terminal.writeln(' 1 | 2 | 3 ');
         this.terminal.writeln('-----------');
         this.terminal.writeln(' 4 | 5 | 6 ');
         this.terminal.writeln('-----------');
         this.terminal.writeln(' 7 | 8 | 9 ');
         this.terminal.writeln('');
-        this.drawBoard();
-        this.terminal.writeln('Your move (1-9): ');
-    }
-
-    drawBoard() {
-        this.terminal.writeln('');
+        this.terminal.writeln('Current board:');
         for (let i = 0; i < 3; i++) {
             let row = ' ' + this.gameBoard[i][0] + ' | ' + this.gameBoard[i][1] + ' | ' + this.gameBoard[i][2] + ' ';
             this.terminal.writeln(row);
