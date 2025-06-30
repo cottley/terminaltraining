@@ -164,6 +164,32 @@ cat file | uniq             # Remove duplicates
 cat file | wc -l            # Count lines
 ```
 
+### Oracle Troubleshooting Guide
+```bash
+# Interactive Troubleshooting System
+troubleshoot                     # Show all available troubleshooting topics
+oracle-troubleshoot              # Same as above
+
+# Common Database Issues
+troubleshoot startup             # Database won't start (ORA-01034)
+troubleshoot listener            # Listener connection issues (TNS errors)
+troubleshoot tablespace          # Tablespace full errors (ORA-01653)
+troubleshoot performance         # Slow query performance
+troubleshoot archive             # Archive log issues (ORA-00257)
+troubleshoot network             # TNS and connectivity problems
+
+# System Issues  
+troubleshoot memory              # Out of memory errors (ORA-04031)
+troubleshoot disk                # Disk space problems
+troubleshoot permissions         # File permission issues
+troubleshoot environment         # Environment variable problems
+
+# Installation Issues
+troubleshoot installation        # Installation failures
+troubleshoot prerequisites       # Missing prerequisites
+troubleshoot patches             # Patch application issues
+```
+
 ## Oracle Installation Progress Tracking
 
 ### OCP Progress Commands

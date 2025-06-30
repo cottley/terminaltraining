@@ -289,6 +289,10 @@ class CommandProcessor {
             case 'ocp':
                 this.cmdOCP(args);
                 break;
+            case 'oracle-troubleshoot':
+            case 'troubleshoot':
+                this.cmdTroubleshoot(args);
+                break;
             case 'tictactoe':
             case 'tic-tac-toe':
                 this.cmdTicTacToe();
@@ -1865,6 +1869,436 @@ class CommandProcessor {
         this.terminal.writeln('');
     }
 
+    cmdTroubleshoot(args) {
+        if (args.length === 0) {
+            this.terminal.writeln('\x1b[31m=== Oracle Database Troubleshooting Guide ===\x1b[0m');
+            this.terminal.writeln('');
+            this.terminal.writeln('Available troubleshooting scenarios:');
+            this.terminal.writeln('');
+            this.terminal.writeln('\x1b[33mCommon Database Issues:\x1b[0m');
+            this.terminal.writeln('  troubleshoot startup         - Database won\'t start');
+            this.terminal.writeln('  troubleshoot listener        - Listener connection issues');
+            this.terminal.writeln('  troubleshoot tablespace      - Tablespace full errors');
+            this.terminal.writeln('  troubleshoot performance     - Slow query performance');
+            this.terminal.writeln('  troubleshoot archive         - Archive log issues');
+            this.terminal.writeln('  troubleshoot network         - TNS and connectivity problems');
+            this.terminal.writeln('');
+            this.terminal.writeln('\x1b[33mSystem Issues:\x1b[0m');
+            this.terminal.writeln('  troubleshoot memory          - Out of memory errors');
+            this.terminal.writeln('  troubleshoot disk            - Disk space problems');
+            this.terminal.writeln('  troubleshoot permissions     - File permission issues');
+            this.terminal.writeln('  troubleshoot environment     - Environment variable problems');
+            this.terminal.writeln('');
+            this.terminal.writeln('\x1b[33mInstallation Issues:\x1b[0m');
+            this.terminal.writeln('  troubleshoot installation    - Installation failures');
+            this.terminal.writeln('  troubleshoot prerequisites   - Missing prerequisites');
+            this.terminal.writeln('  troubleshoot patches         - Patch application issues');
+            this.terminal.writeln('');
+            this.terminal.writeln('Usage: troubleshoot <issue_type>');
+            this.terminal.writeln('Example: troubleshoot startup');
+            return;
+        }
+
+        const issue = args[0].toLowerCase();
+        
+        switch (issue) {
+            case 'startup':
+                this.terminal.writeln('\x1b[31m=== Database Startup Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Error: ORA-01034: ORACLE not available\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[91mSymptoms:\x1b[0m');
+                this.terminal.writeln('• Cannot connect to database');
+                this.terminal.writeln('• sqlplus shows "ORA-01034: ORACLE not available"');
+                this.terminal.writeln('• Application connections fail');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDiagnostic Steps:\x1b[0m');
+                this.terminal.writeln('1. Check if database processes are running:');
+                this.terminal.writeln('   ps -ef | grep pmon');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Check ORACLE_SID environment:');
+                this.terminal.writeln('   echo $ORACLE_SID');
+                this.terminal.writeln('   export ORACLE_SID=ORCL');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Try to start database:');
+                this.terminal.writeln('   sqlplus / as sysdba');
+                this.terminal.writeln('   startup');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Check alert log for errors:');
+                this.terminal.writeln('   cd $ORACLE_BASE/diag/rdbms/orcl/ORCL/trace');
+                this.terminal.writeln('   tail -50 alert_ORCL.log');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mCommon Causes & Solutions:\x1b[0m');
+                this.terminal.writeln('• Database not started: Run "startup" in SQL*Plus');
+                this.terminal.writeln('• Wrong ORACLE_SID: Set correct SID');
+                this.terminal.writeln('• Instance crashed: Check alert log for errors');
+                this.terminal.writeln('• Insufficient memory: Reduce SGA size');
+                this.terminal.writeln('• Corrupt control files: Restore from backup');
+                break;
+                
+            case 'listener':
+                this.terminal.writeln('\x1b[31m=== Listener Connection Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Error: TNS-12541: TNS:no listener\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[91mSymptoms:\x1b[0m');
+                this.terminal.writeln('• Remote connections fail');
+                this.terminal.writeln('• TNS-12541, TNS-12514, TNS-12505 errors');
+                this.terminal.writeln('• Applications cannot connect');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDiagnostic Steps:\x1b[0m');
+                this.terminal.writeln('1. Check listener status:');
+                this.terminal.writeln('   lsnrctl status');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Check if listener process is running:');
+                this.terminal.writeln('   ps -ef | grep tnslsnr');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Test local connectivity:');
+                this.terminal.writeln('   tnsping ORCL');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Check listener configuration:');
+                this.terminal.writeln('   cat $ORACLE_HOME/network/admin/listener.ora');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mCommon Solutions:\x1b[0m');
+                this.terminal.writeln('• Start listener: lsnrctl start');
+                this.terminal.writeln('• Check port 1521: netstat -an | grep 1521');
+                this.terminal.writeln('• Verify hostname resolution');
+                this.terminal.writeln('• Register database: ALTER SYSTEM REGISTER;');
+                this.terminal.writeln('• Check firewall settings: firewall-cmd --list-ports');
+                break;
+                
+            case 'tablespace':
+                this.terminal.writeln('\x1b[31m=== Tablespace Full Errors ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Error: ORA-01653: unable to extend table\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[91mSymptoms:\x1b[0m');
+                this.terminal.writeln('• INSERT/UPDATE operations fail');
+                this.terminal.writeln('• ORA-01653, ORA-01654, ORA-01655 errors');
+                this.terminal.writeln('• Database performance degradation');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDiagnostic Commands:\x1b[0m');
+                this.terminal.writeln('1. Check tablespace usage:');
+                this.terminal.writeln('   sqlplus / as sysdba');
+                this.terminal.writeln('   SELECT tablespace_name, bytes/1024/1024 MB FROM dba_data_files;');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Find free space:');
+                this.terminal.writeln('   SELECT tablespace_name, SUM(bytes)/1024/1024 FREE_MB');
+                this.terminal.writeln('   FROM dba_free_space GROUP BY tablespace_name;');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check autoextend status:');
+                this.terminal.writeln('   SELECT file_name, autoextensible FROM dba_data_files;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mSolutions:\x1b[0m');
+                this.terminal.writeln('• Add datafile: ALTER TABLESPACE USERS ADD DATAFILE');
+                this.terminal.writeln('  \\'/u01/app/oracle/oradata/ORCL/users02.dbf\\' SIZE 100M;');
+                this.terminal.writeln('• Enable autoextend: ALTER DATABASE DATAFILE \\'/path/file.dbf\\'');
+                this.terminal.writeln('  AUTOEXTEND ON NEXT 10M MAXSIZE 1G;');
+                this.terminal.writeln('• Resize existing datafile: ALTER DATABASE DATAFILE \\'/path/file.dbf\\'');
+                this.terminal.writeln('  RESIZE 500M;');
+                break;
+                
+            case 'performance':
+                this.terminal.writeln('\x1b[31m=== Query Performance Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Issue: Slow running queries\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[91mSymptoms:\x1b[0m');
+                this.terminal.writeln('• Queries taking longer than expected');
+                this.terminal.writeln('• High CPU or I/O usage');
+                this.terminal.writeln('• Application timeouts');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDiagnostic Steps:\x1b[0m');
+                this.terminal.writeln('1. Identify slow queries:');
+                this.terminal.writeln('   sqlplus / as sysdba');
+                this.terminal.writeln('   SELECT sql_id, elapsed_time, cpu_time FROM v$sql');
+                this.terminal.writeln('   ORDER BY elapsed_time DESC;');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Check active sessions:');
+                this.terminal.writeln('   SELECT sid, serial#, username, status, program');
+                this.terminal.writeln('   FROM v$session WHERE status = \\'ACTIVE\\';');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Generate AWR report:');
+                this.terminal.writeln('   awrrpt');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Check wait events:');
+                this.terminal.writeln('   SELECT event, total_waits, time_waited');
+                this.terminal.writeln('   FROM v$system_event ORDER BY time_waited DESC;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mOptimization Techniques:\x1b[0m');
+                this.terminal.writeln('• Add indexes for frequently queried columns');
+                this.terminal.writeln('• Update table statistics: EXEC DBMS_STATS.GATHER_TABLE_STATS');
+                this.terminal.writeln('• Check execution plans: EXPLAIN PLAN FOR <sql>');
+                this.terminal.writeln('• Consider partitioning for large tables');
+                this.terminal.writeln('• Tune SGA parameters based on AWR recommendations');
+                break;
+                
+            case 'archive':
+                this.terminal.writeln('\x1b[31m=== Archive Log Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Error: ORA-00257: archiver error\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[91mSymptoms:\x1b[0m');
+                this.terminal.writeln('• Database hangs during transactions');
+                this.terminal.writeln('• ORA-00257: archiver error. Connect internal only');
+                this.terminal.writeln('• Archive destination full');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDiagnostic Commands:\x1b[0m');
+                this.terminal.writeln('1. Check archive log destination:');
+                this.terminal.writeln('   sqlplus / as sysdba');
+                this.terminal.writeln('   SHOW PARAMETER log_archive_dest_1;');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Check archive log status:');
+                this.terminal.writeln('   SELECT dest_name, status, error FROM v$archive_dest;');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check disk space:');
+                this.terminal.writeln('   df -h /u01/app/oracle/oradata');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. List archive log files:');
+                this.terminal.writeln('   ls -la $ORACLE_BASE/fast_recovery_area/ORCL/archivelog/');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mSolutions:\x1b[0m');
+                this.terminal.writeln('• Free up disk space in archive destination');
+                this.terminal.writeln('• Backup and remove old archive logs with RMAN');
+                this.terminal.writeln('• Change archive destination: ALTER SYSTEM SET log_archive_dest_1=...');
+                this.terminal.writeln('• Increase fast_recovery_area size');
+                this.terminal.writeln('• Set up archive log deletion policy in RMAN');
+                break;
+                
+            case 'memory':
+                this.terminal.writeln('\x1b[31m=== Memory Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Error: ORA-04031: unable to allocate memory\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[91mSymptoms:\x1b[0m');
+                this.terminal.writeln('• ORA-04031 shared memory errors');
+                this.terminal.writeln('• Database startup fails');
+                this.terminal.writeln('• System appears slow or unresponsive');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDiagnostic Steps:\x1b[0m');
+                this.terminal.writeln('1. Check system memory:');
+                this.terminal.writeln('   free -h');
+                this.terminal.writeln('   cat /proc/meminfo');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Check Oracle memory usage:');
+                this.terminal.writeln('   sqlplus / as sysdba');
+                this.terminal.writeln('   SHOW PARAMETER sga_target;');
+                this.terminal.writeln('   SHOW PARAMETER pga_aggregate_target;');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check shared pool usage:');
+                this.terminal.writeln('   SELECT pool, name, bytes/1024/1024 MB FROM v$sgastat');
+                this.terminal.writeln('   WHERE pool = \\'shared pool\\';');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mSolutions:\x1b[0m');
+                this.terminal.writeln('• Reduce SGA size: ALTER SYSTEM SET sga_target=512M;');
+                this.terminal.writeln('• Increase system memory or swap');
+                this.terminal.writeln('• Flush shared pool: ALTER SYSTEM FLUSH SHARED_POOL;');
+                this.terminal.writeln('• Enable Automatic Memory Management (AMM)');
+                this.terminal.writeln('• Check for memory leaks in applications');
+                break;
+                
+            case 'installation':
+                this.terminal.writeln('\x1b[31m=== Installation Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Issues: Prerequisites and installation failures\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mPre-Installation Checklist:\x1b[0m');
+                this.terminal.writeln('1. Check OS requirements:');
+                this.terminal.writeln('   cat /etc/redhat-release');
+                this.terminal.writeln('   uname -r');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Verify required packages:');
+                this.terminal.writeln('   yum list installed | grep -E "gcc|make|binutils"');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check kernel parameters:');
+                this.terminal.writeln('   sysctl -a | grep -E "shmmax|shmall|sem"');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Verify resource limits:');
+                this.terminal.writeln('   cat /etc/security/limits.conf | grep oracle');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mCommon Installation Fixes:\x1b[0m');
+                this.terminal.writeln('• Install missing packages: yum install gcc make binutils');
+                this.terminal.writeln('• Set kernel parameters in /etc/sysctl.conf');
+                this.terminal.writeln('• Configure resource limits for oracle user');
+                this.terminal.writeln('• Ensure sufficient disk space: df -h');
+                this.terminal.writeln('• Check /tmp space for installation files');
+                this.terminal.writeln('• Verify oracle user and oinstall group exist');
+                break;
+                
+            case 'network':
+                this.terminal.writeln('\x1b[31m=== Network Connectivity Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Errors: TNS-12514, TNS-12505, TNS-12543\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mNetwork Diagnostics:\x1b[0m');
+                this.terminal.writeln('1. Test basic connectivity:');
+                this.terminal.writeln('   ping database_server');
+                this.terminal.writeln('   telnet database_server 1521');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Check TNS configuration:');
+                this.terminal.writeln('   cat $ORACLE_HOME/network/admin/tnsnames.ora');
+                this.terminal.writeln('   tnsping ORCL');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Verify listener configuration:');
+                this.terminal.writeln('   cat $ORACLE_HOME/network/admin/listener.ora');
+                this.terminal.writeln('   lsnrctl status');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Check firewall settings:');
+                this.terminal.writeln('   firewall-cmd --list-ports');
+                this.terminal.writeln('   iptables -L -n');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mCommon Solutions:\x1b[0m');
+                this.terminal.writeln('• Open firewall port: firewall-cmd --add-port=1521/tcp --permanent');
+                this.terminal.writeln('• Update /etc/hosts with correct hostname/IP mapping');
+                this.terminal.writeln('• Restart listener after configuration changes');
+                this.terminal.writeln('• Check service names: lsnrctl services');
+                this.terminal.writeln('• Verify database is registered with listener');
+                break;
+                
+            case 'disk':
+                this.terminal.writeln('\x1b[31m=== Disk Space Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Issues: Disk full, I/O errors\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDisk Space Analysis:\x1b[0m');
+                this.terminal.writeln('1. Check overall disk usage:');
+                this.terminal.writeln('   df -h');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Find large files:');
+                this.terminal.writeln('   find /u01 -type f -size +100M -exec ls -lh {} \\;');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check Oracle file sizes:');
+                this.terminal.writeln('   ls -lh /u01/app/oracle/oradata/ORCL/*.dbf');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Check archive log space:');
+                this.terminal.writeln('   du -sh /u01/app/oracle/fast_recovery_area');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mSpace Recovery Actions:\x1b[0m');
+                this.terminal.writeln('• Remove old archive logs with RMAN');
+                this.terminal.writeln('• Clean up trace files: find $ORACLE_BASE -name "*.trc" -mtime +7');
+                this.terminal.writeln('• Remove old backup files');
+                this.terminal.writeln('• Compress or move non-critical files');
+                this.terminal.writeln('• Add storage to filesystem');
+                break;
+                
+            case 'permissions':
+                this.terminal.writeln('\x1b[31m=== File Permission Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Issues: Permission denied errors\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mPermission Diagnostics:\x1b[0m');
+                this.terminal.writeln('1. Check Oracle file ownership:');
+                this.terminal.writeln('   ls -la /u01/app/oracle');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Verify executable permissions:');
+                this.terminal.writeln('   ls -la $ORACLE_HOME/bin/sqlplus');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check directory permissions:');
+                this.terminal.writeln('   ls -ld /u01/app/oracle/oradata/ORCL');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mPermission Fixes:\x1b[0m');
+                this.terminal.writeln('• Fix Oracle ownership: chown -R oracle:oinstall /u01/app/oracle');
+                this.terminal.writeln('• Set correct permissions: chmod 755 $ORACLE_HOME/bin/*');
+                this.terminal.writeln('• Fix datafile permissions: chmod 640 /u01/app/oracle/oradata/ORCL/*.dbf');
+                this.terminal.writeln('• Set directory permissions: chmod 755 /u01/app/oracle/oradata/ORCL');
+                break;
+                
+            case 'environment':
+                this.terminal.writeln('\x1b[31m=== Environment Variable Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Issues: Missing or incorrect environment variables\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mEnvironment Diagnostics:\x1b[0m');
+                this.terminal.writeln('1. Check Oracle environment:');
+                this.terminal.writeln('   env | grep ORACLE');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Verify required variables:');
+                this.terminal.writeln('   echo $ORACLE_HOME');
+                this.terminal.writeln('   echo $ORACLE_SID');
+                this.terminal.writeln('   echo $PATH');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check profile settings:');
+                this.terminal.writeln('   cat ~/.bash_profile | grep ORACLE');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mEnvironment Setup:\x1b[0m');
+                this.terminal.writeln('• Set ORACLE_HOME: export ORACLE_HOME=/u01/app/oracle/product/19.0.0/dbhome_1');
+                this.terminal.writeln('• Set ORACLE_SID: export ORACLE_SID=ORCL');
+                this.terminal.writeln('• Update PATH: export PATH=$ORACLE_HOME/bin:$PATH');
+                this.terminal.writeln('• Source oraenv: . oraenv');
+                this.terminal.writeln('• Add to .bash_profile for persistence');
+                break;
+                
+            case 'prerequisites':
+                this.terminal.writeln('\x1b[31m=== Missing Prerequisites ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Issue: Installation prerequisites not met\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mPrerequisite Verification:\x1b[0m');
+                this.terminal.writeln('1. Check required packages:');
+                this.terminal.writeln('   yum list installed | grep -E "gcc|make|binutils|glibc|libaio"');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Verify kernel parameters:');
+                this.terminal.writeln('   sysctl kernel.shmmax');
+                this.terminal.writeln('   sysctl fs.file-max');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check user limits:');
+                this.terminal.writeln('   ulimit -a');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Verify swap space:');
+                this.terminal.writeln('   free -h');
+                this.terminal.writeln('   swapon -s');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mInstall Prerequisites:\x1b[0m');
+                this.terminal.writeln('• Install packages: yum install oracle-database-preinstall-19c');
+                this.terminal.writeln('• Or manually: yum install gcc make binutils glibc-devel libaio');
+                this.terminal.writeln('• Configure kernel parameters in /etc/sysctl.conf');
+                this.terminal.writeln('• Set user limits in /etc/security/limits.conf');
+                this.terminal.writeln('• Create oracle user and oinstall group');
+                break;
+                
+            case 'patches':
+                this.terminal.writeln('\x1b[31m=== Patch Application Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Issues: OPatch failures and conflicts\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mPatch Diagnostics:\x1b[0m');
+                this.terminal.writeln('1. Check OPatch version:');
+                this.terminal.writeln('   cd $ORACLE_HOME/OPatch');
+                this.terminal.writeln('   ./opatch version');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. List applied patches:');
+                this.terminal.writeln('   ./opatch lsinventory');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check patch conflicts:');
+                this.terminal.writeln('   ./opatch prereq CheckConflictAgainstOHWithDetail -ph /path/to/patch');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Verify patch space requirements:');
+                this.terminal.writeln('   ./opatch prereq CheckSystemSpace -ph /path/to/patch');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mPatch Application Best Practices:\x1b[0m');
+                this.terminal.writeln('• Always backup ORACLE_HOME before patching');
+                this.terminal.writeln('• Stop all Oracle processes before applying patches');
+                this.terminal.writeln('• Update OPatch utility first if needed');
+                this.terminal.writeln('• Run prereq checks before applying patches');
+                this.terminal.writeln('• Test patches in development environment first');
+                this.terminal.writeln('• Apply patches during maintenance windows');
+                break;
+                
+            default:
+                this.terminal.writeln(`\x1b[91mUnknown issue type: ${issue}\x1b[0m`);
+                this.terminal.writeln('');
+                this.terminal.writeln('Available troubleshooting topics:');
+                this.terminal.writeln('startup, listener, tablespace, performance, archive, memory,');
+                this.terminal.writeln('disk, permissions, environment, installation, prerequisites,');
+                this.terminal.writeln('patches, network');
+                this.terminal.writeln('');
+                this.terminal.writeln('Usage: troubleshoot <issue_type>');
+        }
+        
+        this.terminal.writeln('');
+        this.terminal.writeln('\x1b[96mFor more help, try: ocp --hint-detail\x1b[0m');
+    }
+
     cmdTicTacToe() {
         // Initialize Tic-Tac-Toe game
         this.gameBoard = [
@@ -2297,6 +2731,10 @@ class CommandProcessor {
                     break;
                 case 'env':
                     this.cmdEnv();
+                    break;
+                case 'yum':
+                case 'dnf':
+                    this.cmdYum(args);
                     break;
                 default:
                     // Restore original methods
