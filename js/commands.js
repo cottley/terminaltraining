@@ -27,6 +27,20 @@ class CommandProcessor {
             configMode: 'permissive'   // Mode set in /etc/selinux/config
         };
         this.loadSelinuxState();
+        
+        // Package management state
+        this.installedPackages = {
+            // Pre-installed base system packages
+            'kernel': { version: '5.14.0-70.13.1.el9_0', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'systemd': { version: '249-7.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'bash': { version: '5.1.8-4.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'coreutils': { version: '8.32-31.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'glibc': { version: '2.34-28.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'rpm': { version: '4.16.1.3-12.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'yum': { version: '4.10.0-5.el9', repo: 'rhel-9-baseos', arch: 'noarch' },
+            'dnf': { version: '4.10.0-5.el9', repo: 'rhel-9-baseos', arch: 'noarch' }
+        };
+        this.loadPackageState();
         this.initializeVimModal();
     }
 
@@ -550,17 +564,48 @@ class CommandProcessor {
                 if (packages.length === 0) {
                     this.terminal.writeln('Error: Need to pass a list of pkgs to install');
                 } else {
+                    // Check which packages are available and not already installed
+                    const packagesToInstall = [];
+                    const alreadyInstalled = [];
+                    const notAvailable = [];
+                    
+                    packages.forEach(pkg => {
+                        if (this.isPackageInstalled(pkg)) {
+                            alreadyInstalled.push(pkg);
+                        } else if (this.installPackage(pkg)) {
+                            packagesToInstall.push(pkg);
+                        } else {
+                            notAvailable.push(pkg);
+                        }
+                    });
+                    
+                    if (notAvailable.length > 0) {
+                        this.terminal.writeln(`No match for argument: ${notAvailable.join(', ')}`);
+                        this.terminal.writeln('Error: Unable to find a match');
+                        return;
+                    }
+                    
+                    if (alreadyInstalled.length > 0) {
+                        this.terminal.writeln(`Package${alreadyInstalled.length > 1 ? 's' : ''} ${alreadyInstalled.join(', ')} already installed.`);
+                    }
+                    
+                    if (packagesToInstall.length === 0) {
+                        this.terminal.writeln('Nothing to do.');
+                        return;
+                    }
+                    
                     this.terminal.writeln('Last metadata expiration check: 0:15:32 ago on ' + new Date().toLocaleString());
                     this.terminal.writeln('Dependencies resolved.');
                     this.terminal.writeln('================================================================================');
                     this.terminal.writeln(' Package            Architecture    Version              Repository        Size');
                     this.terminal.writeln('================================================================================');
-                    packages.forEach(pkg => {
-                        this.terminal.writeln(` ${pkg.padEnd(18)} x86_64          1.0-1.el9           rhel-9-appstream  1.2 M`);
+                    packagesToInstall.forEach(pkg => {
+                        const pkgInfo = this.installedPackages[pkg];
+                        this.terminal.writeln(` ${pkg.padEnd(18)} ${pkgInfo.arch.padEnd(11)} ${pkgInfo.version.padEnd(20)} ${pkgInfo.repo.padEnd(13)} 1.2 M`);
                     });
                     this.terminal.writeln('\nTransaction Summary');
                     this.terminal.writeln('================================================================================');
-                    this.terminal.writeln(`Install  ${packages.length} Package${packages.length > 1 ? 's' : ''}`);
+                    this.terminal.writeln(`Install  ${packagesToInstall.length} Package${packagesToInstall.length > 1 ? 's' : ''}`);
                     this.terminal.writeln('\nComplete!');
                 }
                 break;
@@ -577,17 +622,36 @@ class CommandProcessor {
                 if (removePackages.length === 0) {
                     this.terminal.writeln('Error: Need to pass a list of pkgs to remove');
                 } else {
+                    const packagesToRemove = [];
+                    const notInstalled = [];
+                    
+                    removePackages.forEach(pkg => {
+                        if (this.isPackageInstalled(pkg)) {
+                            packagesToRemove.push(pkg);
+                        } else {
+                            notInstalled.push(pkg);
+                        }
+                    });
+                    
+                    if (notInstalled.length > 0) {
+                        this.terminal.writeln(`No match for argument: ${notInstalled.join(', ')}`);
+                        this.terminal.writeln('Error: No packages marked for removal');
+                        return;
+                    }
+                    
                     this.terminal.writeln('Dependencies resolved.');
                     this.terminal.writeln('================================================================================');
                     this.terminal.writeln(' Package            Architecture    Version              Repository        Size');
                     this.terminal.writeln('================================================================================');
                     this.terminal.writeln('Removing:');
-                    removePackages.forEach(pkg => {
-                        this.terminal.writeln(` ${pkg.padEnd(18)} x86_64          1.0-1.el9           @rhel-9-appstream  1.2 M`);
+                    packagesToRemove.forEach(pkg => {
+                        const pkgInfo = this.installedPackages[pkg];
+                        this.terminal.writeln(` ${pkg.padEnd(18)} ${pkgInfo.arch.padEnd(11)} ${pkgInfo.version.padEnd(20)} @${pkgInfo.repo.padEnd(12)} 1.2 M`);
+                        this.removePackage(pkg);
                     });
                     this.terminal.writeln('\nTransaction Summary');
                     this.terminal.writeln('================================================================================');
-                    this.terminal.writeln(`Remove  ${removePackages.length} Package${removePackages.length > 1 ? 's' : ''}`);
+                    this.terminal.writeln(`Remove  ${packagesToRemove.length} Package${packagesToRemove.length > 1 ? 's' : ''}`);
                     this.terminal.writeln('\nComplete!');
                 }
                 break;
@@ -611,15 +675,32 @@ class CommandProcessor {
             case 'list':
                 if (args.includes('installed')) {
                     this.terminal.writeln('Installed Packages');
-                    this.terminal.writeln('kernel.x86_64                    5.14.0-70.13.1.el9_0         @rhel-9-baseos');
-                    this.terminal.writeln('systemd.x86_64                   249-7.el9                    @rhel-9-baseos');
-                    this.terminal.writeln('bash.x86_64                      5.1.8-4.el9                  @rhel-9-baseos');
-                    this.terminal.writeln('coreutils.x86_64                 8.32-31.el9                  @rhel-9-baseos');
+                    Object.entries(this.installedPackages).forEach(([pkgName, pkgInfo]) => {
+                        const fullName = `${pkgName}.${pkgInfo.arch}`;
+                        const version = pkgInfo.version;
+                        const repo = `@${pkgInfo.repo}`;
+                        this.terminal.writeln(`${fullName.padEnd(33)} ${version.padEnd(25)} ${repo}`);
+                    });
                 } else {
                     this.terminal.writeln('Available Packages');
-                    this.terminal.writeln('oracle-database-preinstall-19c.x86_64    1.0-1.el9    rhel-9-appstream');
-                    this.terminal.writeln('compat-libstdc++-33.x86_64               3.2.3-72.el9 rhel-9-appstream');
-                    this.terminal.writeln('gcc.x86_64                                11.2.1-9.el9 rhel-9-appstream');
+                    // Show packages that are available but not installed
+                    const availablePackages = [
+                        { name: 'oracle-database-preinstall-19c', arch: 'x86_64', version: '1.0-1.el9', repo: 'rhel-9-appstream' },
+                        { name: 'compat-libstdc++-33', arch: 'x86_64', version: '3.2.3-72.el9', repo: 'rhel-9-appstream' },
+                        { name: 'gcc', arch: 'x86_64', version: '11.2.1-9.el9', repo: 'rhel-9-appstream' },
+                        { name: 'gcc-c++', arch: 'x86_64', version: '11.2.1-9.el9', repo: 'rhel-9-appstream' },
+                        { name: 'make', arch: 'x86_64', version: '4.3-7.el9', repo: 'rhel-9-baseos' },
+                        { name: 'vim', arch: 'x86_64', version: '8.2.2637-16.el9', repo: 'rhel-9-appstream' },
+                        { name: 'wget', arch: 'x86_64', version: '1.21.1-7.el9', repo: 'rhel-9-appstream' },
+                        { name: 'unzip', arch: 'x86_64', version: '6.0-56.el9', repo: 'rhel-9-baseos' }
+                    ];
+                    
+                    availablePackages.forEach(pkg => {
+                        if (!this.isPackageInstalled(pkg.name)) {
+                            const fullName = `${pkg.name}.${pkg.arch}`;
+                            this.terminal.writeln(`${fullName.padEnd(33)} ${pkg.version.padEnd(12)} ${pkg.repo}`);
+                        }
+                    });
                 }
                 break;
             default:
@@ -953,6 +1034,84 @@ class CommandProcessor {
         }
         
         // setsebool typically runs silently on success
+    }
+
+    // Package management state methods
+    loadPackageState() {
+        try {
+            const savedState = localStorage.getItem('installedPackages');
+            if (savedState) {
+                const loadedPackages = JSON.parse(savedState);
+                // Merge with default packages to ensure base system packages exist
+                this.installedPackages = { ...this.installedPackages, ...loadedPackages };
+            }
+        } catch (e) {
+            console.warn('Failed to load package state:', e);
+        }
+    }
+
+    savePackageState() {
+        try {
+            localStorage.setItem('installedPackages', JSON.stringify(this.installedPackages));
+        } catch (e) {
+            console.warn('Failed to save package state:', e);
+        }
+    }
+
+    installPackage(packageName) {
+        // Define available packages with their metadata
+        const availablePackages = {
+            'gcc': { version: '11.2.1-9.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'gcc-c++': { version: '11.2.1-9.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'make': { version: '4.3-7.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'binutils': { version: '2.35.2-17.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'glibc-devel': { version: '2.34-28.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'ksh': { version: '20120801-255.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libaio': { version: '0.3.111-13.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'libaio-devel': { version: '0.3.111-13.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'libgcc': { version: '11.2.1-9.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'libstdc++': { version: '11.2.1-9.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'libstdc++-devel': { version: '11.2.1-9.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libxcb': { version: '1.13.1-9.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libX11': { version: '1.7.0-7.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libXau': { version: '1.0.9-8.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libXi': { version: '1.7.10-8.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libXtst': { version: '1.2.3-16.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libXrender': { version: '0.9.10-16.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'libXrender-devel': { version: '0.9.10-16.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'net-tools': { version: '2.0-0.62.20160912git.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'nfs-utils': { version: '2.5.4-10.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'smartmontools': { version: '7.2-6.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'sysstat': { version: '12.5.4-2.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'unixODBC': { version: '2.3.9-5.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'unixODBC-devel': { version: '2.3.9-5.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'oracle-database-preinstall-19c': { version: '1.0-1.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'compat-libstdc++-33': { version: '3.2.3-72.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'vim': { version: '8.2.2637-16.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'wget': { version: '1.21.1-7.el9', repo: 'rhel-9-appstream', arch: 'x86_64' },
+            'curl': { version: '7.76.1-14.el9', repo: 'rhel-9-baseos', arch: 'x86_64' },
+            'unzip': { version: '6.0-56.el9', repo: 'rhel-9-baseos', arch: 'x86_64' }
+        };
+
+        if (availablePackages[packageName]) {
+            this.installedPackages[packageName] = availablePackages[packageName];
+            this.savePackageState();
+            return true;
+        }
+        return false;
+    }
+
+    removePackage(packageName) {
+        if (this.installedPackages[packageName]) {
+            delete this.installedPackages[packageName];
+            this.savePackageState();
+            return true;
+        }
+        return false;
+    }
+
+    isPackageInstalled(packageName) {
+        return this.installedPackages.hasOwnProperty(packageName);
     }
 
     cmdSet(args) {
