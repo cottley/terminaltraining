@@ -1003,6 +1003,7 @@ class CommandProcessor {
     }
 
     cmdOCP(args) {
+        this.refreshOracleState();
         const progress = oracleManager.calculateProgress();
         
         this.terminal.writeln('');
