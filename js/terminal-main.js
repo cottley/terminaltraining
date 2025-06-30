@@ -207,7 +207,7 @@ term.onData(data => {
                 const commands = ['ls', 'cd', 'pwd', 'mkdir', 'touch', 'rm', 'cat', 'echo', 
                                 'clear', 'hostname', 'uname', 'whoami', 'date', 'df', 
                                 'free', 'ps', 'yum', 'dnf', 'systemctl', 'firewall-cmd', 
-                                'setenforce', 'getenforce', 'set', 'unset', 'export', 'env', 
+                                'setenforce', 'getenforce', 'sestatus', 'setsebool', 'set', 'unset', 'export', 'env', 
                                 'groupadd', 'useradd', 'passwd', 'id', 'su', 'vim', 'vi', 
                                 'exit', 'oracle-help', 'help', 'runInstaller', './runInstaller',
                                 'dbca', 'netca', 'lsnrctl', 'sqlplus', 'adrci', 'rman',

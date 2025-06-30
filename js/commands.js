@@ -21,6 +21,12 @@ class CommandProcessor {
             'TERM': 'xterm-256color',
             'LANG': 'en_US.UTF-8'
         };
+        // SELinux state management
+        this.selinuxState = {
+            currentMode: 'permissive', // Current runtime mode
+            configMode: 'permissive'   // Mode set in /etc/selinux/config
+        };
+        this.loadSelinuxState();
         this.initializeVimModal();
     }
 
@@ -221,7 +227,13 @@ class CommandProcessor {
                 this.cmdSetenforce(args);
                 break;
             case 'getenforce':
-                this.terminal.writeln('Permissive');
+                this.cmdGetenforce(args);
+                break;
+            case 'sestatus':
+                this.cmdSestatus(args);
+                break;
+            case 'setsebool':
+                this.cmdSetsebool(args);
                 break;
             case 'set':
                 this.cmdSet(args);
@@ -654,14 +666,248 @@ class CommandProcessor {
         }
     }
 
+    // SELinux state management methods
+    loadSelinuxState() {
+        try {
+            const savedState = localStorage.getItem('selinuxState');
+            if (savedState) {
+                this.selinuxState = JSON.parse(savedState);
+            } else {
+                // Initialize from config file
+                this.parseSelinuxConfig();
+            }
+        } catch (e) {
+            // Use default state if loading fails
+            console.warn('Failed to load SELinux state:', e);
+        }
+    }
+
+    saveSelinuxState() {
+        try {
+            localStorage.setItem('selinuxState', JSON.stringify(this.selinuxState));
+        } catch (e) {
+            console.warn('Failed to save SELinux state:', e);
+        }
+    }
+
+    parseSelinuxConfig() {
+        const configContent = this.fs.cat('/etc/selinux/config');
+        if (configContent) {
+            const lines = configContent.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('SELINUX=')) {
+                    const value = trimmed.split('=')[1].toLowerCase();
+                    this.selinuxState.configMode = value;
+                    // If not overridden by runtime, set current mode from config
+                    if (!localStorage.getItem('selinuxRuntimeOverride')) {
+                        this.selinuxState.currentMode = value;
+                    }
+                    break;
+                }
+            }
+        }
+        this.saveSelinuxState();
+    }
+
+    updateSelinuxConfig(newMode) {
+        const configContent = this.fs.cat('/etc/selinux/config');
+        if (configContent) {
+            const lines = configContent.split('\n');
+            const updatedLines = lines.map(line => {
+                if (line.trim().startsWith('SELINUX=')) {
+                    return `SELINUX=${newMode}`;
+                }
+                return line;
+            });
+            this.fs.updateFile('/etc/selinux/config', updatedLines.join('\n'));
+            this.selinuxState.configMode = newMode;
+            this.saveSelinuxState();
+        }
+    }
+
     cmdSetenforce(args) {
-        if (args[0] === '0' || args[0] === 'Permissive') {
-            this.terminal.writeln('');
-        } else if (args[0] === '1' || args[0] === 'Enforcing') {
-            this.terminal.writeln('');
+        if (args.length === 0) {
+            this.terminal.writeln('usage:  setenforce [ Enforcing | Permissive | 1 | 0 ]');
+            return;
+        }
+
+        // Check if running as root
+        if (this.fs.currentUser !== 'root') {
+            this.terminal.writeln('setenforce: SELinux is disabled');
+            return;
+        }
+
+        const arg = args[0].toLowerCase();
+        let newMode = null;
+
+        if (arg === '0' || arg === 'permissive') {
+            newMode = 'permissive';
+        } else if (arg === '1' || arg === 'enforcing') {
+            newMode = 'enforcing';
         } else {
             this.terminal.writeln('usage:  setenforce [ Enforcing | Permissive | 1 | 0 ]');
+            return;
         }
+
+        // Check if SELinux is disabled in config
+        if (this.selinuxState.configMode === 'disabled') {
+            this.terminal.writeln('setenforce: SELinux is disabled');
+            return;
+        }
+
+        // Set the runtime mode
+        this.selinuxState.currentMode = newMode;
+        this.saveSelinuxState();
+        
+        // Mark that runtime mode has been overridden
+        localStorage.setItem('selinuxRuntimeOverride', 'true');
+
+        // setenforce typically doesn't produce output on success
+        if (newMode === 'enforcing') {
+            // In a real system, switching to enforcing might show warnings
+            // if there are policy violations
+            this.terminal.writeln('');
+        }
+    }
+
+    cmdGetenforce(args) {
+        // Check if SELinux is disabled
+        if (this.selinuxState.configMode === 'disabled') {
+            this.terminal.writeln('Disabled');
+            return;
+        }
+
+        // Return current runtime mode
+        const mode = this.selinuxState.currentMode;
+        this.terminal.writeln(mode.charAt(0).toUpperCase() + mode.slice(1));
+    }
+
+    cmdSestatus(args) {
+        if (args.includes('-h') || args.includes('--help')) {
+            this.terminal.writeln('Usage: sestatus [OPTION...]');
+            this.terminal.writeln('  -v, --verbose         Verbose check of process and file contexts');
+            this.terminal.writeln('  -b, --boolean         Display current state of booleans');
+            this.terminal.writeln('  -h, --help           Display this help and exit');
+            return;
+        }
+
+        // Basic SELinux status
+        this.terminal.writeln('SELinux status:                 enabled');
+        this.terminal.writeln(`SELinuxfs mount:                /sys/fs/selinux`);
+        this.terminal.writeln(`SELinux root directory:         /etc/selinux`);
+        this.terminal.writeln(`Loaded policy name:             targeted`);
+        
+        if (this.selinuxState.configMode === 'disabled') {
+            this.terminal.writeln('Current mode:                   disabled');
+            this.terminal.writeln('Mode from config file:          disabled');
+        } else {
+            this.terminal.writeln(`Current mode:                   ${this.selinuxState.currentMode}`);
+            this.terminal.writeln(`Mode from config file:          ${this.selinuxState.configMode}`);
+        }
+        
+        this.terminal.writeln('Policy MLS status:              enabled');
+        this.terminal.writeln('Policy deny_unknown status:     allowed');
+        this.terminal.writeln('Memory protection checking:     actual (secure)');
+        this.terminal.writeln('Max kernel policy version:      33');
+
+        if (args.includes('-v') || args.includes('--verbose')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Process contexts:');
+            this.terminal.writeln('Current context:                unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023');
+            this.terminal.writeln('Init context:                   system_u:system_r:init_t:s0');
+            this.terminal.writeln('');
+            this.terminal.writeln('File contexts:');
+            this.terminal.writeln('Controlling terminal:           unconfined_u:object_r:user_devpts_t:s0');
+            this.terminal.writeln('/etc/passwd                     system_u:object_r:passwd_file_t:s0');
+            this.terminal.writeln('/etc/shadow                     system_u:object_r:shadow_t:s0');
+        }
+
+        if (args.includes('-b') || args.includes('--boolean')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Policy booleans:');
+            this.terminal.writeln('abrt_anon_write                 off');
+            this.terminal.writeln('abrt_handle_event               off');
+            this.terminal.writeln('httpd_can_network_connect       off');
+            this.terminal.writeln('httpd_enable_cgi                on');
+            this.terminal.writeln('oracle_port_access              on');
+            this.terminal.writeln('ssh_chroot_rw_homedirs          off');
+        }
+    }
+
+    cmdSetsebool(args) {
+        if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
+            this.terminal.writeln('Usage: setsebool [ -P ] boolean value | bool1=val1 bool2=val2 ...');
+            this.terminal.writeln('');
+            this.terminal.writeln('Change the current state of a SELinux boolean.');
+            this.terminal.writeln('');
+            this.terminal.writeln('Options:');
+            this.terminal.writeln('  -P   Make the change persistent (survives reboot)');
+            this.terminal.writeln('');
+            this.terminal.writeln('Examples:');
+            this.terminal.writeln('  setsebool httpd_can_network_connect on');
+            this.terminal.writeln('  setsebool -P oracle_port_access on');
+            this.terminal.writeln('  setsebool httpd_enable_cgi=on ssh_chroot_rw_homedirs=off');
+            return;
+        }
+
+        // Check if running as root
+        if (this.fs.currentUser !== 'root') {
+            this.terminal.writeln('setsebool: You must be root to set booleans.');
+            return;
+        }
+
+        // Check if SELinux is disabled
+        if (this.selinuxState.configMode === 'disabled') {
+            this.terminal.writeln('setsebool: SELinux is disabled');
+            return;
+        }
+
+        const persistent = args.includes('-P');
+        const boolArgs = args.filter(arg => arg !== '-P');
+
+        if (boolArgs.length < 2) {
+            this.terminal.writeln('Usage: setsebool [ -P ] boolean value | bool1=val1 bool2=val2 ...');
+            return;
+        }
+
+        // Handle boolean=value format
+        for (const arg of boolArgs) {
+            if (arg.includes('=')) {
+                const [bool, value] = arg.split('=');
+                this.setBooleanValue(bool, value, persistent);
+            }
+        }
+
+        // Handle boolean value format
+        if (boolArgs.length >= 2 && !boolArgs[0].includes('=')) {
+            const bool = boolArgs[0];
+            const value = boolArgs[1];
+            this.setBooleanValue(bool, value, persistent);
+        }
+    }
+
+    setBooleanValue(boolean, value, persistent) {
+        const validValues = ['on', 'off', '1', '0', 'true', 'false'];
+        if (!validValues.includes(value.toLowerCase())) {
+            this.terminal.writeln(`setsebool: Invalid value ${value} for boolean ${boolean}`);
+            return;
+        }
+
+        // Simulate setting the boolean
+        const isOn = ['on', '1', 'true'].includes(value.toLowerCase());
+        const statusText = isOn ? 'on' : 'off';
+        
+        if (persistent) {
+            this.terminal.writeln(`libsemanage.semanage_set_default_priority: Setting default priority for ${boolean} to ${statusText}`);
+        }
+        
+        // For Oracle-related booleans, provide relevant feedback
+        if (boolean.includes('oracle')) {
+            this.terminal.writeln(`Oracle SELinux boolean ${boolean} set to ${statusText}`);
+        }
+        
+        // setsebool typically runs silently on success
     }
 
     cmdSet(args) {
@@ -1625,7 +1871,7 @@ class CommandProcessor {
         this.terminal.writeln('  Service Management:');
         this.terminal.writeln('    systemctl start|stop|restart|enable|disable|status');
         this.terminal.writeln('  Security:');
-        this.terminal.writeln('    firewall-cmd, setenforce, getenforce');
+        this.terminal.writeln('    firewall-cmd, setenforce, getenforce, sestatus, setsebool');
         this.terminal.writeln('  User Management:');
         this.terminal.writeln('    useradd, groupadd, passwd, id, su, whoami, exit');
         this.terminal.writeln('  Environment:');

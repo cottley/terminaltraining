@@ -54,6 +54,9 @@ class FileSystem {
                             'sysctl.conf': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 280, content: '# System default kernel parameters\nfs.aio-max-nr = 65536\nfs.file-max = 1024000\nkernel.shmall = 268435456\nkernel.shmmax = 68719476736\nkernel.shmmni = 4096\nkernel.sem = 32000 1024000000 500 1024\nnet.ipv4.ip_local_port_range = 32768 65535\nnet.core.rmem_default = 212992\nnet.core.rmem_max = 212992\nnet.core.wmem_default = 212992\nnet.core.wmem_max = 212992' },
                             'security': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
                                 'limits.conf': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 200, content: '# System default resource limits\n# End of file' }
+                            }},
+                            'selinux': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {
+                                'config': { type: 'file', permissions: '-rw-r--r--', owner: 'root', group: 'root', size: 458, content: '# This file controls the state of SELinux on the system.\n# SELINUX= can take one of these three values:\n#     enforcing - SELinux security policy is enforced.\n#     permissive - SELinux prints warnings instead of enforcing.\n#     disabled - No SELinux policy is loaded.\nSELINUX=permissive\n# SELINUXTYPE= can take one of these three values:\n#     targeted - Targeted processes are protected,\n#     minimum - Modification of targeted policy. Only selected processes are protected.\n#     mls - Multi Level Security protection.\nSELINUXTYPE=targeted' }
                             }}
                         }
                     },
