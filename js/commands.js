@@ -303,7 +303,11 @@ class CommandProcessor {
     }
 
     cmdCd(args) {
-        const path = args[0] || '~';
+        let path = args[0] || '~';
+        // Expand environment variables
+        path = path.replace(/\$([A-Z_]+)/g, (match, varName) => {
+            return this.environmentVars[varName] || match;
+        });
         if (!this.fs.cd(path)) {
             this.terminal.writeln(`-bash: cd: ${path}: No such file or directory`);
         }
