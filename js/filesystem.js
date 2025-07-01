@@ -294,12 +294,16 @@ class FileSystem {
         const parentNode = this.getNode(pathArray);
         
         if (parentNode && parentNode.type === 'directory') {
+            // Check if file already exists with a simulated size
+            const existingFile = parentNode.children[fileName];
+            const simulatedSize = existingFile && existingFile.size > content.length ? existingFile.size : content.length;
+            
             parentNode.children[fileName] = {
                 type: 'file',
                 permissions: '-rw-r--r--',
                 owner: this.currentUser,
                 group: this.currentUser === 'root' ? 'root' : 'users',
-                size: content.length,
+                size: simulatedSize,
                 modified: new Date(),
                 content: content
             };
@@ -351,8 +355,10 @@ class FileSystem {
         const node = this.getNode(pathArray);
         
         if (node && node.type === 'file') {
+            // Preserve simulated size if it's larger than the content length
+            const originalSize = node.size;
             node.content = content;
-            node.size = content.length;
+            node.size = originalSize > content.length ? originalSize : content.length;
             node.modified = new Date();
             this.saveState();
             return true;
