@@ -53,6 +53,9 @@ class CommandProcessor {
         };
         this.loadServiceStates();
         
+        // Restore preserved /root folder contents after reboot
+        this.restoreRootFolder();
+        
         this.initializeVimModal();
     }
 
@@ -1572,6 +1575,46 @@ class CommandProcessor {
         this.openVimModal(fullPath, content);
     }
 
+    preserveRootFolder() {
+        try {
+            // Get the current /root folder contents
+            const rootPath = this.fs.resolvePath('/root');
+            const rootNode = this.fs.getNode(rootPath);
+            
+            if (rootNode && rootNode.type === 'directory' && rootNode.children) {
+                // Save the /root folder contents to a separate localStorage key
+                localStorage.setItem('preservedRootFolder', JSON.stringify(rootNode.children));
+                console.log('Preserved /root folder contents for reboot');
+            }
+        } catch (e) {
+            console.warn('Failed to preserve /root folder contents:', e);
+        }
+    }
+
+    restoreRootFolder() {
+        try {
+            const preserved = localStorage.getItem('preservedRootFolder');
+            if (preserved) {
+                const rootContents = JSON.parse(preserved);
+                
+                // Get the /root folder node in the fresh filesystem
+                const rootPath = this.fs.resolvePath('/root');
+                const rootNode = this.fs.getNode(rootPath);
+                
+                if (rootNode && rootNode.type === 'directory') {
+                    // Restore the preserved contents
+                    rootNode.children = { ...rootNode.children, ...rootContents };
+                    
+                    // Save the filesystem state to persist the restored files
+                    this.fs.saveState();
+                    console.log('Restored /root folder contents after reboot');
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to restore /root folder contents:', e);
+        }
+    }
+
     cmdReboot() {
         if (this.fs.currentUser !== 'root') {
             this.terminal.writeln('reboot: must be superuser.');
@@ -1587,6 +1630,9 @@ class CommandProcessor {
         
         // Clear localStorage and reload
         setTimeout(() => {
+            // Preserve /root folder contents before reboot
+            this.preserveRootFolder();
+            
             oracleManager.clearState();
             localStorage.removeItem('fileSystemState');
             localStorage.removeItem('installedPackages');

@@ -100,6 +100,7 @@ free                  # Memory usage
 ps                    # Process list
 whoami                # Current user
 id [user]             # User/group information
+reboot                # Restart system (preserves /root files)
 ```
 
 ### Package & Service Management
@@ -318,6 +319,8 @@ Service states persist across sessions and can be managed with the `service` com
 - **Session Persistence**: File system changes, user accounts, and progress persist across sessions
 - **Progress Tracking**: Oracle installation progress is maintained between sessions
 - **Configuration Retention**: System settings and environment variables are preserved
+- **Reboot Behavior**: The `reboot` command resets the system to initial state while preserving `/root` folder contents
+- **File Preservation**: Student work, scripts, and notes in `/root` are maintained across reboots
 
 ## Educational Value
 
