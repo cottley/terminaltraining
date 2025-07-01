@@ -2891,10 +2891,8 @@ class CommandProcessor {
         if (progress.percentage === 100) {
             this.terminal.writeln('\x1b[32m✓ Congratulations! All Oracle installation tasks are complete!\x1b[0m');
             this.terminal.writeln('');
-            this.terminal.writeln('Would you like to play a game? (yes/no)');
-            
-            // Set up a flag to track if we're waiting for game response
-            this.waitingForGameResponse = true;
+            this.terminal.writeln('You have successfully completed all Oracle Database 19c installation tasks.');
+            this.terminal.writeln('You can continue practicing with advanced scenarios using: ocp --scenarios');
         }
     }
 
