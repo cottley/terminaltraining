@@ -16,6 +16,26 @@ const cmdProcessor = new CommandProcessor(term, fs);
 
 term.open(document.getElementById('terminal'));
 
+// Helper function to find longest common prefix among strings
+function getLongestCommonPrefix(strings) {
+    if (strings.length === 0) return '';
+    if (strings.length === 1) return strings[0];
+    
+    let prefix = '';
+    const firstString = strings[0];
+    
+    for (let i = 0; i < firstString.length; i++) {
+        const char = firstString[i];
+        if (strings.every(str => str[i] === char)) {
+            prefix += char;
+        } else {
+            break;
+        }
+    }
+    
+    return prefix;
+}
+
 // Function to fit terminal to container
 function fitTerminal() {
     const terminalElement = document.getElementById('terminal');
@@ -298,10 +318,22 @@ term.onData(data => {
                     cursorPosition = currentLine.length;
                     term.write(completion);
                 } else if (matches.length > 1) {
-                    term.write('\r\n');
-                    term.write(matches.join('  '));
-                    term.write('\r\n');
-                    term.write(cmdProcessor.getPrompt() + currentLine);
+                    // Find longest common prefix
+                    const commonPrefix = getLongestCommonPrefix(matches);
+                    const completion = commonPrefix.slice(currentLine.length);
+                    
+                    if (completion.length > 0) {
+                        // Complete to common prefix
+                        currentLine += completion;
+                        cursorPosition = currentLine.length;
+                        term.write(completion);
+                    } else {
+                        // Show all matches if no additional common prefix
+                        term.write('\r\n');
+                        term.write(matches.join('  '));
+                        term.write('\r\n');
+                        term.write(cmdProcessor.getPrompt() + currentLine);
+                    }
                 }
             } else {
                 // Directory/file completion
@@ -337,10 +369,22 @@ term.onData(data => {
                                 term.write('/');
                             }
                         } else if (matches.length > 1) {
-                            term.write('\r\n');
-                            term.write(matches.join('  '));
-                            term.write('\r\n');
-                            term.write(cmdProcessor.getPrompt() + currentLine);
+                            // Find longest common prefix
+                            const commonPrefix = getLongestCommonPrefix(matches);
+                            const completion = commonPrefix.slice(searchTerm.length);
+                            
+                            if (completion.length > 0) {
+                                // Complete to common prefix
+                                currentLine += completion;
+                                cursorPosition = currentLine.length;
+                                term.write(completion);
+                            } else {
+                                // Show all matches if no additional common prefix
+                                term.write('\r\n');
+                                term.write(matches.join('  '));
+                                term.write('\r\n');
+                                term.write(cmdProcessor.getPrompt() + currentLine);
+                            }
                         }
                     }
                 } else {
@@ -364,10 +408,22 @@ term.onData(data => {
                                 term.write('/');
                             }
                         } else if (matches.length > 1) {
-                            term.write('\r\n');
-                            term.write(matches.join('  '));
-                            term.write('\r\n');
-                            term.write(cmdProcessor.getPrompt() + currentLine);
+                            // Find longest common prefix
+                            const commonPrefix = getLongestCommonPrefix(matches);
+                            const completion = commonPrefix.slice(lastPart.length);
+                            
+                            if (completion.length > 0) {
+                                // Complete to common prefix
+                                currentLine += completion;
+                                cursorPosition = currentLine.length;
+                                term.write(completion);
+                            } else {
+                                // Show all matches if no additional common prefix
+                                term.write('\r\n');
+                                term.write(matches.join('  '));
+                                term.write('\r\n');
+                                term.write(cmdProcessor.getPrompt() + currentLine);
+                            }
                         }
                     }
                 }
