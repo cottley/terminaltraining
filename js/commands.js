@@ -4506,7 +4506,7 @@ class CommandProcessor {
         this.terminal.writeln(`Calculated char size: ${charWidth.toFixed(2)}x${charHeight.toFixed(2)}`);
         
         // Show reverse-engineered calculation
-        const availableWidth = window.innerWidth - 5;
+        const availableWidth = window.innerWidth;
         const optimalCols = Math.floor(availableWidth / 7.8);
         this.terminal.writeln(`Optimal calculation: ${availableWidth}px ÷ 7.8px = ${optimalCols} cols`);
         

@@ -51,20 +51,19 @@ function calculateOptimalColumns(viewportWidth) {
 function fitTerminal() {
     const terminalElement = document.getElementById('terminal');
     
-    // Calculate available space dynamically - give more width for the terminal
+    // Calculate available space dynamically - use full window width
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     
-    // Reduce buffer to give more space to terminal (was 30px total, now minimal)
-    const bufferWidth = 5;      // Minimal buffer for edge spacing
+    // Use full width - no buffer needed since we have 2px left padding in CSS
     const headerHeight = document.getElementById('terminal-header').offsetHeight || 40;
-    const bufferHeight = 10;    // Buffer for height
+    const bufferHeight = 10;    // Buffer for height only
     
-    // Calculate actual available dimensions - use almost full width
-    const availableWidth = windowWidth - bufferWidth;
+    // Calculate actual available dimensions - use full width
+    const availableWidth = windowWidth;
     const availableHeight = windowHeight - headerHeight - bufferHeight;
     
-    // Set the terminal container size explicitly
+    // Set the terminal container size to full width
     terminalElement.style.width = availableWidth + 'px';
     terminalElement.style.height = availableHeight + 'px';
     
