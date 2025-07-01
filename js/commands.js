@@ -297,6 +297,7 @@ class CommandProcessor {
                 break;
             case 'vim':
             case 'vi':
+            case 'nano':
                 this.cmdVim(args);
                 break;
             case 'exit':

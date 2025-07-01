@@ -91,7 +91,7 @@ chmod [-R] <mode> <file>  # Change file permissions
 chown [-R] <owner>[:<group>] <file>  # Change file ownership
 cat <file>            # Display file contents
 echo <text>           # Display text
-vim/vi <file>         # Edit files (modal editor)
+vim/vi/nano <file>    # Edit files (modal editor)
 ```
 
 ### Shell Scripting

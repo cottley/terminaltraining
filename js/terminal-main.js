@@ -270,7 +270,7 @@ term.onData(data => {
                                 'clear', 'hostname', 'uname', 'whoami', 'date', 'df', 
                                 'free', 'ps', 'yum', 'dnf', 'systemctl', 'firewall-cmd', 
                                 'setenforce', 'getenforce', 'sestatus', 'setsebool', 'set', 'unset', 'export', 'env', 
-                                'groupadd', 'useradd', 'passwd', 'id', 'su', 'vim', 'vi', 
+                                'groupadd', 'useradd', 'passwd', 'id', 'su', 'vim', 'vi', 'nano', 
                                 'exit', 'oracle-help', 'help', 'runInstaller', './runInstaller',
                                 'dbca', 'netca', 'lsnrctl', 'sqlplus', 'adrci', 'rman',
                                 'srvctl', 'orapwd', 'tnsping', 'expdp', 'impdp', 'oraenv',
