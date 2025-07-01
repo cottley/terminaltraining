@@ -77,6 +77,23 @@ function fitTerminal() {
     
     if (cols > 0 && rows > 0) {
         term.resize(cols, rows);
+        
+        // Force scrollbar positioning after xterm.js has finished
+        setTimeout(() => {
+            forceScrollbarPosition();
+        }, 100);
+    }
+}
+
+// Function to force scrollbar positioning
+function forceScrollbarPosition() {
+    const terminalElement = document.getElementById('terminal');
+    const xtermViewport = terminalElement.querySelector('.xterm-viewport');
+    
+    if (xtermViewport) {
+        // Force the margin-right style to stay applied
+        xtermViewport.style.marginRight = '3px';
+        xtermViewport.style.setProperty('margin-right', '3px', 'important');
     }
 }
 
@@ -510,12 +527,19 @@ term.onSelectionChange(() => {
 
 // Handle window resize
 window.addEventListener('resize', () => {
-    setTimeout(fitTerminal, 100);
+    setTimeout(() => {
+        fitTerminal();
+        // Force scrollbar positioning again after resize
+        setTimeout(forceScrollbarPosition, 50);
+    }, 100);
 });
 
 // Also handle visibility changes
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-        setTimeout(fitTerminal, 100);
+        setTimeout(() => {
+            fitTerminal();
+            setTimeout(forceScrollbarPosition, 50);
+        }, 100);
     }
 });
