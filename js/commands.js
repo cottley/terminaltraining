@@ -412,8 +412,10 @@ class CommandProcessor {
             this.terminal.writeln(`total ${files.length * 4}`);
             files.forEach(file => {
                 const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
+                const size = (file.size || 4096).toString();
+                const paddedSize = size.padStart(8, ' '); // Right-align size in 8-character field
                 this.terminal.writeln(
-                    `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${file.size || 4096} ${date} ${file.name}`
+                    `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${paddedSize} ${date} ${file.name}`
                 );
             });
         } else {
