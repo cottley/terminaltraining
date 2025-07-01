@@ -333,6 +333,9 @@ class CommandProcessor {
             case 'cp':
                 this.cmdCp(args);
                 break;
+            case 'mv':
+                this.cmdMv(args);
+                break;
             default:
                 this.terminal.writeln(`-bash: ${command}: command not found`);
         }
@@ -604,6 +607,181 @@ class CommandProcessor {
                 }
             });
         }
+    }
+
+    cmdMv(args) {
+        if (args.length < 2) {
+            this.terminal.writeln('mv: missing file operand');
+            this.terminal.writeln('Usage: mv [OPTION] SOURCE DEST');
+            this.terminal.writeln('   or: mv [OPTION] SOURCE... DIRECTORY');
+            this.terminal.writeln('');
+            this.terminal.writeln('Options:');
+            this.terminal.writeln('  -i        prompt before overwrite');
+            this.terminal.writeln('');
+            this.terminal.writeln('Examples:');
+            this.terminal.writeln('  mv file1.txt file2.txt           # Rename file1.txt to file2.txt');
+            this.terminal.writeln('  mv file1.txt /root/              # Move file1.txt to /root directory');
+            this.terminal.writeln('  mv dir1 dir2                     # Rename directory dir1 to dir2');
+            this.terminal.writeln('  mv -i file1.txt file2.txt        # Interactive move (prompts before overwrite)');
+            return;
+        }
+
+        const interactive = args.includes('-i');
+        const sources = args.slice(0, -1).filter(arg => !arg.startsWith('-'));
+        const destination = args[args.length - 1];
+
+        if (sources.length === 0) {
+            this.terminal.writeln('mv: missing source file operand');
+            return;
+        }
+
+        // Check if destination is a directory
+        const destIsDir = this.fs.isDirectory(destination);
+        
+        if (sources.length > 1 && !destIsDir) {
+            this.terminal.writeln(`mv: target '${destination}' is not a directory`);
+            return;
+        }
+
+        sources.forEach(source => {
+            this.moveFile(source, destination, destIsDir, interactive);
+        });
+    }
+
+    moveFile(source, destination, destIsDir, interactive) {
+        // Check if source exists
+        if (!this.fs.exists(source)) {
+            this.terminal.writeln(`mv: cannot stat '${source}': No such file or directory`);
+            return;
+        }
+
+        // Determine final destination path
+        let finalDest = destination;
+        if (destIsDir) {
+            const sourceName = source.split('/').pop();
+            finalDest = destination.endsWith('/') ? destination + sourceName : destination + '/' + sourceName;
+        }
+
+        // Check for same file (moving to itself)
+        if (this.fs.resolvePath(source).join('/') === this.fs.resolvePath(finalDest).join('/')) {
+            this.terminal.writeln(`mv: '${source}' and '${finalDest}' are the same file`);
+            return;
+        }
+
+        // Check if destination exists and interactive mode is enabled
+        if (interactive && this.fs.exists(finalDest)) {
+            this.promptMvOverwrite(source, finalDest);
+            return;
+        }
+
+        // Perform the move operation
+        this.performMove(source, finalDest);
+    }
+
+    promptMvOverwrite(source, destination) {
+        // Set up confirmation prompt state
+        this.mvConfirmationPending = {
+            source: source,
+            destination: destination
+        };
+        
+        // Show confirmation prompt
+        this.terminal.writeln(`mv: overwrite '${destination}'? (y/n) `);
+        
+        // Set flag to indicate we're waiting for mv confirmation
+        this.waitingForMvConfirmation = true;
+    }
+
+    handleMvConfirmation(input) {
+        const response = input.toLowerCase().trim();
+        this.waitingForMvConfirmation = false;
+        
+        if (response === 'y' || response === 'yes') {
+            // User confirmed, proceed with move
+            const { source, destination } = this.mvConfirmationPending;
+            this.performMove(source, destination);
+        } else if (response === 'n' || response === 'no') {
+            // User declined, skip this move
+            // No output (standard mv behavior)
+        } else {
+            // Invalid response, ask again
+            this.terminal.writeln(`mv: overwrite '${this.mvConfirmationPending.destination}'? (y/n) `);
+            this.waitingForMvConfirmation = true;
+            return;
+        }
+        
+        // Clean up confirmation state
+        this.mvConfirmationPending = null;
+    }
+
+    performMove(source, destination) {
+        // Get the source content
+        if (this.fs.isDirectory(source)) {
+            // Moving a directory
+            if (!this.moveDirectoryRecursive(source, destination)) {
+                this.terminal.writeln(`mv: cannot move '${source}' to '${destination}': Operation failed`);
+                return;
+            }
+        } else {
+            // Moving a file
+            const content = this.fs.cat(source);
+            if (content === null) {
+                this.terminal.writeln(`mv: cannot access '${source}': No such file or directory`);
+                return;
+            }
+
+            // Create the destination file
+            if (!this.fs.touch(destination, content)) {
+                this.terminal.writeln(`mv: cannot create '${destination}': No such file or directory`);
+                return;
+            }
+        }
+
+        // Remove the source after successful copy
+        if (!this.fs.rm(source, true)) {
+            this.terminal.writeln(`mv: cannot remove '${source}': Operation failed`);
+            // Attempt to clean up the destination if we created it
+            this.fs.rm(destination, true);
+        }
+    }
+
+    moveDirectoryRecursive(source, destination) {
+        // Create destination directory
+        if (!this.fs.mkdir(destination)) {
+            return false;
+        }
+
+        // Get source directory contents
+        const files = this.fs.ls(source);
+        if (!files) {
+            return false;
+        }
+
+        // Copy all contents recursively
+        let success = true;
+        files.forEach(file => {
+            if (file.name !== '.' && file.name !== '..') {
+                const sourcePath = source + '/' + file.name;
+                const destPath = destination + '/' + file.name;
+                
+                if (file.type === 'directory') {
+                    if (!this.moveDirectoryRecursive(sourcePath, destPath)) {
+                        success = false;
+                    }
+                } else {
+                    const content = this.fs.cat(sourcePath);
+                    if (content !== null) {
+                        if (!this.fs.touch(destPath, content)) {
+                            success = false;
+                        }
+                    } else {
+                        success = false;
+                    }
+                }
+            }
+        });
+
+        return success;
     }
 
     cmdCat(args) {

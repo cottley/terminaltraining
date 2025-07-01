@@ -152,6 +152,37 @@ term.onData(data => {
         }
         return;
     }
+    
+    // Check if we're waiting for mv confirmation
+    if (cmdProcessor.waitingForMvConfirmation) {
+        switch (data) {
+            case '\r': // Enter
+            case '\n':
+                term.write('\r\n');
+                cmdProcessor.handleMvConfirmation(currentLine);
+                currentLine = '';
+                cursorPosition = 0;
+                if (!cmdProcessor.waitingForMvConfirmation) {
+                    term.write(cmdProcessor.getPrompt());
+                }
+                break;
+            case '\u007F': // Backspace
+            case '\b':
+                if (currentLine.length > 0) {
+                    currentLine = currentLine.slice(0, -1);
+                    cursorPosition = currentLine.length;
+                    term.write('\b \b');
+                }
+                break;
+            default:
+                if (data >= ' ' && data <= '~') {
+                    currentLine += data;
+                    cursorPosition = currentLine.length;
+                    term.write(data);
+                }
+        }
+        return;
+    }
 
     // Normal command processing
     switch (data) {
@@ -235,7 +266,7 @@ term.onData(data => {
             
             if (parts.length === 1) {
                 // Command completion
-                const commands = ['ls', 'cd', 'pwd', 'mkdir', 'touch', 'rm', 'cp', 'cat', 'echo', 
+                const commands = ['ls', 'cd', 'pwd', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'cat', 'echo', 
                                 'clear', 'hostname', 'uname', 'whoami', 'date', 'df', 
                                 'free', 'ps', 'yum', 'dnf', 'systemctl', 'firewall-cmd', 
                                 'setenforce', 'getenforce', 'sestatus', 'setsebool', 'set', 'unset', 'export', 'env', 

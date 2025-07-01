@@ -86,6 +86,7 @@ mkdir [-p] <dir>      # Create directories
 touch <file>          # Create/update files
 rm [-r] [-f] <file>   # Remove files/directories
 cp [-r] [-i] <src> <dest>  # Copy files/directories
+mv [-i] <src> <dest>  # Move/rename files/directories
 cat <file>            # Display file contents
 echo <text>           # Display text
 vim/vi <file>         # Edit files (modal editor)
@@ -201,6 +202,17 @@ cp -ri source_dir dest_dir       # Interactive recursive copy
 # Examples with confirmation prompts
 cp -i /etc/hosts /root/hosts     # Prompts: "cp: overwrite '/root/hosts'? (y/n)"
 cp -i *.txt /root/               # Prompts for each existing file
+
+# Move/Rename Operations
+mv file1.txt file2.txt           # Rename file1.txt to file2.txt
+mv file1.txt /root/              # Move file1.txt to /root directory
+mv dir1 dir2                     # Rename directory dir1 to dir2
+mv old_name new_name             # Rename files or directories
+mv -i file1.txt file2.txt        # Interactive move (prompts before overwrite)
+
+# Examples with confirmation prompts
+mv -i script.sh script_old.sh    # Prompts: "mv: overwrite 'script_old.sh'? (y/n)"
+mv -i *.log /root/logs/          # Prompts for each existing file in destination
 ```
 
 ### Oracle Troubleshooting Guide
