@@ -1589,6 +1589,9 @@ class CommandProcessor {
         setTimeout(() => {
             oracleManager.clearState();
             localStorage.removeItem('fileSystemState');
+            localStorage.removeItem('installedPackages');
+            localStorage.removeItem('systemdServiceStates');
+            localStorage.removeItem('selinuxState');
             this.clearHistory();
             location.reload();
         }, 1000);
