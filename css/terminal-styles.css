@@ -41,6 +41,8 @@ html, body {
     flex: 1;
     position: relative;
     overflow: hidden;
+    width: 100%;
+    max-width: none;
 }
 
 .xterm {
@@ -51,11 +53,31 @@ html, body {
 .xterm-viewport {
     height: 100% !important;
     width: 100% !important;
+    overflow-x: auto;
+    overflow-y: auto;
 }
 
 .xterm-screen {
     width: 100% !important;
     height: 100% !important;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 7px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+    background: #777;
 }
 
 .terminal-title {

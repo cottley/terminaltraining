@@ -40,18 +40,17 @@ function getLongestCommonPrefix(strings) {
 function fitTerminal() {
     const terminalElement = document.getElementById('terminal');
     
-    // Calculate available space dynamically
+    // Calculate available space dynamically - give more width for the terminal
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     
-    // Account for scrollbars and padding (adjust these values as needed)
-    const scrollbarWidth = 20;  // Typical scrollbar width
-    const bufferWidth = 10;     // Additional buffer
+    // Reduce buffer to give more space to terminal (was 30px total, now minimal)
+    const bufferWidth = 5;      // Minimal buffer for edge spacing
     const headerHeight = document.getElementById('terminal-header').offsetHeight || 40;
-    const bufferHeight = 10;    // Additional buffer for height
+    const bufferHeight = 10;    // Buffer for height
     
-    // Calculate actual available dimensions
-    const availableWidth = windowWidth - scrollbarWidth - bufferWidth;
+    // Calculate actual available dimensions - use almost full width
+    const availableWidth = windowWidth - bufferWidth;
     const availableHeight = windowHeight - headerHeight - bufferHeight;
     
     // Set the terminal container size explicitly
