@@ -339,6 +339,9 @@ class CommandProcessor {
             case 'chmod':
                 this.cmdChmod(args);
                 break;
+            case 'chown':
+                this.cmdChown(args);
+                break;
             default:
                 this.terminal.writeln(`-bash: ${command}: command not found`);
         }
@@ -966,6 +969,171 @@ class CommandProcessor {
             perms.substring(3, 6),  // group
             perms.substring(6, 9)   // others
         ];
+    }
+
+    cmdChown(args) {
+        if (args.length < 2) {
+            this.terminal.writeln('chown: missing operand');
+            this.terminal.writeln('Usage: chown [OPTION] [OWNER][:[GROUP]] FILE...');
+            this.terminal.writeln('       chown [OPTION] --reference=RFILE FILE...');
+            this.terminal.writeln('');
+            this.terminal.writeln('Options:');
+            this.terminal.writeln('  -R        operate on files and directories recursively');
+            this.terminal.writeln('');
+            this.terminal.writeln('OWNER and GROUP examples:');
+            this.terminal.writeln('  root              change owner to root');
+            this.terminal.writeln('  root:root         change owner to root and group to root');
+            this.terminal.writeln('  :oinstall         change group to oinstall (owner unchanged)');
+            this.terminal.writeln('  oracle:dba        change owner to oracle and group to dba');
+            this.terminal.writeln('  1000:1000         change owner to UID 1000 and group to GID 1000');
+            this.terminal.writeln('');
+            this.terminal.writeln('Examples:');
+            this.terminal.writeln('  chown oracle script.sh           # Change owner to oracle');
+            this.terminal.writeln('  chown oracle:oinstall file.txt   # Change owner and group');
+            this.terminal.writeln('  chown :dba database.dbf          # Change group only');
+            this.terminal.writeln('  chown -R oracle:oinstall /u01/   # Recursive ownership change');
+            this.terminal.writeln('');
+            this.terminal.writeln('Note: Only root can change file ownership in this simulation');
+            return;
+        }
+
+        // Check if user is root (only root can change ownership)
+        if (this.fs.currentUser !== 'root') {
+            this.terminal.writeln('chown: changing ownership: Operation not permitted');
+            return;
+        }
+
+        const recursive = args.includes('-R');
+        const filteredArgs = args.filter(arg => arg !== '-R');
+        
+        if (filteredArgs.length < 2) {
+            this.terminal.writeln('chown: missing file operand');
+            return;
+        }
+
+        const ownerGroup = filteredArgs[0];
+        const files = filteredArgs.slice(1);
+
+        // Parse owner:group format
+        const ownership = this.parseOwnership(ownerGroup);
+        if (!ownership) {
+            this.terminal.writeln(`chown: invalid user: '${ownerGroup}'`);
+            return;
+        }
+
+        files.forEach(file => {
+            this.changeOwnership(file, ownership, recursive);
+        });
+    }
+
+    parseOwnership(ownerGroup) {
+        // Handle formats: user, user:group, :group, user:, uid:gid
+        const parts = ownerGroup.split(':');
+        
+        if (parts.length === 1) {
+            // Just owner: "oracle"
+            return { owner: parts[0], group: null };
+        } else if (parts.length === 2) {
+            // owner:group, :group, owner:, etc.
+            const owner = parts[0] || null;  // Empty string becomes null (no change)
+            const group = parts[1] || null;  // Empty string becomes null (no change)
+            return { owner, group };
+        } else {
+            return null; // Invalid format
+        }
+    }
+
+    changeOwnership(path, ownership, recursive) {
+        // Check if file exists
+        if (!this.fs.exists(path)) {
+            this.terminal.writeln(`chown: cannot access '${path}': No such file or directory`);
+            return;
+        }
+
+        // Get the file node
+        const pathArray = this.fs.resolvePath(path);
+        const node = this.fs.getNode(pathArray);
+        
+        if (!node) {
+            this.terminal.writeln(`chown: cannot access '${path}': No such file or directory`);
+            return;
+        }
+
+        // Validate and apply ownership changes
+        if (ownership.owner !== null) {
+            if (this.isValidUser(ownership.owner)) {
+                node.owner = ownership.owner;
+            } else {
+                this.terminal.writeln(`chown: invalid user: '${ownership.owner}'`);
+                return;
+            }
+        }
+
+        if (ownership.group !== null) {
+            if (this.isValidGroup(ownership.group)) {
+                node.group = ownership.group;
+            } else {
+                this.terminal.writeln(`chown: invalid group: '${ownership.group}'`);
+                return;
+            }
+        }
+
+        // If recursive and it's a directory, apply to all contents
+        if (recursive && node.type === 'directory') {
+            this.changeOwnershipRecursive(node, ownership);
+        }
+
+        // Save filesystem state
+        this.fs.saveState();
+    }
+
+    changeOwnershipRecursive(dirNode, ownership) {
+        if (dirNode.children) {
+            Object.values(dirNode.children).forEach(child => {
+                // Apply ownership changes
+                if (ownership.owner !== null && this.isValidUser(ownership.owner)) {
+                    child.owner = ownership.owner;
+                }
+                if (ownership.group !== null && this.isValidGroup(ownership.group)) {
+                    child.group = ownership.group;
+                }
+                
+                // Recurse into subdirectories
+                if (child.type === 'directory') {
+                    this.changeOwnershipRecursive(child, ownership);
+                }
+            });
+        }
+    }
+
+    isValidUser(username) {
+        // Check if user exists in /etc/passwd
+        const passwdContent = this.fs.cat('/etc/passwd');
+        if (!passwdContent) return false;
+
+        // Handle numeric UIDs
+        if (/^\d+$/.test(username)) {
+            return true; // Accept any numeric UID for simplicity
+        }
+
+        // Check for username in passwd file
+        const users = ['root', 'oracle', 'arcgis', 'bin', 'daemon', 'adm', 'lp', 'sync', 'shutdown', 'halt', 'mail', 'operator', 'games', 'ftp', 'nobody', 'dbus', 'systemd-network'];
+        return users.includes(username) || passwdContent.includes(`${username}:`);
+    }
+
+    isValidGroup(groupname) {
+        // Check if group exists in /etc/group
+        const groupContent = this.fs.cat('/etc/group');
+        if (!groupContent) return false;
+
+        // Handle numeric GIDs
+        if (/^\d+$/.test(groupname)) {
+            return true; // Accept any numeric GID for simplicity
+        }
+
+        // Check for groupname in group file
+        const groups = ['root', 'oinstall', 'dba', 'oper', 'backupdba', 'dgdba', 'kmdba', 'asmdba', 'asmoper', 'asmadmin', 'bin', 'daemon', 'sys', 'adm', 'tty', 'disk', 'lp', 'mem', 'kmem', 'wheel', 'cdrom', 'mail', 'man', 'dialout', 'floppy', 'games', 'tape', 'video', 'ftp', 'lock', 'audio', 'nobody', 'users', 'systemd-network', 'dbus'];
+        return groups.includes(groupname) || groupContent.includes(`${groupname}:`);
     }
 
     cmdCat(args) {

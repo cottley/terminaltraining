@@ -88,6 +88,7 @@ rm [-r] [-f] <file>   # Remove files/directories
 cp [-r] [-i] <src> <dest>  # Copy files/directories
 mv [-i] <src> <dest>  # Move/rename files/directories
 chmod [-R] <mode> <file>  # Change file permissions
+chown [-R] <owner>[:<group>] <file>  # Change file ownership
 cat <file>            # Display file contents
 echo <text>           # Display text
 vim/vi <file>         # Edit files (modal editor)
@@ -229,6 +230,19 @@ chmod -R 755 /root/scripts/     # Recursive permission change
 chmod 640 /u01/app/oracle/oradata/ORCL/*.dbf    # Database files
 chmod 755 /u01/app/oracle/product/19.0.0/dbhome_1/bin/*  # Oracle binaries
 chmod 600 /root/.oracle_profile  # Private configuration
+
+# Ownership Management
+chown oracle script.sh                  # Change owner to oracle
+chown oracle:oinstall file.txt          # Change owner and group
+chown :dba database.dbf                 # Change group only (owner unchanged)
+chown 1000:1000 file.txt                # Use numeric UID/GID
+chown -R oracle:oinstall /u01/          # Recursive ownership change
+
+# Common Oracle ownership patterns
+chown -R oracle:oinstall /u01/app/oracle/         # Oracle software ownership
+chown oracle:dba /u01/app/oracle/oradata/ORCL/*.dbf  # Database file ownership
+chown oracle:oinstall /u01/app/oracle/admin/       # Admin directory ownership
+chown root:oinstall /etc/oratab                    # System Oracle configuration
 ```
 
 ### Oracle Troubleshooting Guide
