@@ -41,9 +41,9 @@ function fitTerminal() {
     const terminalElement = document.getElementById('terminal');
     const rect = terminalElement.getBoundingClientRect();
     
-    // Use simpler, more reliable character size estimates
-    const charWidth = 8.5;  // Slightly adjusted for better fit
-    const charHeight = 17;
+    // Calculate character dimensions based on xterm's default font metrics
+    const charWidth = 9;   // Default character width for 14px Consolas
+    const charHeight = 17; // Default line height
     
     const cols = Math.floor(rect.width / charWidth);
     const rows = Math.floor(rect.height / charHeight);

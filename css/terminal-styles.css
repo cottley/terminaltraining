@@ -53,6 +53,11 @@ html, body {
     width: 100% !important;
 }
 
+.xterm-screen {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 .terminal-title {
     font-weight: bold;
 }
