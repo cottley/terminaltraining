@@ -36,58 +36,25 @@ function getLongestCommonPrefix(strings) {
     return prefix;
 }
 
-// Function to measure actual character dimensions
-function measureCharacterDimensions() {
-    const testElement = document.createElement('div');
-    testElement.style.fontFamily = 'Consolas, "Courier New", monospace';
-    testElement.style.fontSize = '14px';
-    testElement.style.position = 'absolute';
-    testElement.style.left = '-9999px';
-    testElement.style.visibility = 'hidden';
-    testElement.style.whiteSpace = 'pre';
-    testElement.textContent = 'W'; // Use a wide character for measurement
-    
-    document.body.appendChild(testElement);
-    const width = testElement.getBoundingClientRect().width;
-    const height = testElement.getBoundingClientRect().height;
-    document.body.removeChild(testElement);
-    
-    return { width: width || 8.4, height: height || 17 };
-}
-
 // Function to fit terminal to container
 function fitTerminal() {
     const terminalElement = document.getElementById('terminal');
     const rect = terminalElement.getBoundingClientRect();
     
-    // Try to get actual character dimensions from the terminal's renderer
-    const core = term._core;
-    let charWidth, charHeight;
+    // Use simpler, more reliable character size estimates
+    const charWidth = 8.5;  // Slightly adjusted for better fit
+    const charHeight = 17;
     
-    if (core && core._renderService && core._renderService.dimensions) {
-        const dims = core._renderService.dimensions;
-        charWidth = dims.actualCellWidth;
-        charHeight = dims.actualCellHeight;
-    } else {
-        // Measure character dimensions if terminal renderer not available
-        const measured = measureCharacterDimensions();
-        charWidth = measured.width;
-        charHeight = measured.height;
-    }
-    
-    // Add small padding to prevent cutoff
-    const cols = Math.floor((rect.width - 4) / charWidth);
-    const rows = Math.floor((rect.height - 4) / charHeight);
+    const cols = Math.floor(rect.width / charWidth);
+    const rows = Math.floor(rect.height / charHeight);
     
     if (cols > 0 && rows > 0) {
         term.resize(cols, rows);
     }
 }
 
-// Initial fit with multiple attempts to ensure proper sizing
-setTimeout(fitTerminal, 0);
+// Initial fit
 setTimeout(fitTerminal, 100);
-setTimeout(fitTerminal, 500);
 
 // Welcome message
 term.writeln('Red Hat Enterprise Linux 9.0 (Plow)');
@@ -514,38 +481,14 @@ term.onSelectionChange(() => {
     }
 });
 
-// Debounced resize function to prevent excessive calls
-let resizeTimeout;
-function debouncedFitTerminal() {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(fitTerminal, 100);
-}
-
 // Handle window resize
-window.addEventListener('resize', debouncedFitTerminal);
+window.addEventListener('resize', () => {
+    setTimeout(fitTerminal, 100);
+});
 
 // Also handle visibility changes
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-        setTimeout(fitTerminal, 50);
+        setTimeout(fitTerminal, 100);
     }
 });
-
-// Handle when the page is fully loaded
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(fitTerminal, 100);
-});
-
-// Additional resize triggers for better compatibility
-window.addEventListener('load', () => {
-    setTimeout(fitTerminal, 200);
-});
-
-// Watch for changes in the terminal container size
-if (window.ResizeObserver) {
-    const terminalElement = document.getElementById('terminal');
-    const resizeObserver = new ResizeObserver(() => {
-        debouncedFitTerminal();
-    });
-    resizeObserver.observe(terminalElement);
-}
