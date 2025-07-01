@@ -319,7 +319,7 @@ term.onData(data => {
                                 'unzip', 'sysctl', 'ps-help', './ArcGIS_Server_Setup',
                                 'reboot', 'ocp', 'tictactoe', 'tic-tac-toe', 'whereis',
                                 'grep', 'head', 'tail', 'sort', 'uniq', 'wc', 'ldconfig',
-                                'troubleshoot', 'oracle-troubleshoot', 'service'];
+                                'troubleshoot', 'oracle-troubleshoot', 'service', 'xterm'];
                 
                 // Add executable files from current directory
                 const files = fs.ls('.');

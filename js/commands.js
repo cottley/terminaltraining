@@ -362,6 +362,9 @@ class CommandProcessor {
             case 'chown':
                 this.cmdChown(args);
                 break;
+            case 'xterm':
+                this.cmdXterm(args);
+                break;
             default:
                 // Check if it's an executable script
                 if (this.fs.exists(command) && this.isExecutable(command)) {
@@ -4437,6 +4440,95 @@ class CommandProcessor {
         if (!verbose && !args.includes('-p') && !args.includes('--print-cache')) {
             // ldconfig runs silently by default when rebuilding cache
             // No output unless there are warnings or errors
+        }
+    }
+
+    cmdXterm(args) {
+        if (args.length === 0) {
+            this.terminal.writeln('xterm: missing flag');
+            this.terminal.writeln('Usage: xterm --details | --update <cols> <rows>');
+            return;
+        }
+
+        const flag = args[0];
+
+        switch (flag) {
+            case '--details':
+            case '-d':
+                this.showXtermDetails();
+                break;
+            case '--update':
+            case '-u':
+                if (args.length < 3) {
+                    this.terminal.writeln('xterm: --update requires cols and rows');
+                    this.terminal.writeln('Usage: xterm --update <cols> <rows>');
+                    return;
+                }
+                const cols = parseInt(args[1]);
+                const rows = parseInt(args[2]);
+                this.updateXtermSize(cols, rows);
+                break;
+            default:
+                this.terminal.writeln(`xterm: unknown flag '${flag}'`);
+                this.terminal.writeln('Usage: xterm --details | --update <cols> <rows>');
+        }
+    }
+
+    showXtermDetails() {
+        const terminalElement = document.getElementById('terminal');
+        const rect = terminalElement.getBoundingClientRect();
+        
+        // Get xterm dimensions
+        const xtermScreen = terminalElement.querySelector('.xterm-screen');
+        const xtermViewport = terminalElement.querySelector('.xterm-viewport');
+        
+        this.terminal.writeln('=== XTERM DETAILS ===');
+        this.terminal.writeln(`Window dimensions: ${window.innerWidth}x${window.innerHeight}`);
+        this.terminal.writeln(`Terminal container: ${rect.width.toFixed(1)}x${rect.height.toFixed(1)}`);
+        
+        if (xtermScreen) {
+            const screenRect = xtermScreen.getBoundingClientRect();
+            this.terminal.writeln(`Xterm screen: ${screenRect.width.toFixed(1)}x${screenRect.height.toFixed(1)}`);
+        }
+        
+        if (xtermViewport) {
+            const viewportRect = xtermViewport.getBoundingClientRect();
+            this.terminal.writeln(`Xterm viewport: ${viewportRect.width.toFixed(1)}x${viewportRect.height.toFixed(1)}`);
+        }
+        
+        // Get current terminal dimensions from xterm.js
+        this.terminal.writeln(`Terminal cols: ${this.terminal.cols}`);
+        this.terminal.writeln(`Terminal rows: ${this.terminal.rows}`);
+        
+        // Calculate character dimensions
+        const charWidth = rect.width / this.terminal.cols;
+        const charHeight = rect.height / this.terminal.rows;
+        this.terminal.writeln(`Calculated char size: ${charWidth.toFixed(2)}x${charHeight.toFixed(2)}`);
+        
+        // Show available space calculation
+        const headerHeight = document.getElementById('terminal-header').offsetHeight || 40;
+        this.terminal.writeln(`Header height: ${headerHeight}px`);
+        this.terminal.writeln(`Available space: ${window.innerWidth - 30}x${window.innerHeight - headerHeight - 10}`);
+    }
+
+    updateXtermSize(cols, rows) {
+        if (cols <= 0 || rows <= 0) {
+            this.terminal.writeln('xterm: cols and rows must be positive integers');
+            return;
+        }
+        
+        if (cols > 1000 || rows > 1000) {
+            this.terminal.writeln('xterm: cols and rows must be reasonable values (max 1000)');
+            return;
+        }
+        
+        this.terminal.writeln(`Updating terminal size to ${cols} cols x ${rows} rows...`);
+        
+        try {
+            this.terminal.resize(cols, rows);
+            this.terminal.writeln('Terminal size updated successfully');
+        } catch (error) {
+            this.terminal.writeln(`Error updating terminal size: ${error.message}`);
         }
     }
 }
