@@ -87,6 +87,7 @@ touch <file>          # Create/update files
 rm [-r] [-f] <file>   # Remove files/directories
 cp [-r] [-i] <src> <dest>  # Copy files/directories
 mv [-i] <src> <dest>  # Move/rename files/directories
+chmod [-R] <mode> <file>  # Change file permissions
 cat <file>            # Display file contents
 echo <text>           # Display text
 vim/vi <file>         # Edit files (modal editor)
@@ -213,6 +214,21 @@ mv -i file1.txt file2.txt        # Interactive move (prompts before overwrite)
 # Examples with confirmation prompts
 mv -i script.sh script_old.sh    # Prompts: "mv: overwrite 'script_old.sh'? (y/n)"
 mv -i *.log /root/logs/          # Prompts for each existing file in destination
+
+# Permission Management
+chmod 755 script.sh             # Make script executable (rwxr-xr-x)
+chmod 644 config.txt            # Standard file permissions (rw-r--r--)
+chmod 600 private.key           # Private file (rw-------)
+chmod u+x program               # Add execute permission for owner
+chmod g-w file.txt              # Remove write permission for group
+chmod o=r public.txt            # Set others to read-only
+chmod a+r shared.txt            # Add read permission for all
+chmod -R 755 /root/scripts/     # Recursive permission change
+
+# Common Oracle file permissions
+chmod 640 /u01/app/oracle/oradata/ORCL/*.dbf    # Database files
+chmod 755 /u01/app/oracle/product/19.0.0/dbhome_1/bin/*  # Oracle binaries
+chmod 600 /root/.oracle_profile  # Private configuration
 ```
 
 ### Oracle Troubleshooting Guide

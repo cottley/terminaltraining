@@ -336,6 +336,9 @@ class CommandProcessor {
             case 'mv':
                 this.cmdMv(args);
                 break;
+            case 'chmod':
+                this.cmdChmod(args);
+                break;
             default:
                 this.terminal.writeln(`-bash: ${command}: command not found`);
         }
@@ -782,6 +785,187 @@ class CommandProcessor {
         });
 
         return success;
+    }
+
+    cmdChmod(args) {
+        if (args.length < 2) {
+            this.terminal.writeln('chmod: missing operand');
+            this.terminal.writeln('Usage: chmod [OPTION] MODE FILE...');
+            this.terminal.writeln('       chmod [OPTION] OCTAL-MODE FILE...');
+            this.terminal.writeln('       chmod [OPTION] --reference=RFILE FILE...');
+            this.terminal.writeln('');
+            this.terminal.writeln('Options:');
+            this.terminal.writeln('  -R        change files and directories recursively');
+            this.terminal.writeln('');
+            this.terminal.writeln('MODE examples:');
+            this.terminal.writeln('  755       rwxr-xr-x (owner: rwx, group: r-x, others: r-x)');
+            this.terminal.writeln('  644       rw-r--r-- (owner: rw-, group: r--, others: r--)');
+            this.terminal.writeln('  600       rw------- (owner: rw-, group: ---, others: ---)');
+            this.terminal.writeln('  u+x       add execute permission for owner');
+            this.terminal.writeln('  g-w       remove write permission for group');
+            this.terminal.writeln('  o=r       set others permission to read only');
+            this.terminal.writeln('  a+r       add read permission for all (owner, group, others)');
+            this.terminal.writeln('');
+            this.terminal.writeln('Examples:');
+            this.terminal.writeln('  chmod 755 script.sh              # Make script executable');
+            this.terminal.writeln('  chmod 644 config.txt             # Standard file permissions');
+            this.terminal.writeln('  chmod u+x program                # Add execute for owner');
+            this.terminal.writeln('  chmod -R 755 /path/to/directory  # Recursive permission change');
+            return;
+        }
+
+        const recursive = args.includes('-R');
+        const filteredArgs = args.filter(arg => arg !== '-R');
+        
+        if (filteredArgs.length < 2) {
+            this.terminal.writeln('chmod: missing file operand');
+            return;
+        }
+
+        const mode = filteredArgs[0];
+        const files = filteredArgs.slice(1);
+
+        files.forEach(file => {
+            this.changePermissions(file, mode, recursive);
+        });
+    }
+
+    changePermissions(path, mode, recursive) {
+        // Check if file exists
+        if (!this.fs.exists(path)) {
+            this.terminal.writeln(`chmod: cannot access '${path}': No such file or directory`);
+            return;
+        }
+
+        // Get the file node
+        const pathArray = this.fs.resolvePath(path);
+        const node = this.fs.getNode(pathArray);
+        
+        if (!node) {
+            this.terminal.writeln(`chmod: cannot access '${path}': No such file or directory`);
+            return;
+        }
+
+        // Convert mode to permission string
+        const newPermissions = this.parsePermissionMode(mode, node.permissions);
+        if (!newPermissions) {
+            this.terminal.writeln(`chmod: invalid mode: '${mode}'`);
+            return;
+        }
+
+        // Apply permissions to the file/directory
+        node.permissions = newPermissions;
+
+        // If recursive and it's a directory, apply to all contents
+        if (recursive && node.type === 'directory') {
+            this.changePermissionsRecursive(node, mode);
+        }
+
+        // Save filesystem state
+        this.fs.saveState();
+    }
+
+    changePermissionsRecursive(dirNode, mode) {
+        if (dirNode.children) {
+            Object.values(dirNode.children).forEach(child => {
+                const newPermissions = this.parsePermissionMode(mode, child.permissions);
+                if (newPermissions) {
+                    child.permissions = newPermissions;
+                }
+                
+                if (child.type === 'directory') {
+                    this.changePermissionsRecursive(child, mode);
+                }
+            });
+        }
+    }
+
+    parsePermissionMode(mode, currentPermissions) {
+        // Handle octal mode (e.g., 755, 644)
+        if (/^\d{3}$/.test(mode)) {
+            return this.octalToPermissionString(mode, currentPermissions);
+        }
+
+        // Handle symbolic mode (e.g., u+x, g-w, o=r, a+r)
+        if (/^[ugoa]*[+\-=][rwx]*$/.test(mode)) {
+            return this.applySymbolicMode(mode, currentPermissions);
+        }
+
+        return null; // Invalid mode
+    }
+
+    octalToPermissionString(octal, currentPermissions) {
+        const digits = octal.split('').map(d => parseInt(d));
+        if (digits.length !== 3 || digits.some(d => d > 7)) {
+            return null;
+        }
+
+        const permissions = ['---', '--x', '-w-', '-wx', 'r--', 'r-x', 'rw-', 'rwx'];
+        const fileType = currentPermissions ? currentPermissions.charAt(0) : '-';
+        
+        return `${fileType}${permissions[digits[0]]}${permissions[digits[1]]}${permissions[digits[2]]}`;
+    }
+
+    applySymbolicMode(mode, currentPermissions) {
+        // Parse symbolic mode: [ugoa]*[+\-=][rwx]*
+        const match = mode.match(/^([ugoa]*)([+\-=])([rwx]*)$/);
+        if (!match) return null;
+
+        const [, who, operator, perms] = match;
+        const whoChars = who || 'a'; // Default to 'all' if no who specified
+        
+        // Convert current permissions to array format
+        let permArray = this.permissionStringToArray(currentPermissions);
+        
+        // Apply changes for each 'who' character
+        for (const w of whoChars) {
+            let indices = [];
+            switch (w) {
+                case 'u': indices = [0]; break; // user/owner
+                case 'g': indices = [1]; break; // group
+                case 'o': indices = [2]; break; // others
+                case 'a': indices = [0, 1, 2]; break; // all
+            }
+
+            for (const index of indices) {
+                switch (operator) {
+                    case '+':
+                        // Add permissions
+                        if (perms.includes('r')) permArray[index] = permArray[index].substring(0, 0) + 'r' + permArray[index].substring(1);
+                        if (perms.includes('w')) permArray[index] = permArray[index].substring(0, 1) + 'w' + permArray[index].substring(2);
+                        if (perms.includes('x')) permArray[index] = permArray[index].substring(0, 2) + 'x';
+                        break;
+                    case '-':
+                        // Remove permissions
+                        if (perms.includes('r')) permArray[index] = '-' + permArray[index].substring(1);
+                        if (perms.includes('w')) permArray[index] = permArray[index].substring(0, 1) + '-' + permArray[index].substring(2);
+                        if (perms.includes('x')) permArray[index] = permArray[index].substring(0, 2) + '-';
+                        break;
+                    case '=':
+                        // Set permissions exactly
+                        let newPerm = '';
+                        newPerm += perms.includes('r') ? 'r' : '-';
+                        newPerm += perms.includes('w') ? 'w' : '-';
+                        newPerm += perms.includes('x') ? 'x' : '-';
+                        permArray[index] = newPerm;
+                        break;
+                }
+            }
+        }
+
+        // Convert back to permission string
+        const fileType = currentPermissions.charAt(0);
+        return fileType + permArray.join('');
+    }
+
+    permissionStringToArray(permString) {
+        // Convert "-rwxr-xr-x" to ["rwx", "r-x", "r-x"]
+        const perms = permString.substring(1); // Remove file type character
+        return [
+            perms.substring(0, 3),  // owner
+            perms.substring(3, 6),  // group
+            perms.substring(6, 9)   // others
+        ];
     }
 
     cmdCat(args) {

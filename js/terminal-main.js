@@ -266,7 +266,7 @@ term.onData(data => {
             
             if (parts.length === 1) {
                 // Command completion
-                const commands = ['ls', 'cd', 'pwd', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'cat', 'echo', 
+                const commands = ['ls', 'cd', 'pwd', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'chmod', 'cat', 'echo', 
                                 'clear', 'hostname', 'uname', 'whoami', 'date', 'df', 
                                 'free', 'ps', 'yum', 'dnf', 'systemctl', 'firewall-cmd', 
                                 'setenforce', 'getenforce', 'sestatus', 'setsebool', 'set', 'unset', 'export', 'env', 
