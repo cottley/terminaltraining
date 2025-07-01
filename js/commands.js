@@ -190,7 +190,22 @@ class CommandProcessor {
         
         const parts = input.trim().split(/\s+/);
         const command = parts[0];
-        const args = parts.slice(1);
+        const originalArgs = parts.slice(1);
+        
+        // Check for redirection at the global level
+        const redirection = this.checkRedirection(originalArgs);
+        const args = redirection.args;
+        
+        // Temporarily override terminal.writeln to capture output if redirected
+        let capturedOutput = '';
+        const originalWriteln = this.terminal.writeln;
+        
+        if (redirection.redirected) {
+            this.terminal.writeln = (text) => {
+                if (capturedOutput) capturedOutput += '\n';
+                capturedOutput += text;
+            };
+        }
 
         switch (command) {
             case '':
@@ -357,13 +372,17 @@ class CommandProcessor {
                     this.terminal.writeln(`-bash: ${command}: command not found`);
                 }
         }
+        
+        // Restore original writeln function and handle captured output
+        if (redirection.redirected) {
+            this.terminal.writeln = originalWriteln;
+            if (capturedOutput) {
+                this.outputText(capturedOutput, redirection);
+            }
+        }
     }
 
     cmdLs(args) {
-        // Handle redirection
-        const redirection = this.checkRedirection(args);
-        args = redirection.args;
-        
         // Parse flags - handle combined flags like -la, -al, etc.
         let showAll = false;
         let longFormat = false;
@@ -380,7 +399,7 @@ class CommandProcessor {
         
         const files = this.fs.ls(path);
         if (files === null) {
-            this.outputText(`ls: cannot access '${path}': No such file or directory`, redirection);
+            this.terminal.writeln(`ls: cannot access '${path}': No such file or directory`);
             return;
         }
 
@@ -389,20 +408,17 @@ class CommandProcessor {
             files.unshift({ name: '..', type: 'directory', permissions: 'drwxr-xr-x' });
         }
 
-        let output = '';
         if (longFormat) {
-            output += `total ${files.length * 4}\n`;
+            this.terminal.writeln(`total ${files.length * 4}`);
             files.forEach(file => {
                 const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
-                output += `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${file.size || 4096} ${date} ${file.name}\n`;
+                this.terminal.writeln(
+                    `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${file.size || 4096} ${date} ${file.name}`
+                );
             });
         } else {
             const names = files.map(f => f.name).join('  ');
-            if (names) output = names;
-        }
-
-        if (output.trim()) {
-            this.outputText(output.trim(), redirection);
+            if (names) this.terminal.writeln(names);
         }
     }
 
@@ -2110,29 +2126,48 @@ class CommandProcessor {
     cmdGroupadd(args) {
         if (args.length === 0) {
             this.terminal.writeln('Usage: groupadd [options] GROUP');
-        } else {
-            const group = args[args.length - 1];
-            
-            // Check if group already exists
-            const groupContent = this.fs.cat('/etc/group');
-            if (groupContent && groupContent.includes(`${group}:x:`)) {
-                this.terminal.writeln(`groupadd: group '${group}' already exists`);
-                return;
-            }
-            
-            // Get next available GID
-            const gid = this.fs.getNextGid();
-            
-            // Add group to /etc/group
-            const newGroupLine = `${group}:x:${gid}:`;
-            const updatedContent = groupContent ? groupContent + '\n' + newGroupLine : newGroupLine;
-            this.fs.updateFile('/etc/group', updatedContent);
-            
-            this.terminal.writeln(`Group '${group}' added successfully.`);
-            
-            // Refresh Oracle state to update OCP status
-            this.refreshOracleState();
+            return;
         }
+        
+        // Parse arguments
+        let gid = null;
+        let group = null;
+        
+        for (let i = 0; i < args.length; i++) {
+            if (args[i] === '-g' && i + 1 < args.length) {
+                gid = parseInt(args[i + 1]);
+                i++; // Skip the GID value
+            } else if (!args[i].startsWith('-')) {
+                group = args[i];
+            }
+        }
+        
+        if (!group) {
+            this.terminal.writeln('Usage: groupadd [options] GROUP');
+            return;
+        }
+        
+        // Check if group already exists
+        const groupContent = this.fs.cat('/etc/group');
+        if (groupContent && groupContent.includes(`${group}:x:`)) {
+            this.terminal.writeln(`groupadd: group '${group}' already exists`);
+            return;
+        }
+        
+        // Use provided GID or get next available
+        if (!gid) {
+            gid = this.fs.getNextGid();
+        }
+        
+        // Add group to /etc/group
+        const newGroupLine = `${group}:x:${gid}:`;
+        const updatedContent = groupContent ? groupContent + '\n' + newGroupLine : newGroupLine;
+        this.fs.updateFile('/etc/group', updatedContent);
+        
+        this.terminal.writeln(`Group '${group}' added successfully.`);
+        
+        // Refresh Oracle state to update OCP status
+        this.refreshOracleState();
     }
 
     cmdUseradd(args) {
