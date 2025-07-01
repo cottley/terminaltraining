@@ -144,12 +144,20 @@ class FileSystem {
                                 size: 1024000, 
                                 content: '#!/bin/bash\n# ArcGIS Server 10.9.1 Installation Script\n# This installer sets up ArcGIS Server with Oracle spatial integration\n' 
                             },
+                            'ArcGIS_Server_Linux_1091_180182.tar.gz': {
+                                type: 'file',
+                                permissions: '-rw-r--r--',
+                                owner: 'root',
+                                group: 'root',
+                                size: 3986186713,
+                                content: '# ArcGIS Server 10.9.1 Installation Archive\n# Binary content simulation'
+                            },
                             'LINUX.X64_193000_db_home.zip': {
                                 type: 'file',
                                 permissions: '-rw-r--r--',
                                 owner: 'root',
                                 group: 'root',
-                                size: 3221225472,
+                                size: 3059705302,
                                 content: '# Oracle Database 19c Installation Archive\n# Binary content simulation'
                             }
                         }

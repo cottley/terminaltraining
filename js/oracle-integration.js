@@ -203,7 +203,7 @@ CommandProcessor.prototype.cmdUnzip = function(args) {
         return;
     }
     
-    if (zipFile === '/install/ArcGIS_Server_Linux_109_177864.tar.gz') {
+    if (zipFile === '/install/ArcGIS_Server_Linux_1091_180182.tar.gz') {
         // Handle as tar.gz
         this.terminal.writeln(`unzip:  cannot find or open ${zipFile}, ${zipFile}.zip or ${zipFile}.ZIP.`);
         this.terminal.writeln('Note: This appears to be a tar.gz file. Use: tar -xzf <filename>');
@@ -336,7 +336,7 @@ CommandProcessor.prototype.createInstallationFiles = function() {
     this.fs.touch('/install/LINUX.X64_193000_db_home.zip', 'Oracle Database 19c Installation Archive (2.8GB)');
     
     // Create ArcGIS installation file
-    this.fs.touch('/install/ArcGIS_Server_Linux_109_177864.tar.gz', 'ArcGIS Server 10.9 Installation Archive (1.2GB)');
+    this.fs.touch('/install/ArcGIS_Server_Linux_1091_180182.tar.gz', 'ArcGIS Server 10.9.1 Installation Archive (3.7GB)');
 };
 
 // Override Yum to handle package installation tracking
