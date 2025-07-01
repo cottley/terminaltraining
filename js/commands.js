@@ -339,8 +339,18 @@ class CommandProcessor {
     }
 
     cmdLs(args) {
-        const showAll = args.includes('-a') || args.includes('-la');
-        const longFormat = args.includes('-l') || args.includes('-la');
+        // Parse flags - handle combined flags like -la, -al, etc.
+        let showAll = false;
+        let longFormat = false;
+        
+        args.forEach(arg => {
+            if (arg.startsWith('-') && arg !== '-') {
+                const flags = arg.slice(1); // Remove the '-' prefix
+                if (flags.includes('a')) showAll = true;
+                if (flags.includes('l')) longFormat = true;
+            }
+        });
+        
         const path = args.find(arg => !arg.startsWith('-')) || '.';
         
         const files = this.fs.ls(path);
