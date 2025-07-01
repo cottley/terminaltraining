@@ -39,14 +39,31 @@ function getLongestCommonPrefix(strings) {
 // Function to fit terminal to container
 function fitTerminal() {
     const terminalElement = document.getElementById('terminal');
-    const rect = terminalElement.getBoundingClientRect();
     
-    // Calculate character dimensions based on xterm's default font metrics
-    const charWidth = 9;   // Default character width for 14px Consolas
-    const charHeight = 17; // Default line height
+    // Calculate available space dynamically
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
     
-    const cols = Math.floor(rect.width / charWidth);
-    const rows = Math.floor(rect.height / charHeight);
+    // Account for scrollbars and padding (adjust these values as needed)
+    const scrollbarWidth = 20;  // Typical scrollbar width
+    const bufferWidth = 10;     // Additional buffer
+    const headerHeight = document.getElementById('terminal-header').offsetHeight || 40;
+    const bufferHeight = 10;    // Additional buffer for height
+    
+    // Calculate actual available dimensions
+    const availableWidth = windowWidth - scrollbarWidth - bufferWidth;
+    const availableHeight = windowHeight - headerHeight - bufferHeight;
+    
+    // Set the terminal container size explicitly
+    terminalElement.style.width = availableWidth + 'px';
+    terminalElement.style.height = availableHeight + 'px';
+    
+    // Calculate character dimensions based on xterm's font metrics
+    const charWidth = 9;   // Character width for 14px Consolas
+    const charHeight = 17; // Line height
+    
+    const cols = Math.floor(availableWidth / charWidth);
+    const rows = Math.floor(availableHeight / charHeight);
     
     if (cols > 0 && rows > 0) {
         term.resize(cols, rows);
