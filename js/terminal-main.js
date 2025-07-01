@@ -36,6 +36,17 @@ function getLongestCommonPrefix(strings) {
     return prefix;
 }
 
+// Function to calculate optimal columns based on viewport width
+function calculateOptimalColumns(viewportWidth) {
+    // Based on reverse engineering from actual measurements:
+    // 1794px viewport = 230 columns
+    // 2691px viewport = 346 columns
+    // This gives us a character width of approximately 7.8px
+    const CHAR_WIDTH = 7.8;
+    
+    return Math.floor(viewportWidth / CHAR_WIDTH);
+}
+
 // Function to fit terminal to container
 function fitTerminal() {
     const terminalElement = document.getElementById('terminal');
@@ -57,11 +68,11 @@ function fitTerminal() {
     terminalElement.style.width = availableWidth + 'px';
     terminalElement.style.height = availableHeight + 'px';
     
-    // Calculate character dimensions based on xterm's font metrics
-    const charWidth = 9;   // Character width for 14px Consolas
-    const charHeight = 17; // Line height
+    // Calculate optimal columns using reverse-engineered function
+    const cols = calculateOptimalColumns(availableWidth);
     
-    const cols = Math.floor(availableWidth / charWidth);
+    // Calculate rows using standard character height
+    const charHeight = 17; // Line height for 14px Consolas
     const rows = Math.floor(availableHeight / charHeight);
     
     if (cols > 0 && rows > 0) {

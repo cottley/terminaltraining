@@ -4505,10 +4505,22 @@ class CommandProcessor {
         const charHeight = rect.height / this.terminal.rows;
         this.terminal.writeln(`Calculated char size: ${charWidth.toFixed(2)}x${charHeight.toFixed(2)}`);
         
+        // Show reverse-engineered calculation
+        const availableWidth = window.innerWidth - 5;
+        const optimalCols = Math.floor(availableWidth / 7.8);
+        this.terminal.writeln(`Optimal calculation: ${availableWidth}px ÷ 7.8px = ${optimalCols} cols`);
+        
         // Show available space calculation
         const headerHeight = document.getElementById('terminal-header').offsetHeight || 40;
         this.terminal.writeln(`Header height: ${headerHeight}px`);
-        this.terminal.writeln(`Available space: ${window.innerWidth - 30}x${window.innerHeight - headerHeight - 10}`);
+        this.terminal.writeln(`Available space: ${availableWidth}x${window.innerHeight - headerHeight - 10}`);
+        
+        // Test against known values
+        this.terminal.writeln('=== VALIDATION ===');
+        this.terminal.writeln('Expected: 1794px → 230 cols, 2691px → 346 cols');
+        const test1 = Math.floor(1794 / 7.8);
+        const test2 = Math.floor(2691 / 7.8);
+        this.terminal.writeln(`Calculated: 1794px → ${test1} cols, 2691px → ${test2} cols`);
     }
 
     updateXtermSize(cols, rows) {
