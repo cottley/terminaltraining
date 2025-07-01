@@ -56,6 +56,7 @@ html, body {
     width: 100% !important;
     overflow-x: auto;
     overflow-y: auto;
+    margin-right: 3px;
 }
 
 .xterm-screen {
