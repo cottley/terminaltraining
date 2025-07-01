@@ -92,6 +92,11 @@ chown [-R] <owner>[:<group>] <file>  # Change file ownership
 cat <file>            # Display file contents
 echo <text>           # Display text
 vim/vi/nano <file>    # Edit files (modal editor)
+
+# Output redirection
+command > file        # Redirect output to file
+command >> file       # Append output to file  
+command > /dev/null   # Discard output (no terminal output)
 ```
 
 ### Shell Scripting
@@ -277,6 +282,11 @@ echo "Checking database processes..."
 ps aux | grep oracle
 echo "Checking listener status..."
 lsnrctl status
+
+# Examples using /dev/null for silent operations:
+ls -la /u01/app/oracle > /dev/null 2>&1   # Check if directory exists silently
+systemctl status oracle-db > /dev/null    # Check service status without output
+yum list installed | grep oracle > /dev/null  # Check if Oracle packages installed
 ```
 
 ### Oracle Troubleshooting Guide

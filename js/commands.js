@@ -360,6 +360,10 @@ class CommandProcessor {
     }
 
     cmdLs(args) {
+        // Handle redirection
+        const redirection = this.checkRedirection(args);
+        args = redirection.args;
+        
         // Parse flags - handle combined flags like -la, -al, etc.
         let showAll = false;
         let longFormat = false;
@@ -376,7 +380,7 @@ class CommandProcessor {
         
         const files = this.fs.ls(path);
         if (files === null) {
-            this.terminal.writeln(`ls: cannot access '${path}': No such file or directory`);
+            this.outputText(`ls: cannot access '${path}': No such file or directory`, redirection);
             return;
         }
 
@@ -385,17 +389,20 @@ class CommandProcessor {
             files.unshift({ name: '..', type: 'directory', permissions: 'drwxr-xr-x' });
         }
 
+        let output = '';
         if (longFormat) {
-            this.terminal.writeln(`total ${files.length * 4}`);
+            output += `total ${files.length * 4}\n`;
             files.forEach(file => {
                 const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
-                this.terminal.writeln(
-                    `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${file.size || 4096} ${date} ${file.name}`
-                );
+                output += `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${file.size || 4096} ${date} ${file.name}\n`;
             });
         } else {
             const names = files.map(f => f.name).join('  ');
-            if (names) this.terminal.writeln(names);
+            if (names) output = names;
+        }
+
+        if (output.trim()) {
+            this.outputText(output.trim(), redirection);
         }
     }
 
@@ -1148,6 +1155,73 @@ class CommandProcessor {
         return groups.includes(groupname) || groupContent.includes(`${groupname}:`);
     }
 
+    // Helper function to handle output redirection
+    checkRedirection(args) {
+        // Find redirection operator
+        let redirectIndex = -1;
+        let redirectType = null;
+        
+        for (let i = 0; i < args.length; i++) {
+            if (args[i] === '>') {
+                redirectIndex = i;
+                redirectType = '>';
+                break;
+            } else if (args[i] === '>>') {
+                redirectIndex = i;
+                redirectType = '>>';
+                break;
+            }
+        }
+        
+        if (redirectIndex !== -1 && redirectIndex < args.length - 1) {
+            const filename = args[redirectIndex + 1];
+            let fullPath = filename;
+            if (!filename.startsWith('/')) {
+                fullPath = this.fs.pwd() === '/' ? `/${filename}` : `${this.fs.pwd()}/${filename}`;
+            }
+            
+            return { 
+                redirected: true, 
+                args: args.slice(0, redirectIndex),
+                redirectType: redirectType,
+                targetPath: fullPath
+            };
+        }
+        
+        return { redirected: false, args: args };
+    }
+
+    // Helper function to output text with redirection support
+    outputText(text, redirection) {
+        if (!redirection.redirected) {
+            this.terminal.writeln(text);
+            return;
+        }
+        
+        // Check if redirecting to /dev/null (discard output)
+        if (redirection.targetPath === '/dev/null') {
+            return; // Discard output
+        }
+        
+        // Write to file
+        if (redirection.redirectType === '>>') {
+            // Append
+            if (this.fs.exists(redirection.targetPath)) {
+                const currentContent = this.fs.cat(redirection.targetPath) || '';
+                this.fs.updateFile(redirection.targetPath, currentContent + (currentContent ? '\n' : '') + text);
+            } else {
+                this.fs.touch(redirection.targetPath, text);
+            }
+        } else {
+            // Overwrite
+            if (this.fs.exists(redirection.targetPath)) {
+                this.fs.updateFile(redirection.targetPath, text);
+            } else {
+                this.fs.touch(redirection.targetPath, text);
+            }
+        }
+    }
+
     // Script execution functionality
     executeScript(scriptPath) {
         // Check if file exists
@@ -1280,6 +1354,12 @@ class CommandProcessor {
             let fullPath = filename;
             if (!filename.startsWith('/')) {
                 fullPath = this.fs.pwd() === '/' ? `/${filename}` : `${this.fs.pwd()}/${filename}`;
+            }
+            
+            // Check if redirecting to /dev/null (discard output)
+            if (fullPath === '/dev/null') {
+                // Do nothing - output is discarded
+                return;
             }
             
             if (redirectType === '>>') {

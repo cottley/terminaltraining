@@ -38,7 +38,16 @@ class FileSystem {
                         }
                     },
                     'boot': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
-                    'dev': { type: 'directory', permissions: 'drwxr-xr-x', owner: 'root', group: 'root', size: 4096, children: {} },
+                    'dev': { 
+                        type: 'directory', 
+                        permissions: 'drwxr-xr-x', 
+                        owner: 'root', 
+                        group: 'root', 
+                        size: 4096, 
+                        children: {
+                            'null': { type: 'device', permissions: 'crw-rw-rw-', owner: 'root', group: 'root', size: 0, content: '' }
+                        }
+                    },
                     'etc': { 
                         type: 'directory', 
                         permissions: 'drwxr-xr-x', 
