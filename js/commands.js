@@ -343,7 +343,14 @@ class CommandProcessor {
                 this.cmdChown(args);
                 break;
             default:
-                this.terminal.writeln(`-bash: ${command}: command not found`);
+                // Check if it's an executable script
+                if (this.fs.exists(command) && this.isExecutable(command)) {
+                    this.executeScript(command);
+                } else if (command.startsWith('./') && this.fs.exists(command) && this.isExecutable(command)) {
+                    this.executeScript(command);
+                } else {
+                    this.terminal.writeln(`-bash: ${command}: command not found`);
+                }
         }
     }
 
@@ -1134,6 +1141,91 @@ class CommandProcessor {
         // Check for groupname in group file
         const groups = ['root', 'oinstall', 'dba', 'oper', 'backupdba', 'dgdba', 'kmdba', 'asmdba', 'asmoper', 'asmadmin', 'bin', 'daemon', 'sys', 'adm', 'tty', 'disk', 'lp', 'mem', 'kmem', 'wheel', 'cdrom', 'mail', 'man', 'dialout', 'floppy', 'games', 'tape', 'video', 'ftp', 'lock', 'audio', 'nobody', 'users', 'systemd-network', 'dbus'];
         return groups.includes(groupname) || groupContent.includes(`${groupname}:`);
+    }
+
+    // Script execution functionality
+    executeScript(scriptPath) {
+        // Check if file exists
+        if (!this.fs.exists(scriptPath)) {
+            this.terminal.writeln(`bash: ${scriptPath}: No such file or directory`);
+            return false;
+        }
+
+        // Check if file is executable
+        if (!this.isExecutable(scriptPath)) {
+            this.terminal.writeln(`bash: ${scriptPath}: Permission denied`);
+            return false;
+        }
+
+        // Get script content
+        const content = this.fs.cat(scriptPath);
+        if (!content) {
+            this.terminal.writeln(`bash: ${scriptPath}: cannot execute binary file`);
+            return false;
+        }
+
+        // Check if it's a shell script
+        const lines = content.split('\n');
+        if (lines.length === 0) {
+            return true; // Empty script
+        }
+
+        const shebang = lines[0].trim();
+        if (!shebang.startsWith('#!') || (!shebang.includes('/bin/sh') && !shebang.includes('/bin/bash'))) {
+            this.terminal.writeln(`bash: ${scriptPath}: cannot execute binary file: Exec format error`);
+            return false;
+        }
+
+        this.terminal.writeln(`Executing script: ${scriptPath}`);
+        
+        // Execute each line of the script
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            // Skip empty lines and comments
+            if (line === '' || line.startsWith('#')) {
+                continue;
+            }
+
+            // Show the command being executed
+            this.terminal.writeln(`+ ${line}`);
+            
+            // Execute the command
+            this.processCommand(line);
+        }
+
+        return true;
+    }
+
+    // Check if a file is executable
+    isExecutable(path) {
+        const pathArray = this.fs.resolvePath(path);
+        const node = this.fs.getNode(pathArray);
+        
+        if (!node || node.type !== 'file') {
+            return false;
+        }
+
+        // Check if file has execute permission
+        const permissions = node.permissions;
+        if (!permissions) return false;
+
+        // Check owner execute permission (position 3)
+        if (this.fs.currentUser === node.owner && permissions[3] === 'x') {
+            return true;
+        }
+
+        // Check group execute permission (position 6) 
+        if (permissions[6] === 'x') {
+            return true;
+        }
+
+        // Check others execute permission (position 9)
+        if (permissions[9] === 'x') {
+            return true;
+        }
+
+        return false;
     }
 
     cmdCat(args) {

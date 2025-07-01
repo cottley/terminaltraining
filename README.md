@@ -94,6 +94,27 @@ echo <text>           # Display text
 vim/vi <file>         # Edit files (modal editor)
 ```
 
+### Shell Scripting
+```bash
+# Create executable shell scripts
+touch script.sh                    # Create script file
+chmod +x script.sh                 # Make executable
+./script.sh                        # Execute script
+
+# Script requirements:
+# - Must have execute permissions (chmod +x)
+# - First line must be #!/bin/sh or #!/bin/bash
+# - Commands are executed line by line
+# - Empty lines and comments (#) are ignored
+
+# Example script content:
+#!/bin/bash
+echo "Starting Oracle installation check"
+pwd
+ls -la /u01/app/oracle
+echo "Installation check complete"
+```
+
 ### System Information
 ```bash
 hostname              # Display system hostname
@@ -243,6 +264,19 @@ chown -R oracle:oinstall /u01/app/oracle/         # Oracle software ownership
 chown oracle:dba /u01/app/oracle/oradata/ORCL/*.dbf  # Database file ownership
 chown oracle:oinstall /u01/app/oracle/admin/       # Admin directory ownership
 chown root:oinstall /etc/oratab                    # System Oracle configuration
+
+# Oracle automation scripts
+# Example Oracle installation check script:
+#!/bin/bash
+echo "=== Oracle Installation Check ==="
+echo "Checking Oracle user and groups..."
+id oracle
+echo "Checking Oracle directories..."
+ls -la /u01/app/oracle/product/19.0.0/dbhome_1/bin/
+echo "Checking database processes..."
+ps aux | grep oracle
+echo "Checking listener status..."
+lsnrctl status
 ```
 
 ### Oracle Troubleshooting Guide
