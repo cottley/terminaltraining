@@ -1260,6 +1260,11 @@ class CommandProcessor {
             const textParts = args.slice(0, redirectIndex);
             let outputText = textParts.join(' ');
             
+            // Remove surrounding quotes if present
+            if ((outputText.startsWith('"') && outputText.endsWith('"')) || (outputText.startsWith("'") && outputText.endsWith("'"))) {
+                outputText = outputText.slice(1, -1);
+            }
+            
             // Process variables
             outputText = outputText.replace(/\$([A-Z_]+)/g, (match, varName) => {
                 return this.environmentVars[varName] || '';
@@ -1291,6 +1296,12 @@ class CommandProcessor {
         } else {
             // Normal echo without redirection
             let text = args.join(' ');
+            
+            // Remove surrounding quotes if present
+            if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+                text = text.slice(1, -1);
+            }
+            
             // Process variables
             text = text.replace(/\$([A-Z_]+)/g, (match, varName) => {
                 return this.environmentVars[varName] || '';
