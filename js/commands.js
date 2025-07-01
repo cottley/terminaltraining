@@ -410,10 +410,16 @@ class CommandProcessor {
 
         if (longFormat) {
             this.terminal.writeln(`total ${files.length * 4}`);
+            
+            // Find the maximum size length for dynamic padding
+            const maxSizeLength = Math.max(
+                ...files.map(file => (file.size || 4096).toString().length)
+            );
+            
             files.forEach(file => {
                 const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
                 const size = (file.size || 4096).toString();
-                const paddedSize = size.padStart(8, ' '); // Right-align size in 8-character field
+                const paddedSize = size.padStart(maxSizeLength, ' '); // Dynamic padding based on largest file
                 this.terminal.writeln(
                     `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${paddedSize} ${date} ${file.name}`
                 );
