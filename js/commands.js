@@ -178,6 +178,10 @@ class CommandProcessor {
         this.historyIndex = this.history.length;
         this.saveHistory();
         
+        this.executeCommandDirect(input);
+    }
+
+    executeCommandDirect(input) {
         // Handle pipes
         if (input.includes('|')) {
             this.processPipedCommand(input);
@@ -1185,8 +1189,8 @@ class CommandProcessor {
                 continue;
             }
             
-            // Execute the command
-            this.processCommand(line);
+            // Execute the command without adding to history
+            this.executeCommandDirect(line);
         }
 
         return true;
