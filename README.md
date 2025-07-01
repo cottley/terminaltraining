@@ -79,7 +79,7 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 
 ### File System Operations
 ```bash
-ls [-l] [-a] [-la] [-al] # List directory contents
+ls [-l] [-a] [-h] [-la] [-lh] [-lah] # List directory contents
 cd <directory>        # Change directory
 pwd                   # Print working directory
 mkdir [-p] <dir>      # Create directories
@@ -216,8 +216,11 @@ cat file | wc -l            # Count lines
 # Directory Listing
 ls                               # List files and directories
 ls -l                            # Long format listing
+ls -h                            # Human-readable file sizes (requires -l)
 ls -a                            # Show all files (including hidden)
 ls -la                           # Long format with all files
+ls -lh                           # Long format with human-readable sizes
+ls -lah                          # Long format, all files, human-readable sizes
 ls -al                           # Same as -la (flags can be combined in any order)
 
 # Copy Operations

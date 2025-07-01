@@ -382,16 +382,43 @@ class CommandProcessor {
         }
     }
 
+    // Helper function to convert bytes to human-readable format
+    formatFileSize(bytes, humanReadable) {
+        if (!humanReadable) {
+            return bytes.toString();
+        }
+        
+        const units = ['B', 'K', 'M', 'G', 'T'];
+        let size = bytes;
+        let unitIndex = 0;
+        
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        
+        // Format similar to real ls -lh
+        if (unitIndex === 0) {
+            return size.toString(); // Bytes - no decimal
+        } else if (size >= 10) {
+            return Math.round(size).toString() + units[unitIndex]; // 10G, 15M, etc.
+        } else {
+            return size.toFixed(1) + units[unitIndex]; // 2.8G, 3.7G, etc.
+        }
+    }
+
     cmdLs(args) {
-        // Parse flags - handle combined flags like -la, -al, etc.
+        // Parse flags - handle combined flags like -la, -al, -lh, -lah, etc.
         let showAll = false;
         let longFormat = false;
+        let humanReadable = false;
         
         args.forEach(arg => {
             if (arg.startsWith('-') && arg !== '-') {
                 const flags = arg.slice(1); // Remove the '-' prefix
                 if (flags.includes('a')) showAll = true;
                 if (flags.includes('l')) longFormat = true;
+                if (flags.includes('h')) humanReadable = true;
             }
         });
         
@@ -413,13 +440,13 @@ class CommandProcessor {
             
             // Find the maximum size length for dynamic padding
             const maxSizeLength = Math.max(
-                ...files.map(file => (file.size || 4096).toString().length)
+                ...files.map(file => this.formatFileSize(file.size || 4096, humanReadable).length)
             );
             
             files.forEach(file => {
                 const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
-                const size = (file.size || 4096).toString();
-                const paddedSize = size.padStart(maxSizeLength, ' '); // Dynamic padding based on largest file
+                const formattedSize = this.formatFileSize(file.size || 4096, humanReadable);
+                const paddedSize = formattedSize.padStart(maxSizeLength, ' '); // Dynamic padding based on largest file
                 this.terminal.writeln(
                     `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${paddedSize} ${date} ${file.name}`
                 );
