@@ -1176,8 +1176,6 @@ class CommandProcessor {
             return false;
         }
 
-        this.terminal.writeln(`Executing script: ${scriptPath}`);
-        
         // Execute each line of the script
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
@@ -1186,9 +1184,6 @@ class CommandProcessor {
             if (line === '' || line.startsWith('#')) {
                 continue;
             }
-
-            // Show the command being executed
-            this.terminal.writeln(`+ ${line}`);
             
             // Execute the command
             this.processCommand(line);
