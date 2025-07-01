@@ -279,6 +279,18 @@ term.onData(data => {
                                 'grep', 'head', 'tail', 'sort', 'uniq', 'wc', 'ldconfig',
                                 'troubleshoot', 'oracle-troubleshoot', 'service'];
                 
+                // Add executable files from current directory
+                const files = fs.ls('.');
+                if (files) {
+                    files.forEach(file => {
+                        if (file.type === 'file' && cmdProcessor.isExecutable(file.name)) {
+                            // Add both with and without ./ prefix
+                            commands.push(file.name);
+                            commands.push('./' + file.name);
+                        }
+                    });
+                }
+                
                 const matches = commands.filter(cmd => cmd.startsWith(currentLine));
                 if (matches.length === 1) {
                     const completion = matches[0].slice(currentLine.length);
