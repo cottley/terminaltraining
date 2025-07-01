@@ -424,13 +424,33 @@ class CommandProcessor {
         
         const path = args.find(arg => !arg.startsWith('-')) || '.';
         
-        const files = this.fs.ls(path);
-        if (files === null) {
+        // Check if path is a file or directory
+        if (!this.fs.exists(path)) {
             this.terminal.writeln(`ls: cannot access '${path}': No such file or directory`);
             return;
         }
+        
+        let files;
+        if (this.fs.isFile(path)) {
+            // Handle single file
+            const pathArray = this.fs.resolvePath(path);
+            const node = this.fs.getNode(pathArray);
+            const fileName = pathArray[pathArray.length - 1] || path;
+            files = [{
+                name: fileName,
+                ...node
+            }];
+        } else {
+            // Handle directory
+            files = this.fs.ls(path);
+            if (files === null) {
+                this.terminal.writeln(`ls: cannot access '${path}': No such file or directory`);
+                return;
+            }
+        }
 
-        if (showAll) {
+        // Only add . and .. for directories, not for individual files
+        if (showAll && this.fs.isDirectory(path)) {
             files.unshift({ name: '.', type: 'directory', permissions: 'drwxr-xr-x' });
             files.unshift({ name: '..', type: 'directory', permissions: 'drwxr-xr-x' });
         }
