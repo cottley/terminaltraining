@@ -43,6 +43,7 @@ html, body {
     overflow: hidden;
     width: 100%;
     max-width: none;
+    padding-left: 2px;
 }
 
 .xterm {
