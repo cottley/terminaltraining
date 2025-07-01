@@ -330,6 +330,9 @@ class CommandProcessor {
             case 'service':
                 this.cmdService(args);
                 break;
+            case 'cp':
+                this.cmdCp(args);
+                break;
             default:
                 this.terminal.writeln(`-bash: ${command}: command not found`);
         }
@@ -434,6 +437,101 @@ class CommandProcessor {
                 this.terminal.writeln(`rm: cannot remove '${file}': No such file or directory`);
             }
         });
+    }
+
+    cmdCp(args) {
+        if (args.length < 2) {
+            this.terminal.writeln('cp: missing file operand');
+            this.terminal.writeln('Usage: cp [OPTION] SOURCE DEST');
+            this.terminal.writeln('   or: cp [OPTION] SOURCE... DIRECTORY');
+            this.terminal.writeln('');
+            this.terminal.writeln('Options:');
+            this.terminal.writeln('  -r, -R    copy directories recursively');
+            return;
+        }
+
+        const recursive = args.includes('-r') || args.includes('-R');
+        const sources = args.slice(0, -1).filter(arg => !arg.startsWith('-'));
+        const destination = args[args.length - 1];
+
+        if (sources.length === 0) {
+            this.terminal.writeln('cp: missing source file operand');
+            return;
+        }
+
+        // Check if destination is a directory
+        const destIsDir = this.fs.isDirectory(destination);
+        
+        if (sources.length > 1 && !destIsDir) {
+            this.terminal.writeln(`cp: target '${destination}' is not a directory`);
+            return;
+        }
+
+        sources.forEach(source => {
+            this.copyFile(source, destination, recursive, destIsDir);
+        });
+    }
+
+    copyFile(source, destination, recursive, destIsDir) {
+        // Check if source exists
+        if (!this.fs.exists(source)) {
+            this.terminal.writeln(`cp: cannot stat '${source}': No such file or directory`);
+            return;
+        }
+
+        // Determine final destination path
+        let finalDest = destination;
+        if (destIsDir) {
+            const sourceName = source.split('/').pop();
+            finalDest = destination.endsWith('/') ? destination + sourceName : destination + '/' + sourceName;
+        }
+
+        // Check if source is a directory
+        if (this.fs.isDirectory(source)) {
+            if (!recursive) {
+                this.terminal.writeln(`cp: -r not specified; omitting directory '${source}'`);
+                return;
+            }
+            this.copyDirectoryRecursive(source, finalDest);
+        } else {
+            // Copy file
+            const content = this.fs.cat(source);
+            if (content !== null) {
+                if (this.fs.touch(finalDest, content)) {
+                    // Success - no output for successful copy (standard cp behavior)
+                } else {
+                    this.terminal.writeln(`cp: cannot create regular file '${finalDest}': No such file or directory`);
+                }
+            }
+        }
+    }
+
+    copyDirectoryRecursive(source, destination) {
+        // Create destination directory
+        if (!this.fs.mkdir(destination)) {
+            this.terminal.writeln(`cp: cannot create directory '${destination}': File exists`);
+            return;
+        }
+
+        // Get source directory contents
+        const files = this.fs.ls(source);
+        if (files) {
+            files.forEach(file => {
+                if (file.name !== '.' && file.name !== '..') {
+                    const sourcePath = source + '/' + file.name;
+                    const destPath = destination + '/' + file.name;
+                    
+                    if (file.type === 'directory') {
+                        this.copyDirectoryRecursive(sourcePath, destPath);
+                    } else {
+                        const content = this.fs.cat(sourcePath);
+                        if (content !== null) {
+                            this.fs.touch(destPath, content);
+                        }
+                    }
+                }
+            });
+        }
     }
 
     cmdCat(args) {

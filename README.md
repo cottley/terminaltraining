@@ -85,6 +85,7 @@ pwd                   # Print working directory
 mkdir [-p] <dir>      # Create directories
 touch <file>          # Create/update files
 rm [-r] [-f] <file>   # Remove files/directories
+cp [-r] <src> <dest>  # Copy files/directories
 cat <file>            # Display file contents
 echo <text>           # Display text
 vim/vi <file>         # Edit files (modal editor)
