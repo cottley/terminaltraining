@@ -90,13 +90,19 @@ mv [-i] <src> <dest>  # Move/rename files/directories
 chmod [-R] <mode> <file>  # Change file permissions
 chown [-R] <owner>[:<group>] <file>  # Change file ownership
 cat <file>            # Display file contents
-echo <text>           # Display text
+echo [-e] <text>      # Display text (-e enables escape sequences)
 vim/vi/nano <file>    # Edit files (modal editor)
 
 # Output redirection
 command > file        # Redirect output to file
 command >> file       # Append output to file  
 command > /dev/null   # Discard output (no terminal output)
+
+# Echo with escape sequences
+echo -e "Hello\nWorld"     # Output: Hello (newline) World
+echo -e "Name:\tOracle"    # Output: Name: (tab) Oracle  
+echo -e "Path:\\bin"       # Output: Path:\bin
+echo -e "Done\n"           # Output: Done (with trailing newline)
 ```
 
 ### Shell Scripting
@@ -115,9 +121,11 @@ chmod +x script.sh                 # Make executable
 # Example script content:
 #!/bin/bash
 echo "Starting Oracle installation check"
+echo -e "Database:\t$ORACLE_SID"
+echo -e "Home:\t\t$ORACLE_HOME"
 pwd
 ls -la /u01/app/oracle
-echo "Installation check complete"
+echo -e "Installation check complete\n"
 ```
 
 ### System Information

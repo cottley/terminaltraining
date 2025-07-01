@@ -1389,39 +1389,47 @@ class CommandProcessor {
     }
 
     cmdEcho(args) {
+        // Parse flags
+        let enableEscapes = false;
+        let filteredArgs = [];
+        
+        for (let i = 0; i < args.length; i++) {
+            if (args[i] === '-e') {
+                enableEscapes = true;
+            } else if (args[i] === '-E') {
+                enableEscapes = false; // Explicitly disable escapes
+            } else {
+                filteredArgs.push(args[i]);
+            }
+        }
+        
         // Handle output redirection
         let redirectIndex = -1;
         let redirectType = null;
         
-        for (let i = 0; i < args.length; i++) {
-            if (args[i] === '>') {
+        for (let i = 0; i < filteredArgs.length; i++) {
+            if (filteredArgs[i] === '>') {
                 redirectIndex = i;
                 redirectType = '>';
                 break;
-            } else if (args[i] === '>>') {
+            } else if (filteredArgs[i] === '>>') {
                 redirectIndex = i;
                 redirectType = '>>';
                 break;
             }
         }
         
-        if (redirectIndex !== -1 && redirectIndex < args.length - 1) {
-            // Get text before redirection
-            const textParts = args.slice(0, redirectIndex);
-            let outputText = textParts.join(' ');
-            
-            // Remove surrounding quotes if present
-            if ((outputText.startsWith('"') && outputText.endsWith('"')) || (outputText.startsWith("'") && outputText.endsWith("'"))) {
-                outputText = outputText.slice(1, -1);
-            }
-            
-            // Process variables
-            outputText = outputText.replace(/\$([A-Z_]+)/g, (match, varName) => {
-                return this.environmentVars[varName] || '';
-            });
-            
-            // Get filename
-            const filename = args[redirectIndex + 1];
+        let textArgs = filteredArgs;
+        if (redirectIndex !== -1) {
+            textArgs = filteredArgs.slice(0, redirectIndex);
+        }
+        
+        // Process the text
+        let outputText = this.processEchoText(textArgs, enableEscapes);
+        
+        if (redirectIndex !== -1 && redirectIndex < filteredArgs.length - 1) {
+            // Handle redirection
+            const filename = filteredArgs[redirectIndex + 1];
             let fullPath = filename;
             if (!filename.startsWith('/')) {
                 fullPath = this.fs.pwd() === '/' ? `/${filename}` : `${this.fs.pwd()}/${filename}`;
@@ -1429,7 +1437,6 @@ class CommandProcessor {
             
             // Check if redirecting to /dev/null (discard output)
             if (fullPath === '/dev/null') {
-                // Do nothing - output is discarded
                 return;
             }
             
@@ -1451,19 +1458,54 @@ class CommandProcessor {
             }
         } else {
             // Normal echo without redirection
-            let text = args.join(' ');
-            
-            // Remove surrounding quotes if present
-            if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
-                text = text.slice(1, -1);
+            if (enableEscapes && outputText.includes('\n')) {
+                // Split by newlines and write each line separately
+                const lines = outputText.split('\n');
+                lines.forEach((line, index) => {
+                    if (index === lines.length - 1 && line === '') {
+                        // Don't write an empty line at the end if it's just from a trailing \n
+                        return;
+                    }
+                    this.terminal.writeln(line);
+                });
+            } else {
+                this.terminal.writeln(outputText);
             }
-            
-            // Process variables
-            text = text.replace(/\$([A-Z_]+)/g, (match, varName) => {
-                return this.environmentVars[varName] || '';
-            });
-            this.terminal.writeln(text);
         }
+    }
+
+    // Helper function to process echo text with escape sequences
+    processEchoText(args, enableEscapes) {
+        let text = args.join(' ');
+        
+        // Remove surrounding quotes if present
+        if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+            text = text.slice(1, -1);
+        }
+        
+        // Process variables
+        text = text.replace(/\$([A-Z_]+)/g, (match, varName) => {
+            return this.environmentVars[varName] || '';
+        });
+        
+        // Process escape sequences if -e flag is enabled
+        if (enableEscapes) {
+            text = text
+                .replace(/\\n/g, '\n')      // newline
+                .replace(/\\t/g, '\t')      // tab
+                .replace(/\\r/g, '\r')      // carriage return
+                .replace(/\\b/g, '\b')      // backspace
+                .replace(/\\f/g, '\f')      // form feed
+                .replace(/\\v/g, '\v')      // vertical tab
+                .replace(/\\a/g, '\x07')    // alert (bell)
+                .replace(/\\e/g, '\x1b')    // escape
+                .replace(/\\\\/g, '\\')     // backslash
+                .replace(/\\"/g, '"')       // double quote
+                .replace(/\\'/g, "'")       // single quote
+                .replace(/\\0/g, '\0');     // null character
+        }
+        
+        return text;
     }
 
     cmdUname(args) {
