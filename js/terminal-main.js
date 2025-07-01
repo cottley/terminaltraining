@@ -91,9 +91,9 @@ function forceScrollbarPosition() {
     const xtermViewport = terminalElement.querySelector('.xterm-viewport');
     
     if (xtermViewport) {
-        // Force the margin-right style to stay applied
-        xtermViewport.style.marginRight = '3px';
-        xtermViewport.style.setProperty('margin-right', '3px', 'important');
+        // Override xterm.js -10px margin with 0px
+        xtermViewport.style.removeProperty('margin-right');
+        xtermViewport.style.setProperty('margin-right', '0px', 'important');
     }
 }
 
