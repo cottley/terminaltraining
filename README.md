@@ -85,7 +85,7 @@ pwd                   # Print working directory
 mkdir [-p] <dir>      # Create directories
 touch <file>          # Create/update files
 rm [-r] [-f] <file>   # Remove files/directories
-cp [-r] <src> <dest>  # Copy files/directories
+cp [-r] [-i] <src> <dest>  # Copy files/directories
 cat <file>            # Display file contents
 echo <text>           # Display text
 vim/vi <file>         # Edit files (modal editor)
@@ -180,6 +180,20 @@ cat file | tail -20         # Last 20 lines
 cat file | sort             # Sort content
 cat file | uniq             # Remove duplicates
 cat file | wc -l            # Count lines
+```
+
+### File Management Operations
+```bash
+# Copy Operations
+cp file1.txt file2.txt           # Copy file to new name
+cp file1.txt /root/              # Copy file to directory
+cp -r dir1 dir2                  # Copy directory recursively
+cp -i file1.txt file2.txt        # Interactive copy (prompts before overwrite)
+cp -ri source_dir dest_dir       # Interactive recursive copy
+
+# Examples with confirmation prompts
+cp -i /etc/hosts /root/hosts     # Prompts: "cp: overwrite '/root/hosts'? (y/n)"
+cp -i *.txt /root/               # Prompts for each existing file
 ```
 
 ### Oracle Troubleshooting Guide

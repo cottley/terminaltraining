@@ -447,10 +447,12 @@ class CommandProcessor {
             this.terminal.writeln('');
             this.terminal.writeln('Options:');
             this.terminal.writeln('  -r, -R    copy directories recursively');
+            this.terminal.writeln('  -i        prompt before overwrite');
             return;
         }
 
         const recursive = args.includes('-r') || args.includes('-R');
+        const interactive = args.includes('-i');
         const sources = args.slice(0, -1).filter(arg => !arg.startsWith('-'));
         const destination = args[args.length - 1];
 
@@ -468,11 +470,11 @@ class CommandProcessor {
         }
 
         sources.forEach(source => {
-            this.copyFile(source, destination, recursive, destIsDir);
+            this.copyFile(source, destination, recursive, destIsDir, interactive);
         });
     }
 
-    copyFile(source, destination, recursive, destIsDir) {
+    copyFile(source, destination, recursive, destIsDir, interactive) {
         // Check if source exists
         if (!this.fs.exists(source)) {
             this.terminal.writeln(`cp: cannot stat '${source}': No such file or directory`);
@@ -484,6 +486,12 @@ class CommandProcessor {
         if (destIsDir) {
             const sourceName = source.split('/').pop();
             finalDest = destination.endsWith('/') ? destination + sourceName : destination + '/' + sourceName;
+        }
+
+        // Check if destination exists and interactive mode is enabled
+        if (interactive && this.fs.exists(finalDest)) {
+            this.promptOverwrite(source, finalDest, recursive, destIsDir);
+            return;
         }
 
         // Check if source is a directory
@@ -504,6 +512,60 @@ class CommandProcessor {
                 }
             }
         }
+    }
+
+    promptOverwrite(source, destination, recursive, destIsDir) {
+        // Set up confirmation prompt state
+        this.cpConfirmationPending = {
+            source: source,
+            destination: destination,
+            recursive: recursive,
+            destIsDir: destIsDir
+        };
+        
+        // Show confirmation prompt
+        this.terminal.writeln(`cp: overwrite '${destination}'? (y/n) `);
+        
+        // Set flag to indicate we're waiting for cp confirmation
+        this.waitingForCpConfirmation = true;
+    }
+
+    handleCpConfirmation(input) {
+        const response = input.toLowerCase().trim();
+        this.waitingForCpConfirmation = false;
+        
+        if (response === 'y' || response === 'yes') {
+            // User confirmed, proceed with copy
+            const { source, destination, recursive } = this.cpConfirmationPending;
+            
+            if (this.fs.isDirectory(source)) {
+                if (!recursive) {
+                    this.terminal.writeln(`cp: -r not specified; omitting directory '${source}'`);
+                } else {
+                    this.copyDirectoryRecursive(source, destination);
+                }
+            } else {
+                const content = this.fs.cat(source);
+                if (content !== null) {
+                    if (this.fs.touch(destination, content)) {
+                        // Success - no output for successful copy
+                    } else {
+                        this.terminal.writeln(`cp: cannot create regular file '${destination}': No such file or directory`);
+                    }
+                }
+            }
+        } else if (response === 'n' || response === 'no') {
+            // User declined, skip this copy
+            // No output (standard cp behavior)
+        } else {
+            // Invalid response, ask again
+            this.terminal.writeln(`cp: overwrite '${this.cpConfirmationPending.destination}'? (y/n) `);
+            this.waitingForCpConfirmation = true;
+            return;
+        }
+        
+        // Clean up confirmation state
+        this.cpConfirmationPending = null;
     }
 
     copyDirectoryRecursive(source, destination) {

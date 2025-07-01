@@ -121,6 +121,37 @@ term.onData(data => {
         }
         return;
     }
+    
+    // Check if we're waiting for cp confirmation
+    if (cmdProcessor.waitingForCpConfirmation) {
+        switch (data) {
+            case '\r': // Enter
+            case '\n':
+                term.write('\r\n');
+                cmdProcessor.handleCpConfirmation(currentLine);
+                currentLine = '';
+                cursorPosition = 0;
+                if (!cmdProcessor.waitingForCpConfirmation) {
+                    term.write(cmdProcessor.getPrompt());
+                }
+                break;
+            case '\u007F': // Backspace
+            case '\b':
+                if (currentLine.length > 0) {
+                    currentLine = currentLine.slice(0, -1);
+                    cursorPosition = currentLine.length;
+                    term.write('\b \b');
+                }
+                break;
+            default:
+                if (data >= ' ' && data <= '~') {
+                    currentLine += data;
+                    cursorPosition = currentLine.length;
+                    term.write(data);
+                }
+        }
+        return;
+    }
 
     // Normal command processing
     switch (data) {
