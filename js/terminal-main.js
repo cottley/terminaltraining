@@ -281,12 +281,22 @@ term.onData(data => {
                     // Just silently remove the character
                     return;
                 } else {
-                    // Redraw the line from cursor position (normal input)
-                    const restOfLine = currentLine.slice(cursorPosition);
-                    term.write('\b' + restOfLine + ' \b');
+                    // For multi-line support, redraw the entire line from the beginning
+                    const prompt = cmdProcessor.getPrompt();
+                    const totalLength = prompt.length + currentLine.length + 1; // +1 for the deleted char
                     
-                    // Move cursor back to correct position
-                    for (let i = 0; i < restOfLine.length; i++) {
+                    // Clear the entire current content
+                    term.write('\r' + ' '.repeat(totalLength) + '\r');
+                    
+                    // Redraw prompt and current line
+                    term.write(prompt + currentLine);
+                    
+                    // Position cursor correctly
+                    const targetPosition = prompt.length + cursorPosition;
+                    const currentPosition = prompt.length + currentLine.length;
+                    const backspaces = currentPosition - targetPosition;
+                    
+                    for (let i = 0; i < backspaces; i++) {
                         term.write('\b');
                     }
                 }
@@ -502,12 +512,19 @@ term.onData(data => {
                     // Just move the cursor forward silently
                     return;
                 } else {
-                    // Redraw line from cursor position (normal input)
-                    const restOfLine = currentLine.slice(cursorPosition - 1);
-                    term.write(restOfLine);
+                    // For multi-line support, redraw the entire line from the beginning
+                    const prompt = cmdProcessor.getPrompt();
                     
-                    // Move cursor back to correct position
-                    for (let i = 0; i < restOfLine.length - 1; i++) {
+                    // Clear current content and redraw
+                    term.write('\r' + ' '.repeat(prompt.length + currentLine.length) + '\r');
+                    term.write(prompt + currentLine);
+                    
+                    // Position cursor correctly
+                    const targetPosition = prompt.length + cursorPosition;
+                    const currentPosition = prompt.length + currentLine.length;
+                    const backspaces = currentPosition - targetPosition;
+                    
+                    for (let i = 0; i < backspaces; i++) {
                         term.write('\b');
                     }
                 }
