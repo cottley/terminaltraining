@@ -327,17 +327,13 @@ term.onData(data => {
                         term.write('\u001b[A'); // Move up one line
                         term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
                         
-                        // Delete the character at end of previous line and clear the space
-                        term.write('\b \b');
-                        
-                        // Now redraw rest of text from current position
+                        // Now delete the character and redraw rest of text (same as single line)
                         const restOfLine = currentLine.slice(cursorPosition);
-                        if (restOfLine.length > 0) {
-                            term.write(restOfLine);
-                            // Move cursor back to correct position
-                            for (let i = 0; i < restOfLine.length; i++) {
-                                term.write('\b');
-                            }
+                        term.write('\b' + restOfLine + ' \b');
+                        
+                        // Move cursor back to correct position
+                        for (let i = 0; i < restOfLine.length; i++) {
+                            term.write('\b');
                         }
                     } else {
                         // Normal backspace within same line
