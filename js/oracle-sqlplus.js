@@ -112,6 +112,72 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
         
+        // Handle CONNECT/CONN command
+        const isConnectCmd = sqlCommand.startsWith('CONNECT ') || 
+                           sqlCommand.startsWith('CONN ') ||
+                           sqlCommand === 'CONNECT' ||
+                           sqlCommand === 'CONN';
+        
+        if (isConnectCmd) {
+            let connectPart = '';
+            if (sqlCommand.startsWith('CONNECT ')) {
+                connectPart = sqlCommand.substring(8).trim();
+            } else if (sqlCommand.startsWith('CONN ')) {
+                connectPart = sqlCommand.substring(5).trim();
+            } else if (sqlCommand === 'CONNECT' || sqlCommand === 'CONN') {
+                // Just the command without arguments - should prompt for username
+                this.terminal.writeln('Enter user-name: ');
+                return;
+            }
+            
+            let connAsSysdba = false;
+            let connString = connectPart;
+            
+            if (connString.includes('AS SYSDBA')) {
+                connAsSysdba = true;
+                connString = connString.replace('AS SYSDBA', '').trim();
+            }
+            
+            if (connString === '/' && connAsSysdba) {
+                // OS authentication as SYSDBA
+                if (oracleManager.getState('databaseStarted')) {
+                    this.terminal.writeln('Connected.');
+                    currentUser = 'SYS';
+                    asSysdba = true;
+                } else {
+                    this.terminal.writeln('Connected to an idle instance.');
+                    currentUser = 'SYS';
+                    asSysdba = true;
+                }
+            } else if (connString === '/') {
+                // OS authentication as regular user
+                if (!oracleManager.getState('databaseStarted')) {
+                    this.terminal.writeln('ERROR:');
+                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                } else {
+                    this.terminal.writeln('Connected.');
+                    currentUser = 'SYSTEM';
+                    asSysdba = false;
+                }
+            } else {
+                // Other connection strings - simulate successful connection
+                if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
+                    this.terminal.writeln('ERROR:');
+                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                } else {
+                    this.terminal.writeln('Connected.');
+                    if (connString.includes('SYS') || connAsSysdba) {
+                        currentUser = 'SYS';
+                        asSysdba = true;
+                    } else {
+                        currentUser = connString.split('/')[0] || 'SYSTEM';
+                        asSysdba = connAsSysdba;
+                    }
+                }
+            }
+            return;
+        }
+        
         // Database startup/shutdown commands (SYSDBA only)
         if (asSysdba) {
             if (sqlCommand === 'STARTUP' || sqlCommand === 'STARTUP;') {
