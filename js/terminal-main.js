@@ -331,7 +331,15 @@ term.onData(data => {
                     
                     // Check if we need to move to previous line
                     if (wasAtBeginningOfWrappedLine) {
-                        console.log(`MULTILINE BACKSPACE: moving to previous line`);
+                        console.log(`MULTILINE BACKSPACE: was at beginning of wrapped line, need to delete extra character`);
+                        
+                        // We need to delete an additional character since we were at beginning of wrapped line
+                        if (currentLine.length > cursorPosition) {
+                            // Delete one more character from the current line
+                            currentLine = currentLine.slice(0, cursorPosition) + currentLine.slice(cursorPosition + 1);
+                            console.log(`MULTILINE BACKSPACE: deleted extra character, currentLine='${currentLine}'`);
+                        }
+                        
                         // Move cursor up one line and to the end of previous line
                         term.write('\u001b[A'); // Move up one line
                         term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
@@ -345,13 +353,13 @@ term.onData(data => {
                             console.log(`MULTILINE BACKSPACE: writing remaining text: '${restOfLine}'`);
                             term.write(restOfLine);
                             
-                            // Move cursor back to correct position (end of previous line)
+                            // Move cursor back to correct position (one more column to the right)
                             for (let i = 0; i < restOfLine.length; i++) {
                                 term.write('\b');
                             }
                         }
                         
-                        console.log(`MULTILINE BACKSPACE: positioned at end of previous line`);
+                        console.log(`MULTILINE BACKSPACE: positioned one column further right on previous line`);
                     } else {
                         // Normal backspace handling (same line)
                         const restOfLine = currentLine.slice(cursorPosition);
