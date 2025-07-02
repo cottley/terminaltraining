@@ -132,13 +132,9 @@ function updateCursorPosition() {
     // Calculate which character position the cursor is at
     const cursorAt = prompt.length + cursorPosition;
     
-    console.log(`updateCursorPosition: promptLen=${prompt.length}, cursorPosition=${cursorPosition}, cursorAt=${cursorAt}, termWidth=${terminalWidth}`);
-    
     // Calculate row and column based on terminal width
     currentRow = Math.floor(cursorAt / terminalWidth);
     currentCol = cursorAt % terminalWidth;
-    
-    console.log(`updateCursorPosition: currentRow=${currentRow}, currentCol=${currentCol}`);
 }
 
 term.onData(data => {
@@ -303,20 +299,15 @@ term.onData(data => {
         case '\u007F': // Backspace
         case '\b':
             if (cursorPosition > 0) {
-                console.log(`BACKSPACE: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
-                
                 // Remove character at cursor position - 1
                 currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
                 cursorPosition--;
-                
-                console.log(`AFTER DELETE: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
                 
                 // Check cursor position BEFORE deletion to see if we were at beginning of wrapped line
                 // Use early wrap logic (term.cols - 1) to match input behavior
                 const prompt = cmdProcessor.getPrompt();
                 const cursorAtBeforeDeletion = prompt.length + cursorPosition + 1; // +1 because we just decremented
                 const wasAtBeginningOfWrappedLine = (cursorAtBeforeDeletion > 0 && cursorAtBeforeDeletion % (term.cols - 1) === 0);
-                console.log(`BACKSPACE ANALYSIS: cursorAtBeforeDeletion=${cursorAtBeforeDeletion}, wasAtBeginningOfWrappedLine=${wasAtBeginningOfWrappedLine}, using early wrap at ${term.cols - 1}`);
                 
                 // Check if we're in password input mode
                 if (cmdProcessor.waitingForPassword) {
@@ -328,17 +319,12 @@ term.onData(data => {
                     // Update cursor position after deletion to determine display strategy
                     updateCursorPosition();
                     
-                    console.log(`BACKSPACE STRATEGY: currentCol=${currentCol}, currentRow=${currentRow}`);
-                    
                     // Check if we need to move to previous line
                     if (wasAtBeginningOfWrappedLine) {
-                        console.log(`MULTILINE BACKSPACE: was at beginning of wrapped line, need to delete extra character`);
-                        
                         // We need to delete an additional character since we were at beginning of wrapped line
                         if (currentLine.length > cursorPosition) {
                             // Delete one more character from the current line
                             currentLine = currentLine.slice(0, cursorPosition) + currentLine.slice(cursorPosition + 1);
-                            console.log(`MULTILINE BACKSPACE: deleted extra character, currentLine='${currentLine}'`);
                         }
                         
                         // Move cursor up one line and to the position where wrapped character was
@@ -350,19 +336,15 @@ term.onData(data => {
                         
                         // Now write any remaining text from current position and clear the extra character
                         const restOfLine = currentLine.slice(cursorPosition);
-                        console.log(`MULTILINE BACKSPACE: writing remaining text: '${restOfLine}'`);
                         term.write(restOfLine + ' '); // Add space to clear the last character visually
                         
                         // Move cursor back to correct position (where the deleted character was)
                         for (let i = 0; i < restOfLine.length + 1; i++) { // +1 for the extra space
                             term.write('\b');
                         }
-                        
-                        console.log(`MULTILINE BACKSPACE: positioned one column further right on previous line`);
                     } else {
                         // Normal backspace handling (same line)
                         const restOfLine = currentLine.slice(cursorPosition);
-                        console.log(`BACKSPACE DISPLAY: restOfLine='${restOfLine}'`);
                         term.write('\b' + restOfLine + ' \b');
                         
                         // Move cursor back to correct position
@@ -573,13 +555,9 @@ term.onData(data => {
             break;
         default:
             if (data >= ' ' && data <= '~') {
-                console.log(`CHARACTER INPUT: '${data}' - currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
-                
                 // Insert character at cursor position
                 currentLine = currentLine.slice(0, cursorPosition) + data + currentLine.slice(cursorPosition);
                 cursorPosition++;
-                
-                console.log(`AFTER INSERT: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
                 
                 // Check if we're in password input mode
                 if (cmdProcessor.waitingForPassword) {
@@ -590,7 +568,6 @@ term.onData(data => {
                 } else {
                     // Write the character and any remaining text
                     const restOfLine = currentLine.slice(cursorPosition);
-                    console.log(`WRITING: '${data + restOfLine}', restOfLine='${restOfLine}'`);
                     term.write(data + restOfLine);
                     
                     // Move cursor back to correct position (after the inserted character)
@@ -606,12 +583,10 @@ term.onData(data => {
                     const prompt = cmdProcessor.getPrompt();
                     const totalChars = prompt.length + cursorPosition;
                     if (totalChars > 0 && totalChars % (term.cols - 1) === 0) {
-                        console.log(`CURSOR POSITIONING: Text wrapped early (at ${term.cols - 1} chars), moving to next line`);
                         // The text has reached one character before terminal width, wrap early
                         // Move cursor down one line and to column 0
                         term.write('\u001b[B'); // Move cursor down one line
                         term.write('\r'); // Move to beginning of line
-                        console.log(`MOVED CURSOR: down one line and to column 0`);
                     }
                 }
             }
