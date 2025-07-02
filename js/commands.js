@@ -3961,6 +3961,9 @@ class CommandProcessor {
                 case 'echo':
                     this.cmdEcho(args);
                     break;
+                case 'find':
+                    this.cmdFind(args);
+                    break;
                 case 'ps':
                     this.cmdPs(args);
                     break;
