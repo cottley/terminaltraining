@@ -102,6 +102,72 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         const sqlCommand = input.trim().toUpperCase();
         const sqlLower = input.trim();
         
+        // Handle username input after CONN/CONNECT command
+        if (this.waitingForUsername) {
+            this.waitingForUsername = false;
+            this.getPrompt = () => 'SQL> ';  // Restore SQL prompt
+            
+            const userInput = input.trim();
+            if (userInput === '') {
+                this.terminal.writeln('ERROR:');
+                this.terminal.writeln('ORA-01017: invalid username/password; logon denied');
+                return;
+            }
+            
+            // Process the username input as if it was "CONN <username>"
+            const processedInput = 'CONN ' + userInput;
+            const processedSqlCommand = processedInput.toUpperCase();
+            
+            // Handle the connection with the provided username
+            let connectPart = processedSqlCommand.substring(5).trim();
+            let connAsSysdba = false;
+            let connString = connectPart;
+            
+            if (connString.includes('AS SYSDBA')) {
+                connAsSysdba = true;
+                connString = connString.replace('AS SYSDBA', '').trim();
+            }
+            
+            if (connString === '/' && connAsSysdba) {
+                // OS authentication as SYSDBA
+                if (oracleManager.getState('databaseStarted')) {
+                    this.terminal.writeln('Connected.');
+                    currentUser = 'SYS';
+                    asSysdba = true;
+                } else {
+                    this.terminal.writeln('Connected to an idle instance.');
+                    currentUser = 'SYS';
+                    asSysdba = true;
+                }
+            } else if (connString === '/') {
+                // OS authentication as regular user
+                if (!oracleManager.getState('databaseStarted')) {
+                    this.terminal.writeln('ERROR:');
+                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                } else {
+                    this.terminal.writeln('Connected.');
+                    currentUser = 'SYSTEM';
+                    asSysdba = false;
+                }
+            } else {
+                // Other connection strings - simulate successful connection
+                if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
+                    this.terminal.writeln('ERROR:');
+                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                } else {
+                    this.terminal.writeln('Connected.');
+                    if (connString.includes('SYS') || connAsSysdba) {
+                        currentUser = 'SYS';
+                        asSysdba = true;
+                    } else {
+                        currentUser = connString.split('/')[0] || 'SYSTEM';
+                        asSysdba = connAsSysdba;
+                    }
+                }
+            }
+            return;
+        }
+        
         // Handle SQL commands
         if (sqlCommand === 'EXIT' || sqlCommand === 'QUIT') {
             // Restore original command processor
@@ -127,6 +193,10 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             } else if (sqlCommand === 'CONNECT' || sqlCommand === 'CONN') {
                 // Just the command without arguments - should prompt for username
                 this.terminal.writeln('Enter user-name: ');
+                
+                // Set up a waiting state for username input
+                this.waitingForUsername = true;
+                this.getPrompt = () => '';  // No prompt while waiting for username
                 return;
             }
             
