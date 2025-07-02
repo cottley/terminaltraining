@@ -542,13 +542,20 @@ term.onData(data => {
                     updateCursorPosition();
                     return;
                 } else {
-                    // Simple character insertion: write new character and shift remaining text
-                    const restOfLine = currentLine.slice(cursorPosition - 1);
-                    term.write(restOfLine);
-                    
-                    // Move cursor back to correct position
-                    for (let i = 0; i < restOfLine.length - 1; i++) {
-                        term.write('\b');
+                    // For character insertion, write the character and let terminal handle wrapping
+                    const restOfLine = currentLine.slice(cursorPosition);
+                    if (restOfLine.length === 0) {
+                        // Simple case: just write the character at end of line
+                        term.write(data);
+                    } else {
+                        // Need to insert character and shift remaining text
+                        term.write('\b'); // Move back to where we want to insert
+                        term.write(currentLine.slice(cursorPosition - 1)); // Write from insertion point
+                        
+                        // Move cursor back to correct position
+                        for (let i = 0; i < restOfLine.length; i++) {
+                            term.write('\b');
+                        }
                     }
                     
                     // Update cursor position tracking
