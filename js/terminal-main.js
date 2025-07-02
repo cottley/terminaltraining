@@ -298,9 +298,17 @@ term.onData(data => {
             break;
         case '\u007F': // Backspace
         case '\b':
-            if (cursorPosition > 0) {
+            if (cursorPosition > 0 && currentLine.length > 0) {
                 // Update cursor position before deletion
                 updateCursorPosition();
+                
+                // Check if we're trying to delete past the prompt boundary
+                const prompt = cmdProcessor.getPrompt();
+                const cursorAt = prompt.length + cursorPosition;
+                if (cursorAt <= prompt.length) {
+                    // Don't allow deletion of the prompt or its trailing space
+                    return;
+                }
                 
                 // Remove character at cursor position - 1
                 currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
@@ -315,17 +323,21 @@ term.onData(data => {
                 } else {
                     // Check if we need to move to previous line
                     if (currentCol === 0 && currentRow > 0) {
-                        // Move cursor up one line and to the end
+                        // Move cursor up one line to the end of previous line
                         term.write('\u001b[A'); // Move up one line
                         term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
                         
-                        // Now delete the character and redraw rest of text
-                        const restOfLine = currentLine.slice(cursorPosition);
-                        term.write('\b' + restOfLine + ' \b');
+                        // Delete the character at end of previous line and clear the space
+                        term.write('\b \b');
                         
-                        // Move cursor back to correct position
-                        for (let i = 0; i < restOfLine.length; i++) {
-                            term.write('\b');
+                        // Now redraw rest of text from current position
+                        const restOfLine = currentLine.slice(cursorPosition);
+                        if (restOfLine.length > 0) {
+                            term.write(restOfLine);
+                            // Move cursor back to correct position
+                            for (let i = 0; i < restOfLine.length; i++) {
+                                term.write('\b');
+                            }
                         }
                     } else {
                         // Normal backspace within same line
