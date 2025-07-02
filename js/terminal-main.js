@@ -348,20 +348,15 @@ term.onData(data => {
                         // Delete the character at this position and clear the space
                         term.write('\b'); // Move back one character
                         
-                        // Now write any remaining text from current position
+                        // Now write any remaining text from current position and clear the extra character
                         const restOfLine = currentLine.slice(cursorPosition);
-                        if (restOfLine.length > 0) {
-                            console.log(`MULTILINE BACKSPACE: writing remaining text: '${restOfLine}'`);
-                            term.write(restOfLine);
-                            
-                            // Move cursor back to correct position (where the deleted character was)
-                            for (let i = 0; i < restOfLine.length; i++) {
-                                term.write('\b');
-                            }
-                        }
+                        console.log(`MULTILINE BACKSPACE: writing remaining text: '${restOfLine}'`);
+                        term.write(restOfLine + ' '); // Add space to clear the last character visually
                         
-                        // Position cursor one character further to the right
-                        term.write('\u001b[C'); // Move cursor right one position
+                        // Move cursor back to correct position (where the deleted character was)
+                        for (let i = 0; i < restOfLine.length + 1; i++) { // +1 for the extra space
+                            term.write('\b');
+                        }
                         
                         console.log(`MULTILINE BACKSPACE: positioned one column further right on previous line`);
                     } else {
