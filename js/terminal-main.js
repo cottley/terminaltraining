@@ -115,7 +115,27 @@ term.writeln('');
 // Command input handling
 let currentLine = '';
 let cursorPosition = 0; // Track cursor position within current line
+let currentRow = 0; // Track current row (0-based)
+let currentCol = 0; // Track current column (0-based)
 term.write(cmdProcessor.getPrompt());
+
+// Calculate initial cursor position after prompt
+const initialPrompt = cmdProcessor.getPrompt();
+currentCol = initialPrompt.length;
+
+// Helper function to update cursor position tracking
+function updateCursorPosition() {
+    const prompt = cmdProcessor.getPrompt();
+    const totalText = prompt + currentLine;
+    const terminalWidth = term.cols;
+    
+    // Calculate which character position the cursor is at
+    const cursorAt = prompt.length + cursorPosition;
+    
+    // Calculate row and column based on terminal width
+    currentRow = Math.floor(cursorAt / terminalWidth);
+    currentCol = cursorAt % terminalWidth;
+}
 
 term.onData(data => {
     // Check if we're in game mode
@@ -261,16 +281,27 @@ term.onData(data => {
             currentLine = '';
             cursorPosition = 0;
             term.write(cmdProcessor.getPrompt());
+            // Reset cursor tracking for new prompt
+            const newPrompt = cmdProcessor.getPrompt();
+            currentCol = newPrompt.length;
+            currentRow = 0;
             break;
         case '\u0003': // Ctrl+C
             term.write('^C\r\n');
             currentLine = '';
             cursorPosition = 0;
             term.write(cmdProcessor.getPrompt());
+            // Reset cursor tracking for new prompt
+            const ctrlCPrompt = cmdProcessor.getPrompt();
+            currentCol = ctrlCPrompt.length;
+            currentRow = 0;
             break;
         case '\u007F': // Backspace
         case '\b':
             if (cursorPosition > 0) {
+                // Update cursor position before deletion
+                updateCursorPosition();
+                
                 // Remove character at cursor position - 1
                 currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
                 cursorPosition--;
@@ -279,16 +310,36 @@ term.onData(data => {
                 if (cmdProcessor.waitingForPassword) {
                     // Don't show any visual feedback for password backspace
                     // Just silently remove the character
+                    updateCursorPosition();
                     return;
                 } else {
-                    // Simple backspace: remove one character and shift remaining text
-                    const restOfLine = currentLine.slice(cursorPosition);
-                    term.write('\b' + restOfLine + ' \b');
-                    
-                    // Move cursor back to correct position
-                    for (let i = 0; i < restOfLine.length; i++) {
-                        term.write('\b');
+                    // Check if we need to move to previous line
+                    if (currentCol === 0 && currentRow > 0) {
+                        // Move cursor up one line and to the end
+                        term.write('\u001b[A'); // Move up one line
+                        term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
+                        
+                        // Now delete the character and redraw rest of text
+                        const restOfLine = currentLine.slice(cursorPosition);
+                        term.write('\b' + restOfLine + ' \b');
+                        
+                        // Move cursor back to correct position
+                        for (let i = 0; i < restOfLine.length; i++) {
+                            term.write('\b');
+                        }
+                    } else {
+                        // Normal backspace within same line
+                        const restOfLine = currentLine.slice(cursorPosition);
+                        term.write('\b' + restOfLine + ' \b');
+                        
+                        // Move cursor back to correct position
+                        for (let i = 0; i < restOfLine.length; i++) {
+                            term.write('\b');
+                        }
                     }
+                    
+                    // Update cursor position after operation
+                    updateCursorPosition();
                 }
             }
             break;
@@ -500,6 +551,7 @@ term.onData(data => {
                 if (cmdProcessor.waitingForPassword) {
                     // Don't echo the character for password input
                     // Just move the cursor forward silently
+                    updateCursorPosition();
                     return;
                 } else {
                     // Simple character insertion: write new character and shift remaining text
@@ -510,6 +562,9 @@ term.onData(data => {
                     for (let i = 0; i < restOfLine.length - 1; i++) {
                         term.write('\b');
                     }
+                    
+                    // Update cursor position tracking
+                    updateCursorPosition();
                 }
             }
     }
