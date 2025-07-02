@@ -298,10 +298,7 @@ term.onData(data => {
             break;
         case '\u007F': // Backspace
         case '\b':
-            if (cursorPosition > 0 && currentLine.length > 0) {
-                // Update cursor position before deletion
-                updateCursorPosition();
-                
+            if (cursorPosition > 0) {
                 // Remove character at cursor position - 1
                 currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
                 cursorPosition--;
@@ -313,6 +310,9 @@ term.onData(data => {
                     updateCursorPosition();
                     return;
                 } else {
+                    // Update cursor position after deletion to determine display strategy
+                    updateCursorPosition();
+                    
                     // Check if we need to move to previous line
                     if (currentCol === 0 && currentRow > 0) {
                         // Move cursor up one line to the end of previous line
@@ -337,9 +337,6 @@ term.onData(data => {
                             term.write('\b');
                         }
                     }
-                    
-                    // Update cursor position after operation
-                    updateCursorPosition();
                 }
             }
             break;
