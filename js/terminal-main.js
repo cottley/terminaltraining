@@ -131,15 +131,19 @@ function updateCursorPosition() {
     // Calculate which character position the cursor is at
     const cursorAt = prompt.length + cursorPosition;
     
+    console.log(`updateCursorPosition: promptLen=${prompt.length}, cursorPosition=${cursorPosition}, cursorAt=${cursorAt}, termWidth=${terminalWidth}`);
+    
     // Calculate row and column based on terminal width
     // Handle edge case where cursor is exactly at end of line
     if (cursorAt > 0 && cursorAt % terminalWidth === 0) {
         // Cursor is at the beginning of the next line due to wrapping
         currentRow = Math.floor(cursorAt / terminalWidth);
         currentCol = 0;
+        console.log(`updateCursorPosition: edge case - currentRow=${currentRow}, currentCol=${currentCol}`);
     } else {
         currentRow = Math.floor(cursorAt / terminalWidth);
         currentCol = cursorAt % terminalWidth;
+        console.log(`updateCursorPosition: normal case - currentRow=${currentRow}, currentCol=${currentCol}`);
     }
 }
 
@@ -305,9 +309,13 @@ term.onData(data => {
         case '\u007F': // Backspace
         case '\b':
             if (cursorPosition > 0) {
+                console.log(`BACKSPACE: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
+                
                 // Remove character at cursor position - 1
                 currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
                 cursorPosition--;
+                
+                console.log(`AFTER DELETE: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
                 
                 // Check if we're in password input mode
                 if (cmdProcessor.waitingForPassword) {
@@ -319,8 +327,11 @@ term.onData(data => {
                     // Update cursor position after deletion to determine display strategy
                     updateCursorPosition();
                     
+                    console.log(`BACKSPACE STRATEGY: currentCol=${currentCol}, currentRow=${currentRow}`);
+                    
                     // Check if we need to move to previous line
                     if (currentCol === 0 && currentRow > 0) {
+                        console.log(`MULTILINE BACKSPACE: moving to previous line`);
                         // Move cursor up one line to the end of previous line
                         term.write('\u001b[A'); // Move up one line
                         term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
@@ -328,6 +339,7 @@ term.onData(data => {
                     
                     // Normal backspace handling
                     const restOfLine = currentLine.slice(cursorPosition);
+                    console.log(`BACKSPACE DISPLAY: restOfLine='${restOfLine}'`);
                     term.write('\b' + restOfLine + ' \b');
                     
                     // Move cursor back to correct position
@@ -537,9 +549,13 @@ term.onData(data => {
             break;
         default:
             if (data >= ' ' && data <= '~') {
+                console.log(`CHARACTER INPUT: '${data}' - currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
+                
                 // Insert character at cursor position
                 currentLine = currentLine.slice(0, cursorPosition) + data + currentLine.slice(cursorPosition);
                 cursorPosition++;
+                
+                console.log(`AFTER INSERT: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
                 
                 // Check if we're in password input mode
                 if (cmdProcessor.waitingForPassword) {
@@ -550,6 +566,7 @@ term.onData(data => {
                 } else {
                     // Write the character and any remaining text
                     const restOfLine = currentLine.slice(cursorPosition);
+                    console.log(`WRITING: '${data + restOfLine}', restOfLine='${restOfLine}'`);
                     term.write(data + restOfLine);
                     
                     // Move cursor back to correct position (after the inserted character)
