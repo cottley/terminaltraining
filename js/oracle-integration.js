@@ -222,23 +222,39 @@ CommandProcessor.prototype.processCommand = function(input) {
     
     // Check for script execution first
     if (command === '/u01/app/oraInventory/orainstRoot.sh') {
+        // Add to history before executing
+        this.history.push(input);
+        this.historyIndex = this.history.length;
+        this.saveHistory();
         this.cmdOrainstRoot(args);
         return;
     }
     
     if (command === '/u01/app/oracle/product/19.0.0/dbhome_1/root.sh') {
+        // Add to history before executing
+        this.history.push(input);
+        this.historyIndex = this.history.length;
+        this.saveHistory();
         this.cmdRootSh(args);
         return;
     }
     
     // Check for unzip command
     if (command === 'unzip') {
+        // Add to history before executing
+        this.history.push(input);
+        this.historyIndex = this.history.length;
+        this.saveHistory();
         this.cmdUnzip(args);
         return;
     }
     
     // Check if it's an Oracle command
     if (this.processOracleCommand(command, args)) {
+        // Add to history before executing Oracle command
+        this.history.push(input);
+        this.historyIndex = this.history.length;
+        this.saveHistory();
         return;
     }
     
