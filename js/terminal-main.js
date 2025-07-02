@@ -576,6 +576,22 @@ term.onData(data => {
                     
                     // Update cursor position tracking
                     updateCursorPosition();
+                    
+                    // If we're at the edge case (beginning of next line), explicitly position cursor
+                    if (currentCol === 0 && currentRow > 0) {
+                        console.log(`CURSOR POSITIONING: Moving to row ${currentRow}, col ${currentCol}`);
+                        // The text has wrapped, but cursor might not be positioned correctly
+                        // Use escape sequence to position cursor at beginning of next line
+                        const prompt = cmdProcessor.getPrompt();
+                        const totalChars = prompt.length + cursorPosition;
+                        const expectedRow = Math.floor(totalChars / term.cols);
+                        const expectedCol = totalChars % term.cols;
+                        
+                        console.log(`EXPECTED POSITION: row=${expectedRow}, col=${expectedCol}`);
+                        
+                        // Move cursor to absolute position
+                        term.write(`\u001b[${expectedRow + 1};${expectedCol + 1}H`);
+                    }
                 }
             }
     }
