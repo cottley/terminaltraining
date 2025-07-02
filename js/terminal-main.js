@@ -310,33 +310,26 @@ term.onData(data => {
                     updateCursorPosition();
                     return;
                 } else {
-                    // Update cursor position after deletion to determine display strategy
-                    updateCursorPosition();
+                    // Simplified approach: redraw entire line from prompt
+                    const prompt = cmdProcessor.getPrompt();
                     
-                    // Check if we need to move to previous line
-                    if (currentCol === 0 && currentRow > 0) {
-                        // Move cursor up one line to the end of previous line
-                        term.write('\u001b[A'); // Move up one line
-                        term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
-                        
-                        // Now delete the character and redraw rest of text (same as single line)
-                        const restOfLine = currentLine.slice(cursorPosition);
-                        term.write('\b' + restOfLine + ' \b');
-                        
-                        // Move cursor back to correct position
-                        for (let i = 0; i < restOfLine.length; i++) {
-                            term.write('\b');
-                        }
-                    } else {
-                        // Normal backspace within same line
-                        const restOfLine = currentLine.slice(cursorPosition);
-                        term.write('\b' + restOfLine + ' \b');
-                        
-                        // Move cursor back to correct position
-                        for (let i = 0; i < restOfLine.length; i++) {
-                            term.write('\b');
-                        }
+                    // Clear current line and redraw from beginning
+                    term.write('\r');
+                    term.write(' '.repeat(prompt.length + currentLine.length + 10)); // Clear with extra spaces
+                    term.write('\r');
+                    term.write(prompt + currentLine);
+                    
+                    // Position cursor correctly
+                    const targetPosition = prompt.length + cursorPosition;
+                    const currentPosition = prompt.length + currentLine.length;
+                    
+                    // Move cursor to correct position
+                    for (let i = 0; i < currentPosition - targetPosition; i++) {
+                        term.write('\b');
                     }
+                    
+                    // Update cursor position tracking
+                    updateCursorPosition();
                 }
             }
             break;
