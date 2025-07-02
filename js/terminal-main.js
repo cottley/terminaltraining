@@ -126,15 +126,21 @@ currentCol = initialPrompt.length;
 // Helper function to update cursor position tracking
 function updateCursorPosition() {
     const prompt = cmdProcessor.getPrompt();
-    const totalText = prompt + currentLine;
     const terminalWidth = term.cols;
     
     // Calculate which character position the cursor is at
     const cursorAt = prompt.length + cursorPosition;
     
     // Calculate row and column based on terminal width
-    currentRow = Math.floor(cursorAt / terminalWidth);
-    currentCol = cursorAt % terminalWidth;
+    // Handle edge case where cursor is exactly at end of line
+    if (cursorAt > 0 && cursorAt % terminalWidth === 0) {
+        // Cursor is at the beginning of the next line due to wrapping
+        currentRow = Math.floor(cursorAt / terminalWidth);
+        currentCol = 0;
+    } else {
+        currentRow = Math.floor(cursorAt / terminalWidth);
+        currentCol = cursorAt % terminalWidth;
+    }
 }
 
 term.onData(data => {
@@ -542,20 +548,13 @@ term.onData(data => {
                     updateCursorPosition();
                     return;
                 } else {
-                    // For character insertion, write the character and let terminal handle wrapping
+                    // Write the character and any remaining text
                     const restOfLine = currentLine.slice(cursorPosition);
-                    if (restOfLine.length === 0) {
-                        // Simple case: just write the character at end of line
-                        term.write(data);
-                    } else {
-                        // Need to insert character and shift remaining text
-                        term.write('\b'); // Move back to where we want to insert
-                        term.write(currentLine.slice(cursorPosition - 1)); // Write from insertion point
-                        
-                        // Move cursor back to correct position
-                        for (let i = 0; i < restOfLine.length; i++) {
-                            term.write('\b');
-                        }
+                    term.write(data + restOfLine);
+                    
+                    // Move cursor back to correct position (after the inserted character)
+                    for (let i = 0; i < restOfLine.length; i++) {
+                        term.write('\b');
                     }
                     
                     // Update cursor position tracking
