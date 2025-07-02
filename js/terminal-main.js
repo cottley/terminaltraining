@@ -275,30 +275,37 @@ term.onData(data => {
                 currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
                 cursorPosition--;
                 
-                // Redraw the line from cursor position
-                const restOfLine = currentLine.slice(cursorPosition);
-                term.write('\b' + restOfLine + ' \b');
-                
-                // Move cursor back to correct position
-                for (let i = 0; i < restOfLine.length; i++) {
-                    term.write('\b');
+                // Check if we're in password input mode
+                if (cmdProcessor.waitingForPassword) {
+                    // Don't show any visual feedback for password backspace
+                    // Just silently remove the character
+                    return;
+                } else {
+                    // Redraw the line from cursor position (normal input)
+                    const restOfLine = currentLine.slice(cursorPosition);
+                    term.write('\b' + restOfLine + ' \b');
+                    
+                    // Move cursor back to correct position
+                    for (let i = 0; i < restOfLine.length; i++) {
+                        term.write('\b');
+                    }
                 }
             }
             break;
         case '\u001b[C': // Right arrow
-            if (cursorPosition < currentLine.length) {
+            if (!cmdProcessor.waitingForPassword && cursorPosition < currentLine.length) {
                 cursorPosition++;
                 term.write('\u001b[C'); // Move cursor right
             }
             break;
         case '\u001b[D': // Left arrow
-            if (cursorPosition > 0) {
+            if (!cmdProcessor.waitingForPassword && cursorPosition > 0) {
                 cursorPosition--;
                 term.write('\u001b[D'); // Move cursor left
             }
             break;
         case '\u001b[A': // Up arrow
-            if (cmdProcessor.historyIndex > 0) {
+            if (!cmdProcessor.waitingForPassword && cmdProcessor.historyIndex > 0) {
                 // Clear current line
                 term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
                 term.write('\r' + cmdProcessor.getPrompt());
@@ -310,26 +317,32 @@ term.onData(data => {
             }
             break;
         case '\u001b[B': // Down arrow
-            if (cmdProcessor.historyIndex < cmdProcessor.history.length - 1) {
-                // Clear current line
-                term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
-                term.write('\r' + cmdProcessor.getPrompt());
-                
-                cmdProcessor.historyIndex++;
-                currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
-                cursorPosition = currentLine.length; // Set cursor to end of line
-                term.write(currentLine);
-            } else if (cmdProcessor.historyIndex === cmdProcessor.history.length - 1) {
-                // Clear current line and go to empty line
-                term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
-                term.write('\r' + cmdProcessor.getPrompt());
-                
-                cmdProcessor.historyIndex++;
-                currentLine = '';
-                cursorPosition = 0;
+            if (!cmdProcessor.waitingForPassword) {
+                if (cmdProcessor.historyIndex < cmdProcessor.history.length - 1) {
+                    // Clear current line
+                    term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
+                    term.write('\r' + cmdProcessor.getPrompt());
+                    
+                    cmdProcessor.historyIndex++;
+                    currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
+                    cursorPosition = currentLine.length; // Set cursor to end of line
+                    term.write(currentLine);
+                } else if (cmdProcessor.historyIndex === cmdProcessor.history.length - 1) {
+                    // Clear current line and go to empty line
+                    term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
+                    term.write('\r' + cmdProcessor.getPrompt());
+                    
+                    cmdProcessor.historyIndex++;
+                    currentLine = '';
+                    cursorPosition = 0;
+                }
             }
             break;
         case '\t': // Tab (autocomplete for commands and directories)
+            if (cmdProcessor.waitingForPassword) {
+                // Disable tab completion during password input
+                break;
+            }
             const parts = currentLine.trim().split(/\s+/);
             
             if (parts.length === 1) {
@@ -483,13 +496,20 @@ term.onData(data => {
                 currentLine = currentLine.slice(0, cursorPosition) + data + currentLine.slice(cursorPosition);
                 cursorPosition++;
                 
-                // Redraw line from cursor position
-                const restOfLine = currentLine.slice(cursorPosition - 1);
-                term.write(restOfLine);
-                
-                // Move cursor back to correct position
-                for (let i = 0; i < restOfLine.length - 1; i++) {
-                    term.write('\b');
+                // Check if we're in password input mode
+                if (cmdProcessor.waitingForPassword) {
+                    // Don't echo the character for password input
+                    // Just move the cursor forward silently
+                    return;
+                } else {
+                    // Redraw line from cursor position (normal input)
+                    const restOfLine = currentLine.slice(cursorPosition - 1);
+                    term.write(restOfLine);
+                    
+                    // Move cursor back to correct position
+                    for (let i = 0; i < restOfLine.length - 1; i++) {
+                        term.write('\b');
+                    }
                 }
             }
     }
