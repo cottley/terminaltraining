@@ -341,11 +341,11 @@ term.onData(data => {
                             console.log(`MULTILINE BACKSPACE: deleted extra character, currentLine='${currentLine}'`);
                         }
                         
-                        // Move cursor up one line and to the end of previous line
+                        // Move cursor up one line and to the position where wrapped character was
                         term.write('\u001b[A'); // Move up one line
-                        term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
+                        term.write('\u001b[' + (term.cols - 1) + 'C'); // Move to position where wrapped character was
                         
-                        // Delete the character at end of previous line and clear the space
+                        // Delete the character at this position and clear the space
                         term.write('\b'); // Move back one character
                         
                         // Now write any remaining text from current position
@@ -354,11 +354,14 @@ term.onData(data => {
                             console.log(`MULTILINE BACKSPACE: writing remaining text: '${restOfLine}'`);
                             term.write(restOfLine);
                             
-                            // Move cursor back to correct position (one more column to the right)
+                            // Move cursor back to correct position (where the deleted character was)
                             for (let i = 0; i < restOfLine.length; i++) {
                                 term.write('\b');
                             }
                         }
+                        
+                        // Position cursor one character further to the right
+                        term.write('\u001b[C'); // Move cursor right one position
                         
                         console.log(`MULTILINE BACKSPACE: positioned one column further right on previous line`);
                     } else {
