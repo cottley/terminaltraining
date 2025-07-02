@@ -312,10 +312,11 @@ term.onData(data => {
                 console.log(`AFTER DELETE: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
                 
                 // Check cursor position BEFORE deletion to see if we were at beginning of wrapped line
+                // Use early wrap logic (term.cols - 1) to match input behavior
                 const prompt = cmdProcessor.getPrompt();
                 const cursorAtBeforeDeletion = prompt.length + cursorPosition + 1; // +1 because we just decremented
-                const wasAtBeginningOfWrappedLine = (cursorAtBeforeDeletion > 0 && cursorAtBeforeDeletion % term.cols === 0);
-                console.log(`BACKSPACE ANALYSIS: cursorAtBeforeDeletion=${cursorAtBeforeDeletion}, wasAtBeginningOfWrappedLine=${wasAtBeginningOfWrappedLine}`);
+                const wasAtBeginningOfWrappedLine = (cursorAtBeforeDeletion > 0 && cursorAtBeforeDeletion % (term.cols - 1) === 0);
+                console.log(`BACKSPACE ANALYSIS: cursorAtBeforeDeletion=${cursorAtBeforeDeletion}, wasAtBeginningOfWrappedLine=${wasAtBeginningOfWrappedLine}, using early wrap at ${term.cols - 1}`);
                 
                 // Check if we're in password input mode
                 if (cmdProcessor.waitingForPassword) {
@@ -603,11 +604,12 @@ term.onData(data => {
                     updateCursorPosition();
                     
                     // Check if cursor should be at beginning of next line due to wrapping
+                    // Wrap one character early to avoid terminal edge issues
                     const prompt = cmdProcessor.getPrompt();
                     const totalChars = prompt.length + cursorPosition;
-                    if (totalChars > 0 && totalChars % term.cols === 0) {
-                        console.log(`CURSOR POSITIONING: Text wrapped, moving to next line`);
-                        // The text has wrapped exactly to terminal width, cursor should be at beginning of next line
+                    if (totalChars > 0 && totalChars % (term.cols - 1) === 0) {
+                        console.log(`CURSOR POSITIONING: Text wrapped early (at ${term.cols - 1} chars), moving to next line`);
+                        // The text has reached one character before terminal width, wrap early
                         // Move cursor down one line and to column 0
                         term.write('\u001b[B'); // Move cursor down one line
                         term.write('\r'); // Move to beginning of line
