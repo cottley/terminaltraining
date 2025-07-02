@@ -92,6 +92,7 @@ chown [-R] <owner>[:<group>] <file>  # Change file ownership
 cat <file>            # Display file contents
 echo [-e] <text>      # Display text (-e enables escape sequences)
 vim/vi/nano <file>    # Edit files (modal editor)
+find <path> [options] # Search for files and directories
 
 # Output redirection
 command > file        # Redirect output to file
@@ -217,6 +218,43 @@ cat file | tail -20         # Last 20 lines
 cat file | sort             # Sort content
 cat file | uniq             # Remove duplicates
 cat file | wc -l            # Count lines
+```
+
+### File Search Operations
+```bash
+# Basic find operations
+find                          # List all files and directories from current location
+find /etc                     # Find all items in /etc directory
+find . -maxdepth 2           # Limit search to 2 directory levels deep
+find /usr /var /opt          # Search multiple directories
+
+# Search by name (supports wildcards * and ?)
+find . -name "*.conf"         # Find files ending with .conf
+find /etc -name "*oracle*"    # Find files with 'oracle' in the name
+find . -name "script.sh"      # Find exact filename match
+find . -iname "*.LOG"         # Case-insensitive search (matches .log, .Log, .LOG)
+
+# Search by type
+find /var -type f             # Find only files
+find /usr -type d             # Find only directories  
+find /etc -type l             # Find only symbolic links
+find . -type f -name "*.sh"   # Find shell script files only
+
+# Combined search options
+find /u01 -type f -name "*oracle*" -maxdepth 3    # Find Oracle files, max 3 levels deep
+find . -type d -iname "*log*" -maxdepth 2         # Find log directories, case-insensitive
+
+# Execute commands on found items
+find . -name "*.log" -exec ls -l {} \;            # Execute 'ls -l' on each found .log file
+find /tmp -type f -name "*.tmp" -exec rm {} \;    # Delete all .tmp files in /tmp
+find . -type f -name "*.sh" -exec chmod +x {} \;  # Make all .sh files executable
+
+# Oracle-specific examples
+find /u01/app/oracle -name "*.ora"                # Find Oracle configuration files
+find /u01 -type f -name "sqlplus"                 # Find SQL*Plus executable
+find /etc -name "*oracle*" -type f                # Find Oracle system configuration files
+find . -name "*.dbf" -exec ls -lh {} \;          # Find database files with size info
+find /u01/app/oracle -type d -name "*admin*"      # Find Oracle admin directories
 ```
 
 ### File Management Operations

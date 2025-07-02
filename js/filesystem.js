@@ -33,6 +33,7 @@ class FileSystem {
                             'mkdir': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 4567, content: '' },
                             'rm': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 6789, content: '' },
                             'touch': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 2345, content: '' },
+                            'find': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 15432, content: '' },
                             'bash': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 98765, content: '' },
                             'sh': { type: 'file', permissions: '-rwxr-xr-x', owner: 'root', group: 'root', size: 45678, content: '' }
                         }

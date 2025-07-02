@@ -234,6 +234,9 @@ class CommandProcessor {
             case 'grep':
                 this.cmdGrep(args);
                 break;
+            case 'find':
+                this.cmdFind(args);
+                break;
             case 'echo':
                 this.cmdEcho(args);
                 break;
@@ -4150,6 +4153,159 @@ class CommandProcessor {
         if (returnOutput) {
             return results.join('\n');
         }
+    }
+
+    cmdFind(args) {
+        // Default values
+        let searchPaths = ['.'];
+        let namePattern = null;
+        let typeFilter = null;
+        let maxDepth = null;
+        let caseInsensitive = false;
+        let execCommand = null;
+        let printAction = true;
+        
+        // Parse arguments
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            
+            if (arg === '-name') {
+                if (i + 1 < args.length) {
+                    namePattern = args[++i];
+                } else {
+                    this.terminal.writeln('find: option requires an argument -- name');
+                    return;
+                }
+            } else if (arg === '-iname') {
+                if (i + 1 < args.length) {
+                    namePattern = args[++i];
+                    caseInsensitive = true;
+                } else {
+                    this.terminal.writeln('find: option requires an argument -- iname');
+                    return;
+                }
+            } else if (arg === '-type') {
+                if (i + 1 < args.length) {
+                    typeFilter = args[++i];
+                    if (!['f', 'd', 'l'].includes(typeFilter)) {
+                        this.terminal.writeln('find: invalid argument for -type');
+                        return;
+                    }
+                } else {
+                    this.terminal.writeln('find: option requires an argument -- type');
+                    return;
+                }
+            } else if (arg === '-maxdepth') {
+                if (i + 1 < args.length) {
+                    maxDepth = parseInt(args[++i]);
+                    if (isNaN(maxDepth) || maxDepth < 0) {
+                        this.terminal.writeln('find: invalid argument for -maxdepth');
+                        return;
+                    }
+                } else {
+                    this.terminal.writeln('find: option requires an argument -- maxdepth');
+                    return;
+                }
+            } else if (arg === '-exec') {
+                // Find the end of the exec command (marked by \;)
+                execCommand = [];
+                printAction = false;
+                for (i = i + 1; i < args.length; i++) {
+                    if (args[i] === '\\;' || args[i] === ';') {
+                        break;
+                    }
+                    execCommand.push(args[i]);
+                }
+                if (i >= args.length) {
+                    this.terminal.writeln('find: missing argument to `-exec\'');
+                    return;
+                }
+            } else if (!arg.startsWith('-')) {
+                // This is a search path
+                if (searchPaths.length === 1 && searchPaths[0] === '.') {
+                    searchPaths = [arg];
+                } else {
+                    searchPaths.push(arg);
+                }
+            } else {
+                this.terminal.writeln(`find: unknown option: ${arg}`);
+                return;
+            }
+        }
+        
+        // Start the search
+        for (const searchPath of searchPaths) {
+            if (!this.fs.exists(searchPath)) {
+                this.terminal.writeln(`find: '${searchPath}': No such file or directory`);
+                continue;
+            }
+            
+            this.findRecursive(searchPath, namePattern, typeFilter, maxDepth, caseInsensitive, execCommand, printAction, 0);
+        }
+    }
+
+    findRecursive(currentPath, namePattern, typeFilter, maxDepth, caseInsensitive, execCommand, printAction, currentDepth) {
+        // Check max depth
+        if (maxDepth !== null && currentDepth > maxDepth) {
+            return;
+        }
+        
+        const pathArray = this.fs.resolvePath(currentPath);
+        const node = this.fs.getNode(pathArray);
+        
+        if (!node) {
+            return;
+        }
+        
+        const fileName = pathArray[pathArray.length - 1] || currentPath;
+        let matches = true;
+        
+        // Apply filters
+        if (namePattern) {
+            matches = this.matchPattern(fileName, namePattern, caseInsensitive);
+        }
+        
+        if (matches && typeFilter) {
+            const nodeType = node.type;
+            if (typeFilter === 'f' && nodeType !== 'file') matches = false;
+            if (typeFilter === 'd' && nodeType !== 'directory') matches = false;
+            if (typeFilter === 'l' && nodeType !== 'symlink') matches = false;
+        }
+        
+        // If this item matches, process it
+        if (matches) {
+            if (printAction) {
+                this.terminal.writeln(currentPath);
+            }
+            
+            if (execCommand && execCommand.length > 0) {
+                // Replace {} with the current path in exec command
+                const command = execCommand.map(arg => arg === '{}' ? currentPath : arg);
+                this.terminal.writeln(`Executing: ${command.join(' ')}`);
+                // Note: In a real implementation, you'd execute the command
+                // For the simulation, we just show what would be executed
+            }
+        }
+        
+        // Recurse into directories
+        if (node.type === 'directory' && node.children) {
+            for (const childName of Object.keys(node.children)) {
+                const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
+                this.findRecursive(childPath, namePattern, typeFilter, maxDepth, caseInsensitive, execCommand, printAction, currentDepth + 1);
+            }
+        }
+    }
+
+    matchPattern(fileName, pattern, caseInsensitive = false) {
+        // Convert shell glob pattern to regex
+        let regexPattern = pattern
+            .replace(/\./g, '\\.')  // Escape dots
+            .replace(/\*/g, '.*')   // * becomes .*
+            .replace(/\?/g, '.');   // ? becomes .
+        
+        const flags = caseInsensitive ? 'i' : '';
+        const regex = new RegExp(`^${regexPattern}$`, flags);
+        return regex.test(fileName);
     }
 
     // Additional pipe-friendly commands
