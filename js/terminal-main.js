@@ -3,6 +3,7 @@ const term = new Terminal({
     cursorBlink: true,
     fontSize: 14,
     fontFamily: 'Consolas, "Courier New", monospace',
+    disableStdin: false,
     theme: {
         background: '#000000',
         foreground: '#ffffff',
@@ -566,37 +567,34 @@ term.onData(data => {
                     updateCursorPosition();
                     return;
                 } else {
-                    // For most cases, especially paste, just write the character
-                    // The terminal will handle the display correctly
+                    // Simple character insertion - let xterm.js handle most of the display
+                    // Only add custom logic for special cases
                     const restOfLine = currentLine.slice(cursorPosition);
                     
                     if (restOfLine.length === 0) {
-                        // Simple case: adding character at end of line
+                        // Adding at end of line - simple write
                         term.write(data);
-                        
-                        // Update cursor position tracking
-                        updateCursorPosition();
-                        
-                        // Check if cursor should be at beginning of next line due to wrapping
-                        // Wrap one character early to avoid terminal edge issues
-                        const prompt = cmdProcessor.getPrompt();
-                        const totalChars = prompt.length + cursorPosition;
-                        if (totalChars > 0 && totalChars % (term.cols - 1) === 0) {
-                            // The text has reached one character before terminal width, wrap early
-                            // Move cursor down one line and to column 0
-                            term.write('\u001b[B'); // Move cursor down one line
-                            term.write('\r'); // Move to beginning of line
-                        }
                     } else {
-                        // Insert character in middle of line - use simple approach for paste compatibility
-                        term.write(data + restOfLine);
-                        // Move cursor back to correct position (after the inserted character)
+                        // Inserting in middle - minimal intervention
+                        term.write(data);
+                        term.write(restOfLine);
+                        // Move cursor back to correct position
                         for (let i = 0; i < restOfLine.length; i++) {
                             term.write('\b');
                         }
-                        
-                        // Update cursor position tracking (but don't apply wrapping logic for mid-line inserts)
-                        updateCursorPosition();
+                    }
+                    
+                    // Update cursor position tracking
+                    updateCursorPosition();
+                    
+                    // Only apply wrapping for end-of-line additions
+                    if (restOfLine.length === 0) {
+                        const prompt = cmdProcessor.getPrompt();
+                        const totalChars = prompt.length + cursorPosition;
+                        if (totalChars > 0 && totalChars % (term.cols - 1) === 0) {
+                            term.write('\u001b[B'); // Move cursor down one line
+                            term.write('\r'); // Move to beginning of line
+                        }
                     }
                 }
             }
