@@ -115,8 +115,9 @@ term.writeln('');
 // Command input handling
 let currentLine = '';
 let cursorPosition = 0; // Track cursor position within current line
-let currentRow = 0; // Track current row (0-based)
+let currentRow = 0; // Track current row (0-based relative to prompt)
 let currentCol = 0; // Track current column (0-based)
+let promptStartRow = 0; // Track absolute row where prompt starts
 term.write(cmdProcessor.getPrompt());
 
 // Calculate initial cursor position after prompt
@@ -580,17 +581,11 @@ term.onData(data => {
                     // If we're at the edge case (beginning of next line), explicitly position cursor
                     if (currentCol === 0 && currentRow > 0) {
                         console.log(`CURSOR POSITIONING: Moving to row ${currentRow}, col ${currentCol}`);
-                        // The text has wrapped, but cursor might not be positioned correctly
-                        // Use escape sequence to position cursor at beginning of next line
-                        const prompt = cmdProcessor.getPrompt();
-                        const totalChars = prompt.length + cursorPosition;
-                        const expectedRow = Math.floor(totalChars / term.cols);
-                        const expectedCol = totalChars % term.cols;
-                        
-                        console.log(`EXPECTED POSITION: row=${expectedRow}, col=${expectedCol}`);
-                        
-                        // Move cursor to absolute position
-                        term.write(`\u001b[${expectedRow + 1};${expectedCol + 1}H`);
+                        // The text has wrapped, cursor should be at beginning of next line
+                        // Move cursor down one line and to column 0
+                        term.write('\u001b[B'); // Move cursor down one line
+                        term.write('\r'); // Move to beginning of line
+                        console.log(`MOVED CURSOR: down one line and to column 0`);
                     }
                 }
             }
