@@ -567,27 +567,15 @@ term.onData(data => {
                     updateCursorPosition();
                     return;
                 } else {
-                    // Simple character insertion - let xterm.js handle most of the display
-                    // Only add custom logic for special cases
-                    const restOfLine = currentLine.slice(cursorPosition);
-                    
-                    if (restOfLine.length === 0) {
-                        // Adding at end of line - simple write
-                        term.write(data);
-                    } else {
-                        // Inserting in middle - minimal intervention
-                        term.write(data);
-                        term.write(restOfLine);
-                        // Move cursor back to correct position
-                        for (let i = 0; i < restOfLine.length; i++) {
-                            term.write('\b');
-                        }
-                    }
+                    // Simple approach: just write the character
+                    // Let xterm.js handle cursor positioning naturally for paste
+                    term.write(data);
                     
                     // Update cursor position tracking
                     updateCursorPosition();
                     
-                    // Only apply wrapping for end-of-line additions
+                    // Only apply custom wrapping logic when adding at end of line
+                    const restOfLine = currentLine.slice(cursorPosition);
                     if (restOfLine.length === 0) {
                         const prompt = cmdProcessor.getPrompt();
                         const totalChars = prompt.length + cursorPosition;
