@@ -311,6 +311,12 @@ term.onData(data => {
                 
                 console.log(`AFTER DELETE: currentLine='${currentLine}', cursorPosition=${cursorPosition}`);
                 
+                // Check cursor position BEFORE deletion to see if we were at beginning of wrapped line
+                const prompt = cmdProcessor.getPrompt();
+                const cursorAtBeforeDeletion = prompt.length + cursorPosition + 1; // +1 because we just decremented
+                const wasAtBeginningOfWrappedLine = (cursorAtBeforeDeletion > 0 && cursorAtBeforeDeletion % term.cols === 0);
+                console.log(`BACKSPACE ANALYSIS: cursorAtBeforeDeletion=${cursorAtBeforeDeletion}, wasAtBeginningOfWrappedLine=${wasAtBeginningOfWrappedLine}`);
+                
                 // Check if we're in password input mode
                 if (cmdProcessor.waitingForPassword) {
                     // Don't show any visual feedback for password backspace
@@ -324,7 +330,7 @@ term.onData(data => {
                     console.log(`BACKSPACE STRATEGY: currentCol=${currentCol}, currentRow=${currentRow}`);
                     
                     // Check if we need to move to previous line
-                    if (currentCol === 0 && currentRow > 0) {
+                    if (wasAtBeginningOfWrappedLine) {
                         console.log(`MULTILINE BACKSPACE: moving to previous line`);
                         // Move cursor up one line and to the end of previous line
                         term.write('\u001b[A'); // Move up one line
