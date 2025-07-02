@@ -302,14 +302,6 @@ term.onData(data => {
                 // Update cursor position before deletion
                 updateCursorPosition();
                 
-                // Check if we're trying to delete past the prompt boundary
-                const prompt = cmdProcessor.getPrompt();
-                const cursorAt = prompt.length + cursorPosition;
-                if (cursorAt <= prompt.length) {
-                    // Don't allow deletion of the prompt or its trailing space
-                    return;
-                }
-                
                 // Remove character at cursor position - 1
                 currentLine = currentLine.slice(0, cursorPosition - 1) + currentLine.slice(cursorPosition);
                 cursorPosition--;
