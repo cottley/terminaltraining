@@ -150,21 +150,60 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                     asSysdba = false;
                 }
             } else {
-                // Other connection strings - simulate successful connection
-                if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
-                    this.terminal.writeln('ERROR:');
-                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                // Check if it's just a username without password
+                if (!connString.includes('/') && !connString.includes('@')) {
+                    // Just username provided, need to prompt for password
+                    this.terminal.writeln('Enter password: ');
+                    this.waitingForPassword = true;
+                    this.pendingUsername = connString;
+                    this.pendingAsSysdba = connAsSysdba;
+                    this.getPrompt = () => '';  // No prompt while waiting for password
+                    return;
                 } else {
-                    this.terminal.writeln('Connected.');
-                    if (connString.includes('SYS') || connAsSysdba) {
-                        currentUser = 'SYS';
-                        asSysdba = true;
+                    // Username/password or other connection strings - simulate successful connection
+                    if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
+                        this.terminal.writeln('ERROR:');
+                        this.terminal.writeln('ORA-01034: ORACLE not available');
                     } else {
-                        currentUser = connString.split('/')[0] || 'SYSTEM';
-                        asSysdba = connAsSysdba;
+                        this.terminal.writeln('Connected.');
+                        if (connString.includes('SYS') || connAsSysdba) {
+                            currentUser = 'SYS';
+                            asSysdba = true;
+                        } else {
+                            currentUser = connString.split('/')[0] || 'SYSTEM';
+                            asSysdba = connAsSysdba;
+                        }
                     }
                 }
             }
+            return;
+        }
+        
+        // Handle password input after username
+        if (this.waitingForPassword) {
+            this.waitingForPassword = false;
+            this.getPrompt = () => 'SQL> ';  // Restore SQL prompt
+            
+            const password = input.trim();
+            // In a real system, we'd validate the password, but for simulation we'll just connect
+            
+            if (!oracleManager.getState('databaseStarted') && !this.pendingAsSysdba) {
+                this.terminal.writeln('ERROR:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('Connected.');
+                if (this.pendingUsername.toUpperCase() === 'SYS' || this.pendingAsSysdba) {
+                    currentUser = 'SYS';
+                    asSysdba = true;
+                } else {
+                    currentUser = this.pendingUsername;
+                    asSysdba = this.pendingAsSysdba;
+                }
+            }
+            
+            // Clean up pending state
+            this.pendingUsername = null;
+            this.pendingAsSysdba = false;
             return;
         }
         
@@ -230,18 +269,29 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                     asSysdba = false;
                 }
             } else {
-                // Other connection strings - simulate successful connection
-                if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
-                    this.terminal.writeln('ERROR:');
-                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                // Check if it's just a username without password
+                if (!connString.includes('/') && !connString.includes('@')) {
+                    // Just username provided, need to prompt for password
+                    this.terminal.writeln('Enter password: ');
+                    this.waitingForPassword = true;
+                    this.pendingUsername = connString;
+                    this.pendingAsSysdba = connAsSysdba;
+                    this.getPrompt = () => '';  // No prompt while waiting for password
+                    return;
                 } else {
-                    this.terminal.writeln('Connected.');
-                    if (connString.includes('SYS') || connAsSysdba) {
-                        currentUser = 'SYS';
-                        asSysdba = true;
+                    // Username/password or other connection strings - simulate successful connection
+                    if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
+                        this.terminal.writeln('ERROR:');
+                        this.terminal.writeln('ORA-01034: ORACLE not available');
                     } else {
-                        currentUser = connString.split('/')[0] || 'SYSTEM';
-                        asSysdba = connAsSysdba;
+                        this.terminal.writeln('Connected.');
+                        if (connString.includes('SYS') || connAsSysdba) {
+                            currentUser = 'SYS';
+                            asSysdba = true;
+                        } else {
+                            currentUser = connString.split('/')[0] || 'SYSTEM';
+                            asSysdba = connAsSysdba;
+                        }
                     }
                 }
             }
