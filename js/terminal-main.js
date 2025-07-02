@@ -566,27 +566,37 @@ term.onData(data => {
                     updateCursorPosition();
                     return;
                 } else {
-                    // Write the character and any remaining text
+                    // For most cases, especially paste, just write the character
+                    // The terminal will handle the display correctly
                     const restOfLine = currentLine.slice(cursorPosition);
-                    term.write(data + restOfLine);
                     
-                    // Move cursor back to correct position (after the inserted character)
-                    for (let i = 0; i < restOfLine.length; i++) {
-                        term.write('\b');
-                    }
-                    
-                    // Update cursor position tracking
-                    updateCursorPosition();
-                    
-                    // Check if cursor should be at beginning of next line due to wrapping
-                    // Wrap one character early to avoid terminal edge issues
-                    const prompt = cmdProcessor.getPrompt();
-                    const totalChars = prompt.length + cursorPosition;
-                    if (totalChars > 0 && totalChars % (term.cols - 1) === 0) {
-                        // The text has reached one character before terminal width, wrap early
-                        // Move cursor down one line and to column 0
-                        term.write('\u001b[B'); // Move cursor down one line
-                        term.write('\r'); // Move to beginning of line
+                    if (restOfLine.length === 0) {
+                        // Simple case: adding character at end of line
+                        term.write(data);
+                        
+                        // Update cursor position tracking
+                        updateCursorPosition();
+                        
+                        // Check if cursor should be at beginning of next line due to wrapping
+                        // Wrap one character early to avoid terminal edge issues
+                        const prompt = cmdProcessor.getPrompt();
+                        const totalChars = prompt.length + cursorPosition;
+                        if (totalChars > 0 && totalChars % (term.cols - 1) === 0) {
+                            // The text has reached one character before terminal width, wrap early
+                            // Move cursor down one line and to column 0
+                            term.write('\u001b[B'); // Move cursor down one line
+                            term.write('\r'); // Move to beginning of line
+                        }
+                    } else {
+                        // Insert character in middle of line - use simple approach for paste compatibility
+                        term.write(data + restOfLine);
+                        // Move cursor back to correct position (after the inserted character)
+                        for (let i = 0; i < restOfLine.length; i++) {
+                            term.write('\b');
+                        }
+                        
+                        // Update cursor position tracking (but don't apply wrapping logic for mid-line inserts)
+                        updateCursorPosition();
                     }
                 }
             }
