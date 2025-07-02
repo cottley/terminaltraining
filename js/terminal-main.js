@@ -135,17 +135,10 @@ function updateCursorPosition() {
     console.log(`updateCursorPosition: promptLen=${prompt.length}, cursorPosition=${cursorPosition}, cursorAt=${cursorAt}, termWidth=${terminalWidth}`);
     
     // Calculate row and column based on terminal width
-    // Handle edge case where cursor is exactly at end of line
-    if (cursorAt > 0 && cursorAt % terminalWidth === 0) {
-        // Cursor is at the beginning of the next line due to wrapping
-        currentRow = Math.floor(cursorAt / terminalWidth);
-        currentCol = 0;
-        console.log(`updateCursorPosition: edge case - currentRow=${currentRow}, currentCol=${currentCol}`);
-    } else {
-        currentRow = Math.floor(cursorAt / terminalWidth);
-        currentCol = cursorAt % terminalWidth;
-        console.log(`updateCursorPosition: normal case - currentRow=${currentRow}, currentCol=${currentCol}`);
-    }
+    currentRow = Math.floor(cursorAt / terminalWidth);
+    currentCol = cursorAt % terminalWidth;
+    
+    console.log(`updateCursorPosition: currentRow=${currentRow}, currentCol=${currentCol}`);
 }
 
 term.onData(data => {
@@ -595,10 +588,12 @@ term.onData(data => {
                     // Update cursor position tracking
                     updateCursorPosition();
                     
-                    // If we're at the edge case (beginning of next line), explicitly position cursor
-                    if (currentCol === 0 && currentRow > 0) {
-                        console.log(`CURSOR POSITIONING: Moving to row ${currentRow}, col ${currentCol}`);
-                        // The text has wrapped, cursor should be at beginning of next line
+                    // Check if cursor should be at beginning of next line due to wrapping
+                    const prompt = cmdProcessor.getPrompt();
+                    const totalChars = prompt.length + cursorPosition;
+                    if (totalChars > 0 && totalChars % term.cols === 0) {
+                        console.log(`CURSOR POSITIONING: Text wrapped, moving to next line`);
+                        // The text has wrapped exactly to terminal width, cursor should be at beginning of next line
                         // Move cursor down one line and to column 0
                         term.write('\u001b[B'); // Move cursor down one line
                         term.write('\r'); // Move to beginning of line
