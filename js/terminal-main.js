@@ -333,19 +333,36 @@ term.onData(data => {
                     // Check if we need to move to previous line
                     if (currentCol === 0 && currentRow > 0) {
                         console.log(`MULTILINE BACKSPACE: moving to previous line`);
-                        // Move cursor up one line to the end of previous line
+                        // Move cursor up one line and to the end of previous line
                         term.write('\u001b[A'); // Move up one line
                         term.write('\u001b[' + (term.cols) + 'C'); // Move to end of line
-                    }
-                    
-                    // Normal backspace handling
-                    const restOfLine = currentLine.slice(cursorPosition);
-                    console.log(`BACKSPACE DISPLAY: restOfLine='${restOfLine}'`);
-                    term.write('\b' + restOfLine + ' \b');
-                    
-                    // Move cursor back to correct position
-                    for (let i = 0; i < restOfLine.length; i++) {
-                        term.write('\b');
+                        
+                        // Delete the character at end of previous line and clear the space
+                        term.write('\b'); // Move back one character
+                        
+                        // Now write any remaining text from current position
+                        const restOfLine = currentLine.slice(cursorPosition);
+                        if (restOfLine.length > 0) {
+                            console.log(`MULTILINE BACKSPACE: writing remaining text: '${restOfLine}'`);
+                            term.write(restOfLine);
+                            
+                            // Move cursor back to correct position (end of previous line)
+                            for (let i = 0; i < restOfLine.length; i++) {
+                                term.write('\b');
+                            }
+                        }
+                        
+                        console.log(`MULTILINE BACKSPACE: positioned at end of previous line`);
+                    } else {
+                        // Normal backspace handling (same line)
+                        const restOfLine = currentLine.slice(cursorPosition);
+                        console.log(`BACKSPACE DISPLAY: restOfLine='${restOfLine}'`);
+                        term.write('\b' + restOfLine + ' \b');
+                        
+                        // Move cursor back to correct position
+                        for (let i = 0; i < restOfLine.length; i++) {
+                            term.write('\b');
+                        }
                     }
                 }
             }
