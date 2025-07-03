@@ -45,6 +45,7 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 - ADDM (Automatic Database Diagnostic Monitor) analysis
 - **V$ performance views simulation** (V$INSTANCE, V$SYSTEM_EVENT, V$SQL, V$TABLESPACE)
 - **SQL*Plus performance analysis queries** with realistic wait event and SQL statistics
+- **HTML Report Viewer** (lynx command for viewing AWR/ADDM reports in modal popup)
 - System resource monitoring (ps, df, free, top simulation)
 
 ### 🔄 **Backup & Recovery Tools**
@@ -97,6 +98,7 @@ chmod [-R] <mode> <file>  # Change file permissions
 chown [-R] <owner>[:<group>] <file>  # Change file ownership
 cat <file>            # Display file contents
 echo [-e] <text>      # Display text (-e enables escape sequences)
+lynx <file.html>      # View HTML files in modal viewer (Press ESC to close)
 vim/vi/nano <file>    # Edit files (modal editor)
 find <path> [options] # Search for files and directories
 
@@ -360,8 +362,9 @@ SQL> @/u01/app/oracle/product/19.0.0/dbhome_1/rdbms/admin/addmrpt.sql  # Full pa
 # Report Workflow Example
 awrrpt                                   # Generates /tmp/awrrpt_1_1235_1236.html
 addmrpt                                  # Generates /tmp/addmrpt_1_1235_1236.txt
-cat /tmp/awrrpt_1_1235_1236.html        # View AWR report content
+cat /tmp/awrrpt_1_1235_1236.html        # View AWR report content (raw HTML)
 cat /tmp/addmrpt_1_1235_1236.txt        # View ADDM recommendations
+lynx /tmp/awrrpt_1_1235_1236.html       # View AWR report in HTML viewer (modal)
 
 # Oracle Admin Directory Structure
 ls $ORACLE_HOME/rdbms/admin/             # Lists admin scripts including:
@@ -375,6 +378,47 @@ ls $ORACLE_HOME/rdbms/admin/             # Lists admin scripts including:
 -- • Integration with V$ performance views for consistent data
 -- • Multiple access methods: command line tools and SQL*Plus scripts
 -- • Realistic snapshot data and performance analysis recommendations
+```
+
+### HTML Report Viewing
+```bash
+# Lynx HTML Viewer - View HTML reports in modal popup
+lynx <file.html>                         # Open HTML file in modal viewer
+lynx /tmp/awrrpt_1_1235_1236.html        # View AWR report with proper HTML rendering
+lynx $ORACLE_HOME/reports/report.html    # View any HTML file (supports environment variables)
+
+# Lynx Viewer Features
+-- • Full HTML rendering with proper styling (tables, headings, code blocks)
+-- • Modal popup interface (90% screen coverage)
+-- • Press ESC key to close viewer and return to terminal
+-- • Click outside modal to close
+-- • Styled content with professional formatting:
+--   - Tables with borders and headers
+--   - Syntax highlighted code blocks
+--   - Proper typography for headings and text
+--   - Oracle report-specific styling
+-- • File validation (checks for .html/.htm extensions)
+-- • Environment variable expansion support
+-- • Focus management (returns focus to terminal after closing)
+
+# Usage Examples
+awrrpt                                   # Generate AWR HTML report
+lynx /tmp/awrrpt_1_1235_1236.html        # View the generated report
+addmrpt                                  # Generate ADDM text report (use cat to view)
+cat /tmp/addmrpt_1_1235_1236.txt         # View ADDM text report
+
+# Error Handling
+lynx nonexistent.html                    # Shows "No such file or directory"
+lynx textfile.txt                        # Shows "Not an HTML file"
+lynx                                     # Shows usage information
+
+# Features:
+-- • Professional HTML report viewing experience
+-- • Perfect for Oracle AWR/ADDM report analysis
+-- • Modal interface doesn't interrupt terminal workflow
+-- • Keyboard-friendly (ESC to close)
+-- • Supports all standard HTML elements and styling
+-- • Optimized for Oracle performance reports and documentation
 ```
 
 ### Oracle Role Management
