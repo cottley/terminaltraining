@@ -1451,7 +1451,15 @@ class CommandProcessor {
             if (content === null) {
                 this.terminal.writeln(`cat: ${file}: No such file or directory`);
             } else {
-                this.terminal.writeln(content);
+                // Split by newlines and write each line separately
+                const lines = content.split('\n');
+                lines.forEach((line, index) => {
+                    if (index === lines.length - 1 && line === '') {
+                        // Don't write an empty line at the end if it's just from a trailing \n
+                        return;
+                    }
+                    this.terminal.writeln(line);
+                });
             }
         });
     }
