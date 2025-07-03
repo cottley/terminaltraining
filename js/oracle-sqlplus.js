@@ -1242,7 +1242,8 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         
         // Handle ADD DATAFILE operations
         if (sqlCommand.match(/add\s+datafile/i)) {
-            const datafileMatch = sqlCommand.match(/add\s+datafile\s+['"']([^'"]+)['"](?:\s+size\s+(\d+)([kmg]?))?(?:\s+autoextend\s+(on|off))?(?:\s+next\s+(\d+)([kmg]?))?(?:\s+maxsize\s+(\d+)([kmg]?)|unlimited)?/i);
+            // Use original input to preserve case for filename
+            const datafileMatch = input.match(/add\s+datafile\s+['"']([^'"]+)['"](?:\s+size\s+(\d+)([kmg]?))?(?:\s+autoextend\s+(on|off))?(?:\s+next\s+(\d+)([kmg]?))?(?:\s+maxsize\s+(\d+)([kmg]?)|unlimited)?/i);
             
             if (!datafileMatch) {
                 this.terminal.writeln('ERROR at line 1:');
@@ -1316,7 +1317,8 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
     this.handleAlterDatabase = function(sqlCommand, input) {
         // Handle DATAFILE RESIZE operations
         if (sqlCommand.match(/datafile.*resize/i)) {
-            const resizeMatch = sqlCommand.match(/datafile\s+['"']([^'"]+)['"](?:\s+resize\s+(\d+)([kmg]?))?/i);
+            // Use original input to preserve case for filename
+            const resizeMatch = input.match(/datafile\s+['"']([^'"]+)['"](?:\s+resize\s+(\d+)([kmg]?))?/i);
             
             if (!resizeMatch) {
                 this.terminal.writeln('ERROR at line 1:');
@@ -1367,7 +1369,8 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         
         // Handle DATAFILE AUTOEXTEND operations
         if (sqlCommand.match(/datafile.*autoextend/i)) {
-            const autoextendMatch = sqlCommand.match(/datafile\s+['"']([^'"]+)['"](?:\s+autoextend\s+(on|off))?(?:\s+next\s+(\d+)([kmg]?))?(?:\s+maxsize\s+(\d+)([kmg]?)|unlimited)?/i);
+            // Use original input to preserve case for filename
+            const autoextendMatch = input.match(/datafile\s+['"']([^'"]+)['"](?:\s+autoextend\s+(on|off))?(?:\s+next\s+(\d+)([kmg]?))?(?:\s+maxsize\s+(\d+)([kmg]?)|unlimited)?/i);
             
             if (!autoextendMatch) {
                 this.terminal.writeln('ERROR at line 1:');
