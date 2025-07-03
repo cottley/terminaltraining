@@ -413,6 +413,13 @@ class CommandProcessor {
         }
     }
 
+    // Helper function to expand environment variables in strings
+    expandEnvironmentVariables(str) {
+        return str.replace(/\$([A-Z_]+)/g, (match, varName) => {
+            return this.environmentVars[varName] || match;
+        });
+    }
+
     cmdLs(args) {
         // Parse flags - handle combined flags like -la, -al, -lh, -lah, etc.
         let showAll = false;
@@ -428,7 +435,12 @@ class CommandProcessor {
             }
         });
         
-        const path = args.find(arg => !arg.startsWith('-')) || '.';
+        let path = args.find(arg => !arg.startsWith('-')) || '.';
+        
+        // Expand environment variables
+        path = path.replace(/\$([A-Z_]+)/g, (match, varName) => {
+            return this.environmentVars[varName] || match;
+        });
         
         // Check if path is a file or directory
         if (!this.fs.exists(path)) {
@@ -532,7 +544,12 @@ class CommandProcessor {
         }
         
         args.forEach(file => {
-            if (!this.fs.touch(file)) {
+            // Expand environment variables
+            const expandedFile = file.replace(/\$([A-Z_]+)/g, (match, varName) => {
+                return this.environmentVars[varName] || match;
+            });
+            
+            if (!this.fs.touch(expandedFile)) {
                 this.terminal.writeln(`touch: cannot touch '${file}': No such file or directory`);
             }
         });
@@ -548,7 +565,12 @@ class CommandProcessor {
         const files = args.filter(arg => !arg.startsWith('-'));
         
         files.forEach(file => {
-            if (!this.fs.rm(file, recursive)) {
+            // Expand environment variables
+            const expandedFile = file.replace(/\$([A-Z_]+)/g, (match, varName) => {
+                return this.environmentVars[varName] || match;
+            });
+            
+            if (!this.fs.rm(expandedFile, recursive)) {
                 this.terminal.writeln(`rm: cannot remove '${file}': No such file or directory`);
             }
         });
@@ -1385,7 +1407,12 @@ class CommandProcessor {
         }
         
         args.forEach(file => {
-            const content = this.fs.cat(file);
+            // Expand environment variables
+            const expandedFile = file.replace(/\$([A-Z_]+)/g, (match, varName) => {
+                return this.environmentVars[varName] || match;
+            });
+            
+            const content = this.fs.cat(expandedFile);
             if (content === null) {
                 this.terminal.writeln(`cat: ${file}: No such file or directory`);
             } else {
@@ -2564,7 +2591,12 @@ class CommandProcessor {
             return;
         }
         
-        const filename = args[0];
+        let filename = args[0];
+        // Expand environment variables
+        filename = filename.replace(/\$([A-Z_]+)/g, (match, varName) => {
+            return this.environmentVars[varName] || match;
+        });
+        
         let content = '';
         let fullPath = filename;
         
@@ -4237,7 +4269,12 @@ class CommandProcessor {
         }
         
         // Start the search
-        for (const searchPath of searchPaths) {
+        for (let searchPath of searchPaths) {
+            // Expand environment variables in search path
+            searchPath = searchPath.replace(/\$([A-Z_]+)/g, (match, varName) => {
+                return this.environmentVars[varName] || match;
+            });
+            
             if (!this.fs.exists(searchPath)) {
                 this.terminal.writeln(`find: '${searchPath}': No such file or directory`);
                 continue;

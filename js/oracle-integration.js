@@ -216,6 +216,8 @@ CommandProcessor.prototype.cmdUnzip = function(args) {
         this.fs.mkdir(`${oracleHome}/dbs`);
         this.fs.mkdir(`${oracleHome}/inventory`);
         this.fs.mkdir(`${oracleHome}/OPatch`);
+        this.fs.mkdir(`${oracleHome}/hs`);
+        this.fs.mkdir(`${oracleHome}/hs/admin`);
         
         // Create executable files
         const executables = ['adrci', 'dbca', 'dbua', 'lsnrctl', 'netca', 'orapwd', 
@@ -226,6 +228,16 @@ CommandProcessor.prototype.cmdUnzip = function(args) {
         
         // Create runInstaller
         this.fs.touch(`${oracleHome}/runInstaller`, '#!/bin/sh\n# Oracle Universal Installer');
+        
+        // Create extproc.ora configuration file
+        this.fs.touch(`${oracleHome}/hs/admin/extproc.ora`, 
+            '# extproc.ora - External Procedure Configuration\n' +
+            '# This file contains configuration parameters for external procedures\n' +
+            '# Add EXTPROC_DLLS entries for external libraries\n' +
+            '#\n' +
+            '# Example:\n' +
+            '# SET EXTPROC_DLLS=ONLY:/path/to/library.so\n'
+        );
         
         // Mark Oracle as installed in state
         oracleManager.updateState('softwareExtracted', true);
