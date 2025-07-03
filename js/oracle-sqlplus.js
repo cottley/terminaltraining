@@ -657,15 +657,33 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
         
+        // Handle user dropping
+        if (sqlCommand.startsWith('DROP USER')) {
+            this.handleDropUser(sqlLower, asSysdba, currentUser);
+            return;
+        }
+        
         // Handle library creation for spatial
         if (sqlCommand.includes('CREATE OR REPLACE LIBRARY')) {
             this.handleCreateLibrary(sqlLower, currentUser);
             return;
         }
         
+        // Handle library dropping
+        if (sqlCommand.startsWith('DROP LIBRARY')) {
+            this.handleDropLibrary(sqlLower, currentUser);
+            return;
+        }
+        
         // Handle GRANT commands
         if (sqlCommand.startsWith('GRANT ')) {
             this.handleGrant(sqlLower, asSysdba, currentUser);
+            return;
+        }
+        
+        // Handle REVOKE commands
+        if (sqlCommand.startsWith('REVOKE ')) {
+            this.handleRevoke(sqlLower, asSysdba, currentUser);
             return;
         }
         
@@ -753,6 +771,98 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         this.terminal.writeln('');
     };
 
+    // Handle DROP USER command
+    this.handleDropUser = function(sqlCommand, asSysdba, currentUser) {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        // Parse DROP USER command
+        // Pattern: DROP USER username [CASCADE]
+        const userMatch = sqlCommand.match(/drop\s+user\s+(\w+)(\s+cascade)?/i);
+        
+        if (!userMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
+            return;
+        }
+
+        const username = userMatch[1].toUpperCase();
+        const cascade = userMatch[2] !== undefined;
+
+        // Check if user exists
+        if (!oracleManager.userExists(username)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-01918: user '${username}' does not exist`);
+            return;
+        }
+
+        // Check permissions - only SYSDBA or privileged users can drop users
+        if (!asSysdba && currentUser !== 'SYS' && currentUser !== 'SYSTEM') {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01031: insufficient privileges');
+            return;
+        }
+
+        // Prevent dropping system users
+        const systemUsers = ['SYS', 'SYSTEM', 'DBSNMP'];
+        if (systemUsers.includes(username)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-01922: CASCADE must be specified to drop '${username}'`);
+            return;
+        }
+
+        // Check if user has objects (simplified check)
+        const userPrivileges = oracleManager.getUserPrivileges(username);
+        if (userPrivileges.includes('DBA') || userPrivileges.includes('RESOURCE')) {
+            if (!cascade) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(`ORA-01922: CASCADE must be specified to drop '${username}'`);
+                return;
+            }
+        }
+
+        // Drop the user
+        oracleManager.dropDatabaseUser(username);
+        
+        // For SDE user, also update the virtual database file for OCP tracking
+        if (username === 'SDE') {
+            const dbfPath = '/u01/app/oracle/oradata/ORCL/system01.dbf';
+            let dbfContent = this.fs.cat(dbfPath);
+            
+            if (dbfContent) {
+                let updated = false;
+                
+                // Remove the SDE_USER_CREATED marker
+                if (dbfContent.includes('SDE_USER_CREATED')) {
+                    dbfContent = dbfContent.replace('SDE_USER_CREATED\n', '');
+                    updated = true;
+                }
+                
+                // Also remove library registration since SDE user owns it
+                if (dbfContent.includes('ST_SHAPELIB_REGISTERED')) {
+                    dbfContent = dbfContent.replace('ST_SHAPELIB_REGISTERED\n', '');
+                    oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', false);
+                    updated = true;
+                }
+                
+                if (updated) {
+                    this.fs.updateFile(dbfPath, dbfContent);
+                }
+            }
+        }
+        
+        this.terminal.writeln('');
+        if (cascade) {
+            this.terminal.writeln(`User ${username} dropped (with CASCADE).`);
+        } else {
+            this.terminal.writeln(`User ${username} dropped.`);
+        }
+        this.terminal.writeln('');
+    };
+
     // Handle CREATE LIBRARY command for spatial functions
     this.handleCreateLibrary = function(sqlCommand, currentUser) {
         if (sqlCommand.includes('sde_util') && sqlCommand.includes('libsde.so')) {
@@ -786,6 +896,52 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         } else {
             this.terminal.writeln('');
             this.terminal.writeln('Library created.');
+            this.terminal.writeln('');
+        }
+    };
+
+    // Handle DROP LIBRARY command
+    this.handleDropLibrary = function(sqlCommand, currentUser) {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        // Parse DROP LIBRARY command
+        // Pattern: DROP LIBRARY library_name
+        const libraryMatch = sqlCommand.match(/drop\s+library\s+(\w+)/i);
+        
+        if (!libraryMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
+            return;
+        }
+
+        const libraryName = libraryMatch[1].toUpperCase();
+
+        // Handle spatial library specifically
+        if (libraryName === 'ST_SHAPELIB' || libraryName === 'SDE_UTIL') {
+            this.terminal.writeln('');
+            this.terminal.writeln(`Library ${libraryName} dropped.`);
+            this.terminal.writeln('');
+            
+            // Update Oracle state to track spatial library removal
+            oracleManager.updateState('psAppRequirements.spatialLibraryCreated', false);
+            oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', false);
+            
+            // Also update the virtual database file for OCP tracking
+            const dbfPath = '/u01/app/oracle/oradata/ORCL/system01.dbf';
+            let dbfContent = this.fs.cat(dbfPath);
+            
+            if (dbfContent && dbfContent.includes('ST_SHAPELIB_REGISTERED')) {
+                dbfContent = dbfContent.replace('ST_SHAPELIB_REGISTERED\n', '');
+                this.fs.updateFile(dbfPath, dbfContent);
+            }
+        } else {
+            // Generic library drop
+            this.terminal.writeln('');
+            this.terminal.writeln(`Library ${libraryName} dropped.`);
             this.terminal.writeln('');
         }
     };
@@ -902,6 +1058,65 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         // Default grant success for other privileges
         this.terminal.writeln('');
         this.terminal.writeln('Grant succeeded.');
+        this.terminal.writeln('');
+    };
+
+    // Handle REVOKE commands
+    this.handleRevoke = function(sqlCommand, asSysdba, currentUser) {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        // Parse REVOKE command - basic patterns:
+        // REVOKE privilege FROM user
+        // REVOKE role FROM user
+        const revokeMatch = sqlCommand.match(/revoke\s+(.+?)\s+from\s+(\w+)/i);
+        
+        if (!revokeMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00903: invalid table name');
+            return;
+        }
+
+        const privilege = revokeMatch[1].trim();
+        const grantee = revokeMatch[2].toUpperCase();
+
+        // Check permissions - only SYSDBA or privileged users can revoke system privileges/roles
+        const systemPrivileges = ['dba', 'connect', 'resource', 'create session', 'create table', 'create procedure', 'create view'];
+        const isSystemPrivilege = systemPrivileges.some(priv => privilege.toLowerCase().includes(priv.toLowerCase()));
+
+        if (isSystemPrivilege && !asSysdba && currentUser !== 'SYS' && currentUser !== 'SYSTEM') {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01031: insufficient privileges');
+            return;
+        }
+
+        // Check if grantee exists
+        if (!oracleManager.userExists(grantee)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-00942: table or view does not exist`);
+            return;
+        }
+
+        // Handle specific revokes
+        if (privilege.toLowerCase().includes('dba')) {
+            oracleManager.revokePrivilege(grantee, 'DBA');
+        } else if (privilege.toLowerCase().includes('connect')) {
+            oracleManager.revokePrivilege(grantee, 'CONNECT');
+        } else if (privilege.toLowerCase().includes('resource')) {
+            oracleManager.revokePrivilege(grantee, 'RESOURCE');
+        } else if (privilege.toLowerCase().includes('create session')) {
+            oracleManager.revokePrivilege(grantee, 'CREATE SESSION');
+        } else if (privilege.toLowerCase().includes('create table')) {
+            oracleManager.revokePrivilege(grantee, 'CREATE TABLE');
+        } else if (privilege.toLowerCase().includes('create procedure')) {
+            oracleManager.revokePrivilege(grantee, 'CREATE PROCEDURE');
+        }
+
+        this.terminal.writeln('');
+        this.terminal.writeln('Revoke succeeded.');
         this.terminal.writeln('');
     };
 

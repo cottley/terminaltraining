@@ -819,6 +819,23 @@ class OracleManager {
         return true;
     }
     
+    revokePrivilege(username, privilege) {
+        const upperUsername = username.toUpperCase();
+        const user = this.state.databaseUsers[upperUsername];
+        
+        if (!user || !user.created) {
+            return false;
+        }
+        
+        const index = user.privileges.indexOf(privilege);
+        if (index > -1) {
+            user.privileges.splice(index, 1);
+        }
+        
+        this.saveState();
+        return true;
+    }
+    
     userExists(username) {
         const upperUsername = username.toUpperCase();
         return this.state.databaseUsers[upperUsername] && this.state.databaseUsers[upperUsername].created;
@@ -834,6 +851,27 @@ class OracleManager {
         return Object.keys(this.state.databaseUsers).filter(username => 
             this.state.databaseUsers[username].created
         );
+    }
+    
+    dropDatabaseUser(username) {
+        const upperUsername = username.toUpperCase();
+        const user = this.state.databaseUsers[upperUsername];
+        
+        if (!user || !user.created) {
+            return false;
+        }
+        
+        // Mark user as not created (soft delete to preserve state structure)
+        user.created = false;
+        user.locked = true;
+        
+        // Update specific state flags for tracked users
+        if (upperUsername === 'SDE') {
+            this.updateState('psAppRequirements.sdeUserCreated', false);
+        }
+        
+        this.saveState();
+        return true;
     }
 }
 
