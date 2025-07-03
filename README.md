@@ -328,6 +328,55 @@ SELECT INSTANCE_NAME, STATUS, STARTUP_TIME, HOST_NAME
 -- • Real-world Oracle performance monitoring experience
 ```
 
+### Oracle AWR and ADDM Reports
+```bash
+# Command Line Report Generation
+awrrpt                                   # Generate AWR report (HTML format)
+addmrpt                                  # Generate ADDM report (Text format)
+
+# SQL*Plus Report Generation  
+sqlplus / as sysdba
+SQL> @awrrpt.sql                         # Execute AWR report script
+SQL> @addmrpt.sql                        # Execute ADDM report script
+SQL> @$ORACLE_HOME/rdbms/admin/awrrpt.sql  # Full path to AWR script
+SQL> @/u01/app/oracle/product/19.0.0/dbhome_1/rdbms/admin/addmrpt.sql  # Full path to ADDM script
+
+# AWR Report Features
+-- • Automatic snapshot selection with realistic data
+-- • Instance efficiency percentages (Buffer Hit %, Library Hit %, etc.)
+-- • Top 5 timed events analysis with wait statistics
+-- • SQL performance statistics and execution metrics
+-- • Top SQL statements by elapsed time with SQL IDs
+-- • Generates actual HTML report file: awrrpt_1_1235_1236.html
+
+# ADDM Report Features  
+-- • Automated performance analysis and recommendations
+-- • Database time impact analysis (minutes of DB time)
+-- • SQL tuning recommendations with specific SQL IDs
+-- • Memory and storage configuration suggestions
+-- • Segment tuning and I/O optimization advice
+-- • Generates actual text report file: addmrpt_1_1235_1236.txt
+
+# Report Workflow Example
+awrrpt                                   # Generates /tmp/awrrpt_1_1235_1236.html
+addmrpt                                  # Generates /tmp/addmrpt_1_1235_1236.txt
+cat /tmp/awrrpt_1_1235_1236.html        # View AWR report content
+cat /tmp/addmrpt_1_1235_1236.txt        # View ADDM recommendations
+
+# Oracle Admin Directory Structure
+ls $ORACLE_HOME/rdbms/admin/             # Lists admin scripts including:
+                                         # awrrpt.sql - AWR report script
+                                         # addmrpt.sql - ADDM report script
+
+# Features:
+-- • Complete AWR and ADDM simulation with realistic Oracle output
+-- • Actual script files created in $ORACLE_HOME/rdbms/admin/ during installation
+-- • Professional HTML and text report generation with authentic formatting
+-- • Integration with V$ performance views for consistent data
+-- • Multiple access methods: command line tools and SQL*Plus scripts
+-- • Realistic snapshot data and performance analysis recommendations
+```
+
 ### Oracle Role Management
 ```sql
 -- SQL*Plus Role Management Commands

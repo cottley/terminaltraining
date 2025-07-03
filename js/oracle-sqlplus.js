@@ -1331,6 +1331,31 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
+        // Handle SQL script execution
+        if (sqlCommand.startsWith('@') || sqlCommand.startsWith('@@')) {
+            const scriptPath = sqlCommand.substring(1).trim();
+            
+            // Handle AWR report script
+            if (scriptPath === 'awrrpt.sql' || scriptPath === 'awrrpt' || 
+                scriptPath === '$ORACLE_HOME/rdbms/admin/awrrpt.sql' ||
+                scriptPath === '/u01/app/oracle/product/19.0.0/dbhome_1/rdbms/admin/awrrpt.sql') {
+                this.generateAwrReport();
+                return;
+            }
+            
+            // Handle ADDM report script
+            if (scriptPath === 'addmrpt.sql' || scriptPath === 'addmrpt' ||
+                scriptPath === '$ORACLE_HOME/rdbms/admin/addmrpt.sql' ||
+                scriptPath === '/u01/app/oracle/product/19.0.0/dbhome_1/rdbms/admin/addmrpt.sql') {
+                this.generateAddmReport();
+                return;
+            }
+            
+            // Generic script not found
+            this.terminal.writeln(`SP2-0310: unable to open file "${scriptPath}"`);
+            return;
+        }
+        
         // Connect as different user
         if (sqlCommand.startsWith('CONNECT')) {
             const parts = sqlLower.split(/\s+/);
@@ -1346,6 +1371,283 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
         if (sqlCommand) {
             this.terminal.writeln('SP2-0042: unknown command "' + input + '" - rest of line ignored.');
         }
+    };
+
+    // Generate AWR Report in SQL*Plus
+    this.generateAwrReport = function() {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        this.terminal.writeln('');
+        this.terminal.writeln('Oracle AWR Report Generation');
+        this.terminal.writeln('============================');
+        this.terminal.writeln('');
+        this.terminal.writeln('Current Instance');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('   DB Id    DB Name      Inst Num Instance');
+        this.terminal.writeln('----------- ------------ -------- ------------');
+        this.terminal.writeln('  123456789 ORCL                1 ORCL');
+        this.terminal.writeln('');
+        this.terminal.writeln('Instances in this Workload Repository schema');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('   DB Id     Inst Num DB Name      Instance     Host');
+        this.terminal.writeln('------------ -------- ------------ ------------ ------------');
+        this.terminal.writeln('* 123456789         1 ORCL         ORCL         proddb01sim');
+        this.terminal.writeln('');
+        this.terminal.writeln('Using 123456789 for database Id');
+        this.terminal.writeln('Using          1 for instance number');
+        this.terminal.writeln('');
+        this.terminal.writeln('Listing the last 3 days of Completed Snapshots');
+        this.terminal.writeln('                                                       Snap');
+        this.terminal.writeln('Instance     DB Name        Snap Id   Snap Started    Level');
+        this.terminal.writeln('------------ ------------ --------- --------------- -----');
+        this.terminal.writeln('ORCL         ORCL              1234  01 Jan 2024 09:00   1');
+        this.terminal.writeln('                               1235  01 Jan 2024 10:00   1');
+        this.terminal.writeln('                               1236  01 Jan 2024 11:00   1');
+        this.terminal.writeln('                               1237  01 Jan 2024 12:00   1');
+        this.terminal.writeln('');
+        this.terminal.writeln('Specify the Begin and End Snapshot Ids');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('Enter value for begin_snap: 1235');
+        this.terminal.writeln('Enter value for end_snap: 1236');
+        this.terminal.writeln('');
+        this.terminal.writeln('Specify the Report Name');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('The default report file name is awrrpt_1_1235_1236.html. To use this name,');
+        this.terminal.writeln('press <return> to continue, otherwise enter an alternative.');
+        this.terminal.writeln('');
+        this.terminal.writeln('Enter value for report_name: awrrpt_1_1235_1236.html');
+        this.terminal.writeln('');
+        this.terminal.writeln('AWR report generation in progress...');
+        this.terminal.writeln('');
+        
+        // Create the actual report file
+        const reportContent = this.generateAwrReportContent();
+        this.fs.touch('/tmp/awrrpt_1_1235_1236.html', reportContent);
+        
+        this.terminal.writeln('Report written to awrrpt_1_1235_1236.html');
+        this.terminal.writeln('');
+    };
+
+    // Generate ADDM Report in SQL*Plus
+    this.generateAddmReport = function() {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        this.terminal.writeln('');
+        this.terminal.writeln('Oracle ADDM Report Generation');
+        this.terminal.writeln('==============================');
+        this.terminal.writeln('');
+        this.terminal.writeln('Current Instance');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('   DB Id    DB Name      Inst Num Instance');
+        this.terminal.writeln('----------- ------------ -------- ------------');
+        this.terminal.writeln('  123456789 ORCL                1 ORCL');
+        this.terminal.writeln('');
+        this.terminal.writeln('Instances in this Workload Repository schema');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('   DB Id     Inst Num DB Name      Instance     Host');
+        this.terminal.writeln('------------ -------- ------------ ------------ ------------');
+        this.terminal.writeln('* 123456789         1 ORCL         ORCL         proddb01sim');
+        this.terminal.writeln('');
+        this.terminal.writeln('Using 123456789 for database Id');
+        this.terminal.writeln('Using          1 for instance number');
+        this.terminal.writeln('');
+        this.terminal.writeln('Listing the last 3 days of Completed Snapshots');
+        this.terminal.writeln('                                                       Snap');
+        this.terminal.writeln('Instance     DB Name        Snap Id   Snap Started    Level');
+        this.terminal.writeln('------------ ------------ --------- --------------- -----');
+        this.terminal.writeln('ORCL         ORCL              1234  01 Jan 2024 09:00   1');
+        this.terminal.writeln('                               1235  01 Jan 2024 10:00   1');
+        this.terminal.writeln('                               1236  01 Jan 2024 11:00   1');
+        this.terminal.writeln('                               1237  01 Jan 2024 12:00   1');
+        this.terminal.writeln('');
+        this.terminal.writeln('Specify the Begin and End Snapshot Ids');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('Enter value for begin_snap: 1235');
+        this.terminal.writeln('Enter value for end_snap: 1236');
+        this.terminal.writeln('');
+        this.terminal.writeln('Specify the Report Name');
+        this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~');
+        this.terminal.writeln('The default report file name is addmrpt_1_1235_1236.txt. To use this name,');
+        this.terminal.writeln('press <return> to continue, otherwise enter an alternative.');
+        this.terminal.writeln('');
+        this.terminal.writeln('Enter value for report_name: addmrpt_1_1235_1236.txt');
+        this.terminal.writeln('');
+        this.terminal.writeln('Creating ADDM task...');
+        this.terminal.writeln('Running ADDM analysis...');
+        this.terminal.writeln('');
+        
+        // Create the actual report file
+        const reportContent = this.generateAddmReportContent();
+        this.fs.touch('/tmp/addmrpt_1_1235_1236.txt', reportContent);
+        
+        this.terminal.writeln('Report written to addmrpt_1_1235_1236.txt');
+        this.terminal.writeln('');
+    };
+
+    // Generate AWR Report HTML Content
+    this.generateAwrReportContent = function() {
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <title>Oracle AWR Report - ORCL Instance</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .header { text-align: center; margin: 20px 0; }
+        .section { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WORKLOAD REPOSITORY report for</h1>
+        <h2>Database: ORCL</h2>
+        <h3>Instance: ORCL</h3>
+        <p>Snaps: 1235-1236</p>
+        <p>Snap Time: 01-Jan-24 10:00 to 01-Jan-24 11:00 (1.00 hrs)</p>
+    </div>
+
+    <div class="section">
+        <h3>Instance Efficiency Percentages</h3>
+        <table>
+            <tr><th>Metric</th><th>Value</th></tr>
+            <tr><td>Buffer Hit %</td><td>99.85</td></tr>
+            <tr><td>Library Hit %</td><td>98.92</td></tr>
+            <tr><td>Soft Parse %</td><td>95.67</td></tr>
+            <tr><td>Execute to Parse %</td><td>88.34</td></tr>
+            <tr><td>Latch Hit %</td><td>99.98</td></tr>
+            <tr><td>Parse CPU to Parse Elapsed %</td><td>87.21</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>Top 5 Timed Events</h3>
+        <table>
+            <tr><th>Event</th><th>Waits</th><th>Time(s)</th><th>Avg Wait(ms)</th><th>%Total Call Time</th></tr>
+            <tr><td>SQL*Net message from client</td><td>12,345</td><td>7,234</td><td>586.1</td><td>65.3</td></tr>
+            <tr><td>db file sequential read</td><td>45,678</td><td>1,234</td><td>27.0</td><td>11.1</td></tr>
+            <tr><td>CPU time</td><td></td><td>987</td><td></td><td>8.9</td></tr>
+            <tr><td>log file sync</td><td>2,345</td><td>456</td><td>194.5</td><td>4.1</td></tr>
+            <tr><td>db file scattered read</td><td>8,901</td><td>234</td><td>26.3</td><td>2.1</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>SQL Statistics</h3>
+        <table>
+            <tr><th>Statistic</th><th>Total</th><th>Per Second</th><th>Per Trans</th></tr>
+            <tr><td>SQL Execute Count</td><td>156,789</td><td>43.6</td><td>12.3</td></tr>
+            <tr><td>User Calls</td><td>12,345</td><td>3.4</td><td>1.0</td></tr>
+            <tr><td>Parse Count (Total)</td><td>8,901</td><td>2.5</td><td>0.7</td></tr>
+            <tr><td>Parse Count (Hard)</td><td>234</td><td>0.07</td><td>0.02</td></tr>
+            <tr><td>Physical Reads</td><td>45,678</td><td>12.7</td><td>3.6</td></tr>
+            <tr><td>Physical Writes</td><td>2,345</td><td>0.7</td><td>0.2</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>Top SQL by Elapsed Time</h3>
+        <table>
+            <tr><th>SQL ID</th><th>Elapsed Time (s)</th><th>Executions</th><th>SQL Text</th></tr>
+            <tr><td>8fq2m9yz7xkjp</td><td>456.78</td><td>12</td><td>SELECT * FROM DBA_USERS</td></tr>
+            <tr><td>4gh8n2kx9mqlr</td><td>123.45</td><td>45</td><td>SELECT NAME FROM V$DATABASE</td></tr>
+            <tr><td>7mp3k5vw2nxtr</td><td>78.90</td><td>8</td><td>SELECT TABLESPACE_NAME FROM DBA_TABLESPACES</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <p><i>Report generated by Oracle AWR on ${new Date().toLocaleString()}</i></p>
+    </div>
+</body>
+</html>`;
+    };
+
+    // Generate ADDM Report Text Content
+    this.generateAddmReportContent = function() {
+        return `
+          ADDM Report for Task 'ADDM_1235_1236'
+          ----------------------------
+          
+Analysis Period
+---------------
+AWR snapshot range from 1235 to 1236.
+Time period: 01-Jan-24 10:00:00 to 01-Jan-24 11:00:00 (1.00 hour)
+
+Database Summary
+----------------
+Database Name:        ORCL
+Database Version:     19.0.0.0.0
+Instance Name:        ORCL
+Host Name:           proddb01sim
+Total DB Time:        52.8 minutes
+
+Top 3 Findings Ordered by Impact
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FINDING 1: SQL statements consuming significant database time were found.
+IMPACT: 34.2 minutes of database time.
+
+   RECOMMENDATION 1: SQL Tuning
+   RATIONALE: SQL statements with high elapsed time should be tuned.
+   ACTION: Consider running SQL Tuning Advisor on the following statements:
+           SQL ID: 8fq2m9yz7xkjp - SELECT * FROM DBA_USERS
+           SQL ID: 4gh8n2kx9mqlr - SELECT NAME FROM V$DATABASE
+   
+   RECOMMENDATION 2: Application Analysis
+   RATIONALE: High frequency SQL statements may benefit from optimization.
+   ACTION: Review application logic for unnecessary database calls.
+
+FINDING 2: Individual database segments responsible for significant user I/O wait were found.
+IMPACT: 12.1 minutes of database time.
+
+   RECOMMENDATION 1: Segment Tuning
+   RATIONALE: Hot segments should be investigated for optimization opportunities.
+   ACTION: Consider partitioning or index optimization for:
+           Table: SYSTEM.DBA_USERS
+           Table: SYSTEM.DBA_TABLESPACES
+   
+   RECOMMENDATION 2: Storage Analysis
+   RATIONALE: I/O bottlenecks may be reduced with better storage configuration.
+   ACTION: Review storage layout and consider moving hot segments.
+
+FINDING 3: The buffer cache was undersized, causing additional read I/O.
+IMPACT: 6.7 minutes of database time.
+
+   RECOMMENDATION 1: Memory Configuration
+   RATIONALE: Increasing buffer cache can reduce physical I/O.
+   ACTION: Consider increasing DB_CACHE_SIZE parameter.
+   CURRENT VALUE: 256MB
+   RECOMMENDED VALUE: 512MB or higher
+   
+   RECOMMENDATION 2: SGA Tuning
+   RATIONALE: Overall SGA tuning may improve performance.
+   ACTION: Review SGA_TARGET and consider enabling Automatic Memory Management.
+
+Additional Information
+~~~~~~~~~~~~~~~~~~~~~~
+- No significant locking issues were detected.
+- Log file sync waits are within acceptable limits.
+- Network latency appears normal for client connections.
+- No deadlocks were reported during the analysis period.
+
+Summary
+~~~~~~~
+Total Findings: 3
+Total Recommendations: 6
+Estimated Performance Improvement: 25-40% reduction in response time
+
+End of Report
+Generated: ${new Date().toLocaleString()}
+`;
     };
 
     // Handle CREATE USER command

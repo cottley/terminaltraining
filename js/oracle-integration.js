@@ -203,6 +203,10 @@ CommandProcessor.prototype.cmdUnzip = function(args) {
         this.terminal.writeln('   creating: network/');
         this.terminal.writeln('   creating: network/admin/');
         this.terminal.writeln('   creating: dbs/');
+        this.terminal.writeln('   creating: rdbms/');
+        this.terminal.writeln('   creating: rdbms/admin/');
+        this.terminal.writeln('  inflating: rdbms/admin/awrrpt.sql');
+        this.terminal.writeln('  inflating: rdbms/admin/addmrpt.sql');
         this.terminal.writeln('  inflating: runInstaller');
         this.terminal.writeln('   creating: inventory/');
         this.terminal.writeln('   creating: OPatch/');
@@ -214,6 +218,8 @@ CommandProcessor.prototype.cmdUnzip = function(args) {
         this.fs.mkdir(`${oracleHome}/network`);
         this.fs.mkdir(`${oracleHome}/network/admin`);
         this.fs.mkdir(`${oracleHome}/dbs`);
+        this.fs.mkdir(`${oracleHome}/rdbms`);
+        this.fs.mkdir(`${oracleHome}/rdbms/admin`);
         this.fs.mkdir(`${oracleHome}/inventory`);
         this.fs.mkdir(`${oracleHome}/OPatch`);
         this.fs.mkdir(`${oracleHome}/hs`);
@@ -228,6 +234,85 @@ CommandProcessor.prototype.cmdUnzip = function(args) {
         
         // Create runInstaller
         this.fs.touch(`${oracleHome}/runInstaller`, '#!/bin/sh\n# Oracle Universal Installer');
+        
+        // Create AWR report script
+        this.fs.touch(`${oracleHome}/rdbms/admin/awrrpt.sql`, 
+            '-- awrrpt.sql - Automatic Workload Repository Report\n' +
+            '-- Oracle Database 19c AWR Report Generation Script\n' +
+            '-- Usage: @awrrpt.sql\n' +
+            '--\n' +
+            '-- This script generates AWR reports for performance analysis\n' +
+            '-- AWR reports provide detailed database performance statistics\n' +
+            '-- including wait events, SQL statistics, and system metrics\n' +
+            '--\n' +
+            'SET ECHO OFF\n' +
+            'SET FEEDBACK OFF\n' +
+            'SET PAGESIZE 0\n' +
+            'SET LINESIZE 1000\n' +
+            'SET TRIMOUT ON\n' +
+            'SET TRIMSPOOL ON\n' +
+            '--\n' +
+            '-- AWR Report Generation Logic\n' +
+            '-- Note: This is a simulation script for training purposes\n' +
+            '--\n' +
+            'PROMPT\n' +
+            'PROMPT Oracle AWR Report Generation\n' +
+            'PROMPT ============================\n' +
+            'PROMPT\n' +
+            'PROMPT Available Snapshots:\n' +
+            'PROMPT Snap Id    Begin Snap Time      End Snap Time        Elapsed\n' +
+            'PROMPT -------    ---------------      -------------        -------\n' +
+            'PROMPT    1234    01-Jan-24 09:00      01-Jan-24 10:00      1.00\n' +
+            'PROMPT    1235    01-Jan-24 10:00      01-Jan-24 11:00      1.00\n' +
+            'PROMPT    1236    01-Jan-24 11:00      01-Jan-24 12:00      1.00\n' +
+            'PROMPT\n' +
+            'PROMPT Enter beginning snapshot ID: (default: 1235)\n' +
+            'PROMPT Enter ending snapshot ID: (default: 1236)\n' +
+            'PROMPT Enter report name: (default: awrrpt_1_1235_1236.html)\n' +
+            'PROMPT\n' +
+            'PROMPT Generating AWR report...\n' +
+            'PROMPT Report saved to: awrrpt_1_1235_1236.html\n' +
+            'PROMPT\n');
+        
+        // Create ADDM report script
+        this.fs.touch(`${oracleHome}/rdbms/admin/addmrpt.sql`,
+            '-- addmrpt.sql - Automatic Database Diagnostic Monitor Report\n' +
+            '-- Oracle Database 19c ADDM Report Generation Script\n' +
+            '-- Usage: @addmrpt.sql\n' +
+            '--\n' +
+            '-- This script generates ADDM reports for automated performance analysis\n' +
+            '-- ADDM analyzes AWR data and provides recommendations for performance tuning\n' +
+            '-- including identification of bottlenecks and optimization suggestions\n' +
+            '--\n' +
+            'SET ECHO OFF\n' +
+            'SET FEEDBACK OFF\n' +
+            'SET PAGESIZE 0\n' +
+            'SET LINESIZE 1000\n' +
+            'SET TRIMOUT ON\n' +
+            'SET TRIMSPOOL ON\n' +
+            '--\n' +
+            '-- ADDM Report Generation Logic\n' +
+            '-- Note: This is a simulation script for training purposes\n' +
+            '--\n' +
+            'PROMPT\n' +
+            'PROMPT Oracle ADDM Report Generation\n' +
+            'PROMPT ==============================\n' +
+            'PROMPT\n' +
+            'PROMPT Available Snapshots for ADDM Analysis:\n' +
+            'PROMPT Snap Id    Begin Snap Time      End Snap Time        DB Time\n' +
+            'PROMPT -------    ---------------      -------------        -------\n' +
+            'PROMPT    1234    01-Jan-24 09:00      01-Jan-24 10:00      45.2m\n' +
+            'PROMPT    1235    01-Jan-24 10:00      01-Jan-24 11:00      52.8m\n' +
+            'PROMPT    1236    01-Jan-24 11:00      01-Jan-24 12:00      38.1m\n' +
+            'PROMPT\n' +
+            'PROMPT Enter beginning snapshot ID: (default: 1235)\n' +
+            'PROMPT Enter ending snapshot ID: (default: 1236)\n' +
+            'PROMPT Enter report name: (default: addmrpt_1_1235_1236.txt)\n' +
+            'PROMPT\n' +
+            'PROMPT Running ADDM analysis...\n' +
+            'PROMPT Analyzing wait events, SQL performance, and system statistics...\n' +
+            'PROMPT ADDM report saved to: addmrpt_1_1235_1236.txt\n' +
+            'PROMPT\n');
         
         // Create extproc.ora configuration file
         this.fs.touch(`${oracleHome}/hs/admin/extproc.ora`, 
@@ -350,6 +435,12 @@ CommandProcessor.prototype.processOracleCommand = function(command, args) {
             return true;
         case 'impdp':
             this.cmdImpdp(args);
+            return true;
+        case 'awrrpt':
+            this.cmdAwrrpt(args);
+            return true;
+        case 'addmrpt':
+            this.cmdAddmrpt(args);
             return true;
         case 'oraenv':
             this.cmdOraenv(args);
