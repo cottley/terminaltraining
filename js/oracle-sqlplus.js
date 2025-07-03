@@ -806,11 +806,19 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
 
-        // Prevent dropping system users
+        // Prevent dropping system users and roles
         const systemUsers = ['SYS', 'SYSTEM', 'DBSNMP'];
+        const systemRoles = ['PUBLIC', 'CONNECT', 'RESOURCE', 'DBA'];
+        
         if (systemUsers.includes(username)) {
             this.terminal.writeln('ERROR at line 1:');
             this.terminal.writeln(`ORA-01922: CASCADE must be specified to drop '${username}'`);
+            return;
+        }
+        
+        if (systemRoles.includes(username)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-01927: cannot REVOKE privileges you did not grant`);
             return;
         }
 

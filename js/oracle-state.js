@@ -87,7 +87,11 @@ class OracleManager {
                 'SYS': { password: 'change_on_install', privileges: ['SYSDBA'], locked: false, created: true },
                 'SYSTEM': { password: 'manager', privileges: ['DBA'], locked: false, created: true },
                 'DBSNMP': { password: 'dbsnmp', privileges: [], locked: false, created: true },
-                'SCOTT': { password: 'tiger', privileges: ['CONNECT', 'RESOURCE'], locked: true, created: true }
+                'SCOTT': { password: 'tiger', privileges: ['CONNECT', 'RESOURCE'], locked: true, created: true },
+                'PUBLIC': { password: null, privileges: [], locked: false, created: true, isRole: true },
+                'CONNECT': { password: null, privileges: [], locked: false, created: true, isRole: true },
+                'RESOURCE': { password: null, privileges: [], locked: false, created: true, isRole: true },
+                'DBA': { password: null, privileges: [], locked: false, created: true, isRole: true }
             }
         };
         
@@ -792,6 +796,11 @@ class OracleManager {
             return { success: false, error: 'ORA-01017: invalid username/password; logon denied' };
         }
         
+        // Roles cannot be used for authentication
+        if (user.isRole) {
+            return { success: false, error: 'ORA-01017: invalid username/password; logon denied' };
+        }
+        
         if (user.locked) {
             return { success: false, error: 'ORA-28000: the account is locked' };
         }
@@ -839,6 +848,12 @@ class OracleManager {
     userExists(username) {
         const upperUsername = username.toUpperCase();
         return this.state.databaseUsers[upperUsername] && this.state.databaseUsers[upperUsername].created;
+    }
+    
+    isRole(username) {
+        const upperUsername = username.toUpperCase();
+        const user = this.state.databaseUsers[upperUsername];
+        return user && user.created && user.isRole === true;
     }
     
     getUserPrivileges(username) {
