@@ -80,6 +80,14 @@ class OracleManager {
                 extprocConfigured: false,
                 sdeUserCreated: false,
                 sdeLibraryRegistered: false
+            },
+            
+            // Database user tracking
+            databaseUsers: {
+                'SYS': { password: 'change_on_install', privileges: ['SYSDBA'], locked: false, created: true },
+                'SYSTEM': { password: 'manager', privileges: ['DBA'], locked: false, created: true },
+                'DBSNMP': { password: 'dbsnmp', privileges: [], locked: false, created: true },
+                'SCOTT': { password: 'tiger', privileges: ['CONNECT', 'RESOURCE'], locked: true, created: true }
             }
         };
         
@@ -252,6 +260,9 @@ class OracleManager {
                             ...parsedState.psAppRequirements.tablespaces 
                         };
                     }
+                }
+                if (parsedState.databaseUsers) {
+                    this.state.databaseUsers = { ...this.state.databaseUsers, ...parsedState.databaseUsers };
                 }
             }
         } catch (e) {
@@ -752,6 +763,77 @@ class OracleManager {
         };
         
         return hints[taskName] || { hint: 'Unknown task', commands: [] };
+    }
+    
+    // Database user management methods
+    createDatabaseUser(username, password, privileges = []) {
+        const upperUsername = username.toUpperCase();
+        this.state.databaseUsers[upperUsername] = {
+            password: password,
+            privileges: privileges,
+            locked: false,
+            created: true
+        };
+        
+        // Update specific state flags for tracked users
+        if (upperUsername === 'SDE') {
+            this.updateState('psAppRequirements.sdeUserCreated', true);
+        }
+        
+        this.saveState();
+        return true;
+    }
+    
+    authenticateUser(username, password) {
+        const upperUsername = username.toUpperCase();
+        const user = this.state.databaseUsers[upperUsername];
+        
+        if (!user || !user.created) {
+            return { success: false, error: 'ORA-01017: invalid username/password; logon denied' };
+        }
+        
+        if (user.locked) {
+            return { success: false, error: 'ORA-28000: the account is locked' };
+        }
+        
+        if (user.password !== password) {
+            return { success: false, error: 'ORA-01017: invalid username/password; logon denied' };
+        }
+        
+        return { success: true, user: user, username: upperUsername };
+    }
+    
+    grantPrivilege(username, privilege) {
+        const upperUsername = username.toUpperCase();
+        const user = this.state.databaseUsers[upperUsername];
+        
+        if (!user || !user.created) {
+            return false;
+        }
+        
+        if (!user.privileges.includes(privilege)) {
+            user.privileges.push(privilege);
+        }
+        
+        this.saveState();
+        return true;
+    }
+    
+    userExists(username) {
+        const upperUsername = username.toUpperCase();
+        return this.state.databaseUsers[upperUsername] && this.state.databaseUsers[upperUsername].created;
+    }
+    
+    getUserPrivileges(username) {
+        const upperUsername = username.toUpperCase();
+        const user = this.state.databaseUsers[upperUsername];
+        return user && user.created ? user.privileges : [];
+    }
+    
+    getAllUsers() {
+        return Object.keys(this.state.databaseUsers).filter(username => 
+            this.state.databaseUsers[username].created
+        );
     }
 }
 

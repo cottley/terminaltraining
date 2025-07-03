@@ -160,18 +160,38 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                     this.getPrompt = () => '';  // No prompt while waiting for password
                     return;
                 } else {
-                    // Username/password or other connection strings - simulate successful connection
+                    // Username/password connection strings - validate credentials
                     if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
                         this.terminal.writeln('ERROR:');
                         this.terminal.writeln('ORA-01034: ORACLE not available');
                     } else {
-                        this.terminal.writeln('Connected.');
-                        if (connString.includes('SYS') || connAsSysdba) {
-                            currentUser = 'SYS';
-                            asSysdba = true;
+                        // Parse username/password
+                        const userPart = connString.split('/');
+                        if (userPart.length === 2) {
+                            const username = userPart[0];
+                            const password = userPart[1];
+                            
+                            // Authenticate user with password
+                            const authResult = oracleManager.authenticateUser(username, password);
+                            
+                            if (!authResult.success) {
+                                this.terminal.writeln('ERROR:');
+                                this.terminal.writeln(authResult.error);
+                            } else {
+                                this.terminal.writeln('Connected.');
+                                currentUser = authResult.username;
+                                asSysdba = connAsSysdba || authResult.user.privileges.includes('SYSDBA');
+                            }
                         } else {
-                            currentUser = connString.split('/')[0] || 'SYSTEM';
-                            asSysdba = connAsSysdba;
+                            // Default for malformed connection strings
+                            this.terminal.writeln('Connected.');
+                            if (connString.includes('SYS') || connAsSysdba) {
+                                currentUser = 'SYS';
+                                asSysdba = true;
+                            } else {
+                                currentUser = connString || 'SYSTEM';
+                                asSysdba = connAsSysdba;
+                            }
                         }
                     }
                 }
@@ -185,19 +205,21 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             this.getPrompt = () => 'SQL> ';  // Restore SQL prompt
             
             const password = input.trim();
-            // In a real system, we'd validate the password, but for simulation we'll just connect
             
             if (!oracleManager.getState('databaseStarted') && !this.pendingAsSysdba) {
                 this.terminal.writeln('ERROR:');
                 this.terminal.writeln('ORA-01034: ORACLE not available');
             } else {
-                this.terminal.writeln('Connected.');
-                if (this.pendingUsername.toUpperCase() === 'SYS' || this.pendingAsSysdba) {
-                    currentUser = 'SYS';
-                    asSysdba = true;
+                // Authenticate user with password
+                const authResult = oracleManager.authenticateUser(this.pendingUsername, password);
+                
+                if (!authResult.success) {
+                    this.terminal.writeln('ERROR:');
+                    this.terminal.writeln(authResult.error);
                 } else {
-                    currentUser = this.pendingUsername;
-                    asSysdba = this.pendingAsSysdba;
+                    this.terminal.writeln('Connected.');
+                    currentUser = authResult.username;
+                    asSysdba = this.pendingAsSysdba || authResult.user.privileges.includes('SYSDBA');
                 }
             }
             
@@ -279,18 +301,38 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                     this.getPrompt = () => '';  // No prompt while waiting for password
                     return;
                 } else {
-                    // Username/password or other connection strings - simulate successful connection
+                    // Username/password connection strings - validate credentials
                     if (!oracleManager.getState('databaseStarted') && !connAsSysdba) {
                         this.terminal.writeln('ERROR:');
                         this.terminal.writeln('ORA-01034: ORACLE not available');
                     } else {
-                        this.terminal.writeln('Connected.');
-                        if (connString.includes('SYS') || connAsSysdba) {
-                            currentUser = 'SYS';
-                            asSysdba = true;
+                        // Parse username/password
+                        const userPart = connString.split('/');
+                        if (userPart.length === 2) {
+                            const username = userPart[0];
+                            const password = userPart[1];
+                            
+                            // Authenticate user with password
+                            const authResult = oracleManager.authenticateUser(username, password);
+                            
+                            if (!authResult.success) {
+                                this.terminal.writeln('ERROR:');
+                                this.terminal.writeln(authResult.error);
+                            } else {
+                                this.terminal.writeln('Connected.');
+                                currentUser = authResult.username;
+                                asSysdba = connAsSysdba || authResult.user.privileges.includes('SYSDBA');
+                            }
                         } else {
-                            currentUser = connString.split('/')[0] || 'SYSTEM';
-                            asSysdba = connAsSysdba;
+                            // Default for malformed connection strings
+                            this.terminal.writeln('Connected.');
+                            if (connString.includes('SYS') || connAsSysdba) {
+                                currentUser = 'SYS';
+                                asSysdba = true;
+                            } else {
+                                currentUser = connString || 'SYSTEM';
+                                asSysdba = connAsSysdba;
+                            }
                         }
                     }
                 }
@@ -576,41 +618,27 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                 this.terminal.writeln('');
                 this.terminal.writeln('USERNAME');
                 this.terminal.writeln('------------------------------');
-                this.terminal.writeln('SYS');
-                this.terminal.writeln('SYSTEM');
-                this.terminal.writeln('DBSNMP');
-                this.terminal.writeln('APPQOSSYS');
-                this.terminal.writeln('DBSFWUSER');
-                this.terminal.writeln('GGSYS');
-                this.terminal.writeln('ANONYMOUS');
-                this.terminal.writeln('CTXSYS');
-                this.terminal.writeln('DVSYS');
-                this.terminal.writeln('DVF');
-                this.terminal.writeln('GSMADMIN_INTERNAL');
-                this.terminal.writeln('MDSYS');
-                this.terminal.writeln('OLAPSYS');
-                this.terminal.writeln('ORDDATA');
-                this.terminal.writeln('ORDPLUGINS');
-                this.terminal.writeln('ORDSYS');
-                this.terminal.writeln('OUTLN');
-                this.terminal.writeln('REMOTE_SCHEDULER_AGENT');
-                this.terminal.writeln('SI_INFORMTN_SCHEMA');
-                this.terminal.writeln('SYS$UMF');
-                this.terminal.writeln('SYSBACKUP');
-                this.terminal.writeln('SYSDG');
-                this.terminal.writeln('SYSKM');
-                this.terminal.writeln('SYSRAC');
-                this.terminal.writeln('WMSYS');
-                this.terminal.writeln('XDB');
-                this.terminal.writeln('XS$NULL');
                 
-                // Check if SDE user exists
-                if (oracleManager.getState('sdeUserCreated')) {
-                    this.terminal.writeln('SDE');
-                }
+                // Show system default users
+                const systemUsers = ['APPQOSSYS', 'DBSFWUSER', 'GGSYS', 'ANONYMOUS', 'CTXSYS', 
+                                   'DVSYS', 'DVF', 'GSMADMIN_INTERNAL', 'MDSYS', 'OLAPSYS', 
+                                   'ORDDATA', 'ORDPLUGINS', 'ORDSYS', 'OUTLN', 'REMOTE_SCHEDULER_AGENT',
+                                   'SI_INFORMTN_SCHEMA', 'SYS$UMF', 'SYSBACKUP', 'SYSDG', 'SYSKM',
+                                   'SYSRAC', 'WMSYS', 'XDB', 'XS$NULL'];
+                
+                // Show all database users from tracking system
+                const allUsers = oracleManager.getAllUsers();
+                allUsers.forEach(username => {
+                    this.terminal.writeln(username);
+                });
+                
+                // Show additional system users
+                systemUsers.forEach(user => {
+                    this.terminal.writeln(user);
+                });
                 
                 this.terminal.writeln('');
-                const count = 27 + (oracleManager.getState('sdeUserCreated') ? 1 : 0);
+                const count = allUsers.length + systemUsers.length;
                 this.terminal.writeln(`${count} rows selected.`);
                 this.terminal.writeln('');
             }
@@ -671,18 +699,38 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
 
     // Handle CREATE USER command
     this.handleCreateUser = function(sqlCommand) {
-        if (sqlCommand.includes('sde')) {
-            this.terminal.writeln('');
-            this.terminal.writeln('User SDE created.');
-            this.terminal.writeln('');
-            
-            // Update Oracle state to track SDE user creation
-            oracleManager.updateState('psAppRequirements.sdeUserCreated', true);
-        } else {
-            this.terminal.writeln('');
-            this.terminal.writeln('User created.');
-            this.terminal.writeln('');
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
         }
+
+        // Parse CREATE USER command
+        // Pattern: CREATE USER username IDENTIFIED BY password
+        const userMatch = sqlCommand.match(/create\s+user\s+(\w+)\s+identified\s+by\s+(\w+)/i);
+        
+        if (!userMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
+            return;
+        }
+
+        const username = userMatch[1].toUpperCase();
+        const password = userMatch[2];
+
+        // Check if user already exists
+        if (oracleManager.userExists(username)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-01920: user name '${username}' conflicts with another user or role name`);
+            return;
+        }
+
+        // Create the user
+        oracleManager.createDatabaseUser(username, password);
+        
+        this.terminal.writeln('');
+        this.terminal.writeln(`User ${username} created.`);
+        this.terminal.writeln('');
     };
 
     // Handle CREATE LIBRARY command for spatial functions
@@ -745,18 +793,32 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
 
-        // Handle specific grants
-        if (privilege.toLowerCase().includes('dba') && grantee === 'SDE') {
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            
-            // Update state to reflect that SDE has DBA privileges
-            oracleManager.updateState('psAppRequirements.sdeUserCreated', true);
+        // Check if grantee exists
+        if (!oracleManager.userExists(grantee)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-00942: table or view does not exist`);
             return;
         }
 
-        if (privilege.toLowerCase().includes('connect') || privilege.toLowerCase().includes('resource')) {
+        // Handle specific grants
+        if (privilege.toLowerCase().includes('dba')) {
+            oracleManager.grantPrivilege(grantee, 'DBA');
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            return;
+        }
+
+        if (privilege.toLowerCase().includes('connect')) {
+            oracleManager.grantPrivilege(grantee, 'CONNECT');
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            return;
+        }
+
+        if (privilege.toLowerCase().includes('resource')) {
+            oracleManager.grantPrivilege(grantee, 'RESOURCE');
             this.terminal.writeln('');
             this.terminal.writeln('Grant succeeded.');
             this.terminal.writeln('');
@@ -764,6 +826,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         }
 
         if (privilege.toLowerCase().includes('create session')) {
+            oracleManager.grantPrivilege(grantee, 'CREATE SESSION');
             this.terminal.writeln('');
             this.terminal.writeln('Grant succeeded.');
             this.terminal.writeln('');
@@ -771,6 +834,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         }
 
         if (privilege.toLowerCase().includes('create table')) {
+            oracleManager.grantPrivilege(grantee, 'CREATE TABLE');
             this.terminal.writeln('');
             this.terminal.writeln('Grant succeeded.');
             this.terminal.writeln('');
@@ -778,6 +842,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         }
 
         if (privilege.toLowerCase().includes('create procedure')) {
+            oracleManager.grantPrivilege(grantee, 'CREATE PROCEDURE');
             this.terminal.writeln('');
             this.terminal.writeln('Grant succeeded.');
             this.terminal.writeln('');
