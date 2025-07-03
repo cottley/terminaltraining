@@ -5,8 +5,39 @@ CommandProcessor.prototype.cmdSqlplus = function(args) {
         return;
     }
     
+    // Start SQL*Plus session header
+    this.terminal.writeln('');
+    this.terminal.writeln('SQL*Plus: Release 19.0.0.0.0 - Production on ' + new Date().toLocaleString());
+    this.terminal.writeln('Version 19.0.0.0.0');
+    this.terminal.writeln('');
+    this.terminal.writeln('Copyright (c) 1982, 2019, Oracle.  All rights reserved.');
+    this.terminal.writeln('');
+    
     // Parse connection string
-    let connectString = args.join(' ');
+    let connectString = args.join(' ').trim();
+    let connectionEstablished = false;
+    let username = '';
+    let asSysdba = false;
+    
+    if (connectString) {
+        // Connection arguments provided - attempt to connect
+        const connectionResult = this.attemptSqlPlusConnection(connectString);
+        connectionEstablished = connectionResult.success;
+        username = connectionResult.username;
+        asSysdba = connectionResult.asSysdba;
+        
+        if (!connectionResult.success) {
+            // Connection failed, but still enter SQL*Plus mode without connection
+            this.terminal.writeln('');
+        }
+    }
+    
+    // Enter SQL prompt mode (connected or not)
+    this.enterSqlMode(username, asSysdba, connectionEstablished);
+};
+
+// Attempt SQL*Plus connection
+CommandProcessor.prototype.attemptSqlPlusConnection = function(connectString) {
     let asSysdba = false;
     let username = '';
     let password = '';
@@ -14,7 +45,7 @@ CommandProcessor.prototype.cmdSqlplus = function(args) {
     
     if (connectString.includes('as sysdba')) {
         asSysdba = true;
-        connectString = connectString.replace('as sysdba', '').trim();
+        connectString = connectString.replace(/as sysdba/i, '').trim();
     }
     
     if (connectString === '/' && asSysdba) {
@@ -39,35 +70,19 @@ CommandProcessor.prototype.cmdSqlplus = function(args) {
     
     // Check if can connect
     if (!asSysdba && !oracleManager.getState('listenerStarted') && database) {
-        this.terminal.writeln('');
-        this.terminal.writeln('SQL*Plus: Release 19.0.0.0.0 - Production');
-        this.terminal.writeln('');
         this.terminal.writeln('ERROR:');
         this.terminal.writeln('ORA-12541: TNS:no listener');
-        this.terminal.writeln('');
-        this.terminal.writeln('Enter user-name: ');
-        return;
+        return { success: false, username: '', asSysdba: false };
     }
     
     if (!oracleManager.getState('databaseStarted') && !asSysdba) {
-        this.terminal.writeln('');
-        this.terminal.writeln('SQL*Plus: Release 19.0.0.0.0 - Production');
-        this.terminal.writeln('');
         this.terminal.writeln('ERROR:');
         this.terminal.writeln('ORA-01034: ORACLE not available');
         this.terminal.writeln('ORA-27101: shared memory realm does not exist');
-        this.terminal.writeln('');
-        return;
+        return { success: false, username: '', asSysdba: false };
     }
     
-    // Start SQL*Plus session
-    this.terminal.writeln('');
-    this.terminal.writeln('SQL*Plus: Release 19.0.0.0.0 - Production on ' + new Date().toLocaleString());
-    this.terminal.writeln('Version 19.0.0.0.0');
-    this.terminal.writeln('');
-    this.terminal.writeln('Copyright (c) 1982, 2019, Oracle.  All rights reserved.');
-    this.terminal.writeln('');
-    
+    // Connection successful
     if (asSysdba) {
         if (oracleManager.getState('databaseStarted')) {
             this.terminal.writeln('Connected to:');
@@ -82,17 +97,15 @@ CommandProcessor.prototype.cmdSqlplus = function(args) {
         this.terminal.writeln('Version 19.3.0.0.0');
     }
     
-    this.terminal.writeln('');
-    
-    // Enter SQL prompt mode
-    this.enterSqlMode(username, asSysdba);
+    return { success: true, username: username || 'SYSTEM', asSysdba: asSysdba };
 };
 
 // SQL Mode Handler
-CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
+CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnected) {
     const originalPrompt = this.getPrompt;
     const originalProcess = this.processCommand;
-    let currentUser = username || 'SYSTEM';
+    let currentUser = username || '';
+    let connected = isConnected || false;
     
     // Override prompt
     this.getPrompt = () => 'SQL> ';
@@ -191,6 +204,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                                 this.terminal.writeln('Connected.');
                                 currentUser = authResult.username;
                                 asSysdba = connAsSysdba || authResult.user.privileges.includes('SYSDBA');
+                                connected = true;
                             }
                         } else {
                             // Default for malformed connection strings
@@ -202,6 +216,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                                 currentUser = connString || 'SYSTEM';
                                 asSysdba = connAsSysdba;
                             }
+                            connected = true;
                         }
                     }
                 }
@@ -332,6 +347,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                                 this.terminal.writeln('Connected.');
                                 currentUser = authResult.username;
                                 asSysdba = connAsSysdba || authResult.user.privileges.includes('SYSDBA');
+                                connected = true;
                             }
                         } else {
                             // Default for malformed connection strings
@@ -343,11 +359,37 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                                 currentUser = connString || 'SYSTEM';
                                 asSysdba = connAsSysdba;
                             }
+                            connected = true;
                         }
                     }
                 }
             }
             return;
+        }
+        
+        // Check for database connection before executing queries
+        // Allow CONNECT commands and exit/quit commands without connection
+        if (!connected && !sqlCommand.startsWith('CONN') && !sqlCommand.startsWith('CONNECT') && 
+            sqlCommand !== 'EXIT' && sqlCommand !== 'QUIT' && sqlCommand !== 'EXIT;' && sqlCommand !== 'QUIT;' &&
+            sqlCommand.trim() !== '') {
+            
+            // Check if it's a SQL statement that requires connection
+            const requiresConnection = sqlCommand.startsWith('SELECT') || sqlCommand.startsWith('INSERT') || 
+                                     sqlCommand.startsWith('UPDATE') || sqlCommand.startsWith('DELETE') ||
+                                     sqlCommand.startsWith('CREATE') || sqlCommand.startsWith('DROP') ||
+                                     sqlCommand.startsWith('ALTER') || sqlCommand.startsWith('SHOW') ||
+                                     sqlCommand.startsWith('DESC') || sqlCommand.startsWith('DESCRIBE') ||
+                                     sqlCommand.includes('V$') || sqlCommand.includes('DBA_') ||
+                                     sqlCommand.startsWith('STARTUP') || sqlCommand.startsWith('SHUTDOWN');
+            
+            if (requiresConnection) {
+                this.terminal.writeln('ERROR:');
+                this.terminal.writeln('ORA-00942: table or view does not exist');
+                this.terminal.writeln('');
+                this.terminal.writeln('');
+                this.terminal.writeln('Not connected to Oracle.');
+                return;
+            }
         }
         
         // Database startup/shutdown commands (SYSDBA only)
@@ -437,6 +479,15 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                 this.terminal.writeln('--------------------------------------------------------------------------------');
                 this.terminal.writeln('Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production');
                 this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        if (sqlCommand.startsWith('SHOW USER')) {
+            if (!connected) {
+                this.terminal.writeln('USER is ""');
+            } else {
+                this.terminal.writeln(`USER is "${currentUser}"`);
             }
             return;
         }
