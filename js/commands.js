@@ -496,8 +496,8 @@ class CommandProcessor {
 
         // Only add . and .. for directories, not for individual files
         if (showAll && this.fs.isDirectory(path)) {
-            files.unshift({ name: '.', type: 'directory', permissions: 'drwxr-xr-x' });
             files.unshift({ name: '..', type: 'directory', permissions: 'drwxr-xr-x' });
+            files.unshift({ name: '.', type: 'directory', permissions: 'drwxr-xr-x' });
         }
 
         if (longFormat) {
