@@ -386,6 +386,113 @@ umask 022
         this.fs.touch(bashProfilePath, profileContent);
     }
 
+    // Wildcard pattern matching for bash-style globbing
+    expandWildcards(pattern, currentDir = '.') {
+        // If no wildcards, return the pattern as-is
+        if (!pattern.includes('*') && !pattern.includes('?') && !pattern.includes('[')) {
+            return [pattern];
+        }
+        
+        const results = [];
+        
+        // Handle absolute vs relative paths
+        const isAbsolute = pattern.startsWith('/');
+        let searchDir = currentDir;
+        let searchPattern = pattern;
+        
+        // Extract directory and pattern parts
+        const lastSlash = pattern.lastIndexOf('/');
+        if (lastSlash !== -1) {
+            searchDir = pattern.substring(0, lastSlash) || '/';
+            searchPattern = pattern.substring(lastSlash + 1);
+        }
+        
+        // Special case: * should match all files and directories in current directory
+        if (pattern === '*') {
+            const files = this.fs.ls(currentDir);
+            if (files) {
+                return files.map(f => f.name);
+            }
+            return [];
+        }
+        
+        // Get files from the search directory
+        const files = this.fs.ls(searchDir);
+        if (!files) {
+            return [pattern]; // Return original if directory doesn't exist
+        }
+        
+        // Convert glob pattern to regex
+        const regexPattern = this.globToRegex(searchPattern);
+        const regex = new RegExp('^' + regexPattern + '$');
+        
+        // Test each file against the pattern
+        files.forEach(file => {
+            if (regex.test(file.name)) {
+                if (searchDir === '.' || searchDir === currentDir) {
+                    results.push(file.name);
+                } else {
+                    results.push(searchDir + '/' + file.name);
+                }
+            }
+        });
+        
+        // If no matches found, return original pattern (bash behavior)
+        return results.length > 0 ? results : [pattern];
+    }
+    
+    // Convert glob pattern to regex
+    globToRegex(pattern) {
+        let regex = '';
+        let i = 0;
+        
+        while (i < pattern.length) {
+            const char = pattern[i];
+            
+            switch (char) {
+                case '*':
+                    regex += '.*';
+                    break;
+                case '?':
+                    regex += '.';
+                    break;
+                case '[':
+                    // Character class
+                    const closeIndex = pattern.indexOf(']', i);
+                    if (closeIndex !== -1) {
+                        let charClass = pattern.substring(i + 1, closeIndex);
+                        // Handle negation
+                        if (charClass.startsWith('!') || charClass.startsWith('^')) {
+                            charClass = '^' + charClass.substring(1);
+                        }
+                        regex += '[' + charClass + ']';
+                        i = closeIndex;
+                    } else {
+                        regex += '\\[';
+                    }
+                    break;
+                case '.':
+                case '^':
+                case '$':
+                case '+':
+                case '(':
+                case ')':
+                case '{':
+                case '}':
+                case '|':
+                case '\\':
+                    // Escape special regex characters
+                    regex += '\\' + char;
+                    break;
+                default:
+                    regex += char;
+            }
+            i++;
+        }
+        
+        return regex;
+    }
+
     initializeVimModal() {
         this.vimModal = document.getElementById('vimModal');
         const vimEditor = document.getElementById('vimEditor');
@@ -733,71 +840,103 @@ umask 022
             }
         });
         
-        let path = args.find(arg => !arg.startsWith('-')) || '.';
+        // Get all non-flag arguments (paths)
+        const pathArgs = args.filter(arg => !arg.startsWith('-'));
+        const paths = pathArgs.length > 0 ? pathArgs : ['.'];
         
-        // Expand environment variables
-        path = path.replace(/\$([A-Z_]+)/g, (match, varName) => {
-            return this.environmentVars[varName] || match;
-        });
+        let allFiles = [];
+        let multipleTargets = false;
         
-        // Check if path is a file or directory
-        if (!this.fs.exists(path)) {
-            this.terminal.writeln(`ls: cannot access '${path}': No such file or directory`);
-            return;
-        }
-        
-        let files;
-        if (this.fs.isFile(path)) {
-            // Handle single file
-            const pathArray = this.fs.resolvePath(path);
-            const node = this.fs.getNode(pathArray);
-            const fileName = pathArray[pathArray.length - 1] || path;
-            files = [{
-                name: fileName,
-                ...node
-            }];
-        } else {
-            // Handle directory
-            files = this.fs.ls(path);
-            if (files === null) {
-                this.terminal.writeln(`ls: cannot access '${path}': No such file or directory`);
-                return;
-            }
-        }
-
-        // Only add . and .. for directories, not for individual files
-        if (showAll && this.fs.isDirectory(path)) {
-            files.unshift({ name: '..', type: 'directory', permissions: 'drwxr-xr-x' });
-            files.unshift({ name: '.', type: 'directory', permissions: 'drwxr-xr-x' });
-        }
-
-        if (longFormat) {
-            this.terminal.writeln(`total ${files.length * 4}`);
+        // Process each path argument
+        for (let i = 0; i < paths.length; i++) {
+            let path = paths[i];
             
-            // Find the maximum lengths for dynamic padding
-            const maxSizeLength = Math.max(
-                ...files.map(file => this.formatFileSize(file.size || 4096, humanReadable).length)
-            );
-            const maxOwnerLength = Math.max(
-                ...files.map(file => (file.owner || 'root').length)
-            );
-            const maxGroupLength = Math.max(
-                ...files.map(file => (file.group || 'root').length)
-            );
-            
-            files.forEach(file => {
-                const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
-                const formattedSize = this.formatFileSize(file.size || 4096, humanReadable);
-                const paddedSize = formattedSize.padStart(maxSizeLength, ' ');
-                const paddedOwner = (file.owner || 'root').padEnd(maxOwnerLength, ' ');
-                const paddedGroup = (file.group || 'root').padEnd(maxGroupLength, ' ');
-                this.terminal.writeln(
-                    `${file.permissions || 'drwxr-xr-x'} 1 ${paddedOwner} ${paddedGroup} ${paddedSize} ${date} ${file.name}`
-                );
+            // Expand environment variables
+            path = path.replace(/\$([A-Z_]+)/g, (match, varName) => {
+                return this.environmentVars[varName] || match;
             });
-        } else {
-            const names = files.map(f => f.name).join('  ');
-            if (names) this.terminal.writeln(names);
+            
+            // Expand wildcards
+            const expandedPaths = this.expandWildcards(path, this.fs.currentPath);
+            
+            // Process each expanded path
+            for (const expandedPath of expandedPaths) {
+                if (!this.fs.exists(expandedPath)) {
+                    this.terminal.writeln(`ls: cannot access '${expandedPath}': No such file or directory`);
+                    continue;
+                }
+                
+                let files;
+                let pathLabel = '';
+                
+                if (this.fs.isFile(expandedPath)) {
+                    // Handle single file
+                    const pathArray = this.fs.resolvePath(expandedPath);
+                    const node = this.fs.getNode(pathArray);
+                    const fileName = pathArray[pathArray.length - 1] || expandedPath;
+                    files = [{
+                        name: fileName,
+                        ...node
+                    }];
+                    pathLabel = expandedPath;
+                } else {
+                    // Handle directory
+                    files = this.fs.ls(expandedPath);
+                    if (files === null) {
+                        this.terminal.writeln(`ls: cannot access '${expandedPath}': No such file or directory`);
+                        continue;
+                    }
+                    pathLabel = expandedPath;
+                    
+                    // Only add . and .. for directories when showing all
+                    if (showAll) {
+                        files.unshift({ name: '..', type: 'directory', permissions: 'drwxr-xr-x' });
+                        files.unshift({ name: '.', type: 'directory', permissions: 'drwxr-xr-x' });
+                    }
+                }
+                
+                // Determine if we need to show directory labels
+                const needsLabel = (expandedPaths.length > 1 || paths.length > 1 || 
+                                   (expandedPaths.length === 1 && this.fs.isDirectory(expandedPaths[0])));
+                
+                if (needsLabel && this.fs.isDirectory(expandedPath)) {
+                    if (multipleTargets) this.terminal.writeln('');
+                    this.terminal.writeln(`${pathLabel}:`);
+                    multipleTargets = true;
+                }
+                
+                // Display files
+                if (longFormat) {
+                    if (!needsLabel || !this.fs.isDirectory(expandedPath)) {
+                        this.terminal.writeln(`total ${files.length * 4}`);
+                    }
+                    
+                    // Find the maximum lengths for dynamic padding
+                    const maxSizeLength = Math.max(
+                        ...files.map(file => this.formatFileSize(file.size || 4096, humanReadable).length)
+                    );
+                    const maxOwnerLength = Math.max(
+                        ...files.map(file => (file.owner || 'root').length)
+                    );
+                    const maxGroupLength = Math.max(
+                        ...files.map(file => (file.group || 'root').length)
+                    );
+                    
+                    files.forEach(file => {
+                        const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
+                        const formattedSize = this.formatFileSize(file.size || 4096, humanReadable);
+                        const paddedSize = formattedSize.padStart(maxSizeLength, ' ');
+                        const paddedOwner = (file.owner || 'root').padEnd(maxOwnerLength, ' ');
+                        const paddedGroup = (file.group || 'root').padEnd(maxGroupLength, ' ');
+                        this.terminal.writeln(
+                            `${file.permissions || 'drwxr-xr-x'} 1 ${paddedOwner} ${paddedGroup} ${paddedSize} ${date} ${file.name}`
+                        );
+                    });
+                } else {
+                    const names = files.map(f => f.name).join('  ');
+                    if (names) this.terminal.writeln(names);
+                }
+            }
         }
     }
 
@@ -870,13 +1009,20 @@ umask 022
         const recursive = args.includes('-r') || args.includes('-rf');
         const files = args.filter(arg => !arg.startsWith('-'));
         
+        // Expand wildcards for each file argument
+        const expandedFiles = [];
         files.forEach(file => {
             // Expand environment variables
             const expandedFile = file.replace(/\$([A-Z_]+)/g, (match, varName) => {
                 return this.environmentVars[varName] || match;
             });
             
-            if (!this.fs.rm(expandedFile, recursive)) {
+            const wildcardExpanded = this.expandWildcards(expandedFile, this.fs.currentPath);
+            expandedFiles.push(...wildcardExpanded);
+        });
+        
+        expandedFiles.forEach(file => {
+            if (!this.fs.rm(file, recursive)) {
                 this.terminal.writeln(`rm: cannot remove '${file}': No such file or directory`);
             }
         });
@@ -1252,7 +1398,14 @@ umask 022
         const mode = filteredArgs[0];
         const files = filteredArgs.slice(1);
 
+        // Expand wildcards for each file argument
+        const expandedFiles = [];
         files.forEach(file => {
+            const expanded = this.expandWildcards(file, this.fs.currentPath);
+            expandedFiles.push(...expanded);
+        });
+
+        expandedFiles.forEach(file => {
             this.changePermissions(file, mode, recursive);
         });
     }
@@ -1445,7 +1598,14 @@ umask 022
             return;
         }
 
+        // Expand wildcards for each file argument
+        const expandedFiles = [];
         files.forEach(file => {
+            const expanded = this.expandWildcards(file, this.fs.currentPath);
+            expandedFiles.push(...expanded);
+        });
+
+        expandedFiles.forEach(file => {
             this.changeOwnership(file, ownership, recursive);
         });
     }
@@ -1712,13 +1872,20 @@ umask 022
             return;
         }
         
+        // Expand wildcards for each file argument
+        const expandedFiles = [];
         args.forEach(file => {
             // Expand environment variables
             const expandedFile = file.replace(/\$([A-Z_]+)/g, (match, varName) => {
                 return this.environmentVars[varName] || match;
             });
             
-            const content = this.fs.cat(expandedFile);
+            const wildcardExpanded = this.expandWildcards(expandedFile, this.fs.currentPath);
+            expandedFiles.push(...wildcardExpanded);
+        });
+        
+        expandedFiles.forEach(file => {
+            const content = this.fs.cat(file);
             if (content === null) {
                 this.terminal.writeln(`cat: ${file}: No such file or directory`);
             } else {

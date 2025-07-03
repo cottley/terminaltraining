@@ -12,10 +12,11 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 - Full RHEL 9 filesystem structure
 - Authentic command prompt and shell behavior
 - Mode-aware command history (separate for bash, SQL*Plus, RMAN)
-- Tab completion for commands and file paths
+- Tab completion for commands and file paths with directory-aware completion
 - Cursor navigation with left/right arrow keys for line editing
 - Text selection and automatic clipboard copying
 - Pipe functionality with command chaining
+- **Bash wildcard support** (`*`, `?`, `[abc]` patterns for file matching)
 - Automatic .bash_profile processing on login shells
 - `source` command for manual script sourcing
 
@@ -96,6 +97,23 @@ cat <file>            # Display file contents
 echo [-e] <text>      # Display text (-e enables escape sequences)
 vim/vi/nano <file>    # Edit files (modal editor)
 find <path> [options] # Search for files and directories
+
+# Bash Wildcard Support
+ls -la *              # List all files and directories with details
+ls *.txt              # List all text files
+ls file?.log          # List files like file1.log, filea.log, etc.
+ls [abc]*             # List files starting with a, b, or c
+chown oracle:oinstall *  # Change ownership of all files in current directory
+chmod 755 *.sh        # Make all shell scripts executable
+rm *.tmp              # Remove all temporary files
+cat *.conf            # Display all configuration files
+find /u01 -name "*.dbf"  # Find all database files
+
+# Wildcard patterns supported:
+# *     - matches any sequence of characters
+# ?     - matches any single character
+# [abc] - matches any character in the brackets
+# [!abc] or [^abc] - matches any character NOT in the brackets
 
 # Output redirection
 command > file        # Redirect output to file
@@ -521,6 +539,44 @@ Service states persist across sessions and can be managed with the `service` com
 
 ## Advanced Shell Features
 
+### Bash Wildcard and Pattern Matching
+The terminal environment supports comprehensive bash-style wildcard expansion:
+
+**Wildcard Patterns:**
+- `*` - Matches any sequence of characters (including none)
+- `?` - Matches exactly one character  
+- `[abc]` - Matches any single character from the set (a, b, or c)
+- `[!abc]` or `[^abc]` - Matches any single character NOT in the set
+- `[a-z]` - Matches any character in the range a through z
+
+**Common Use Cases:**
+```bash
+# File management with wildcards
+ls *.dbf                          # List all database files
+chown oracle:oinstall *.log       # Change ownership of all log files
+chmod 644 /etc/*.conf             # Set permissions on all config files
+rm /tmp/*                         # Remove all files in /tmp directory
+cp *.txt /backup/                 # Copy all text files to backup
+
+# Pattern matching examples
+ls file?.txt                      # Matches file1.txt, filea.txt, etc.
+ls [abc]*.log                     # Matches files starting with a, b, or c
+ls log[0-9][0-9]                  # Matches log01, log02, ..., log99
+ls *[!~]                          # Matches files NOT ending with ~
+
+# Oracle-specific examples
+ls /u01/app/oracle/oradata/ORCL/*.dbf    # List all datafiles
+chmod 640 /u01/app/oracle/admin/*/bdump/*.trc    # Set permissions on trace files
+chown oracle:dba $ORACLE_HOME/bin/oracle*        # Change ownership of Oracle binaries
+```
+
+**Advanced Features:**
+- Wildcards work with absolute and relative paths
+- Pattern expansion occurs before command execution (standard bash behavior)
+- If no matches found, the original pattern is passed to the command
+- Supports nested directory wildcards: `/path/*/subdir/*.ext`
+- Environment variables are expanded before wildcard matching
+
 ### Command History Separation
 The terminal environment provides realistic command history management with mode-aware navigation:
 
@@ -619,15 +675,17 @@ This environment is designed for:
 
 ## Tips for Best Learning Experience
 
-- **Use Tab Completion**: Speed up command entry with Tab key
-- **Practice Commands**: Try different options and variations
+- **Use Tab Completion**: Speed up command entry with Tab key (directory-aware for `cd` command)
+- **Master Wildcards**: Use `*`, `?`, and `[abc]` patterns for efficient file operations
+- **Practice Commands**: Try different options and variations with wildcard combinations
 - **Read Error Messages**: The simulation provides realistic error messages for learning
 - **Follow OCP Guidance**: Use the built-in progress tracker for structured learning
 - **Experiment Safely**: The simulation environment is safe for experimentation
 - **Practice Pipe Operations**: Master Linux text processing with pipes and filters
-- **Test Datafile Operations**: Practice adding and resizing datafiles in SQL*Plus
+- **Test Datafile Operations**: Practice adding and resizing datafiles in SQL*Plus (sizes persist across reloads)
 - **Use Command History**: Each mode (bash/SQL*Plus/RMAN) has separate command history
 - **Leverage .bash_profile**: Customize your environment and practice shell configuration
+- **Combine Features**: Use wildcards with pipes: `ls *.log | grep error`
 
 ## Support & Documentation
 
