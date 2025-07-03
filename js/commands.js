@@ -6,6 +6,11 @@ class CommandProcessor {
         this.history = [];
         this.historyIndex = -1;
         this.loadHistory();
+        
+        // SQL history for SQL*Plus mode
+        this.sqlHistory = [];
+        this.sqlHistoryIndex = -1;
+        this.loadSqlHistory();
         this.currentCommand = '';
         this.userStack = ['root']; // Stack to track user changes
         this.vimModal = null; // Reference to vim modal
@@ -70,6 +75,28 @@ class CommandProcessor {
             // If there's an error loading history, start with empty history
             this.history = [];
             this.historyIndex = -1;
+        }
+    }
+
+    loadSqlHistory() {
+        try {
+            const savedSqlHistory = localStorage.getItem('terminalSqlHistory');
+            if (savedSqlHistory) {
+                this.sqlHistory = JSON.parse(savedSqlHistory);
+                this.sqlHistoryIndex = this.sqlHistory.length;
+            }
+        } catch (e) {
+            // If there's an error loading SQL history, start with empty history
+            this.sqlHistory = [];
+            this.sqlHistoryIndex = -1;
+        }
+    }
+
+    saveSqlHistory() {
+        try {
+            localStorage.setItem('terminalSqlHistory', JSON.stringify(this.sqlHistory));
+        } catch (e) {
+            // Silently fail if localStorage is not available
         }
     }
 

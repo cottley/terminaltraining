@@ -102,6 +102,16 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         const sqlCommand = input.trim().toUpperCase();
         const sqlLower = input.trim();
         
+        // Add SQL command to SQL history if it's not empty and not a password
+        if (sqlLower && !this.waitingForPassword && !this.waitingForUsername) {
+            // Don't add duplicate commands
+            if (this.sqlHistory.length === 0 || this.sqlHistory[this.sqlHistory.length - 1] !== sqlLower) {
+                this.sqlHistory.push(sqlLower);
+                this.saveSqlHistory();
+            }
+            this.sqlHistoryIndex = this.sqlHistory.length;
+        }
+        
         // Handle username input after CONN/CONNECT command
         if (this.waitingForUsername) {
             this.waitingForUsername = false;

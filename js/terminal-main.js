@@ -369,36 +369,82 @@ term.onData(data => {
             }
             break;
         case '\u001b[A': // Up arrow
-            if (!cmdProcessor.waitingForPassword && cmdProcessor.historyIndex > 0) {
-                // Clear current line
-                term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
-                term.write('\r' + cmdProcessor.getPrompt());
+            if (!cmdProcessor.waitingForPassword) {
+                const prompt = cmdProcessor.getPrompt();
+                const isSqlMode = prompt === 'SQL> ';
                 
-                cmdProcessor.historyIndex--;
-                currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
-                cursorPosition = currentLine.length; // Set cursor to end of line
-                term.write(currentLine);
+                if (isSqlMode) {
+                    // Use SQL history in SQL mode
+                    if (cmdProcessor.sqlHistoryIndex > 0) {
+                        // Clear current line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.sqlHistoryIndex--;
+                        currentLine = cmdProcessor.sqlHistory[cmdProcessor.sqlHistoryIndex];
+                        cursorPosition = currentLine.length; // Set cursor to end of line
+                        term.write(currentLine);
+                    }
+                } else {
+                    // Use bash history in bash mode
+                    if (cmdProcessor.historyIndex > 0) {
+                        // Clear current line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.historyIndex--;
+                        currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
+                        cursorPosition = currentLine.length; // Set cursor to end of line
+                        term.write(currentLine);
+                    }
+                }
             }
             break;
         case '\u001b[B': // Down arrow
             if (!cmdProcessor.waitingForPassword) {
-                if (cmdProcessor.historyIndex < cmdProcessor.history.length - 1) {
-                    // Clear current line
-                    term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
-                    term.write('\r' + cmdProcessor.getPrompt());
-                    
-                    cmdProcessor.historyIndex++;
-                    currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
-                    cursorPosition = currentLine.length; // Set cursor to end of line
-                    term.write(currentLine);
-                } else if (cmdProcessor.historyIndex === cmdProcessor.history.length - 1) {
-                    // Clear current line and go to empty line
-                    term.write('\r' + cmdProcessor.getPrompt() + ' '.repeat(currentLine.length));
-                    term.write('\r' + cmdProcessor.getPrompt());
-                    
-                    cmdProcessor.historyIndex++;
-                    currentLine = '';
-                    cursorPosition = 0;
+                const prompt = cmdProcessor.getPrompt();
+                const isSqlMode = prompt === 'SQL> ';
+                
+                if (isSqlMode) {
+                    // Use SQL history in SQL mode
+                    if (cmdProcessor.sqlHistoryIndex < cmdProcessor.sqlHistory.length - 1) {
+                        // Clear current line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.sqlHistoryIndex++;
+                        currentLine = cmdProcessor.sqlHistory[cmdProcessor.sqlHistoryIndex];
+                        cursorPosition = currentLine.length; // Set cursor to end of line
+                        term.write(currentLine);
+                    } else if (cmdProcessor.sqlHistoryIndex === cmdProcessor.sqlHistory.length - 1) {
+                        // Clear current line and go to empty line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.sqlHistoryIndex++;
+                        currentLine = '';
+                        cursorPosition = 0;
+                    }
+                } else {
+                    // Use bash history in bash mode
+                    if (cmdProcessor.historyIndex < cmdProcessor.history.length - 1) {
+                        // Clear current line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.historyIndex++;
+                        currentLine = cmdProcessor.history[cmdProcessor.historyIndex];
+                        cursorPosition = currentLine.length; // Set cursor to end of line
+                        term.write(currentLine);
+                    } else if (cmdProcessor.historyIndex === cmdProcessor.history.length - 1) {
+                        // Clear current line and go to empty line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.historyIndex++;
+                        currentLine = '';
+                        cursorPosition = 0;
+                    }
                 }
             }
             break;
