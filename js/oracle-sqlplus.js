@@ -635,6 +635,12 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
         
+        // Handle GRANT commands
+        if (sqlCommand.startsWith('GRANT ')) {
+            this.handleGrant(sqlLower, asSysdba, currentUser);
+            return;
+        }
+        
         // Handle spatial queries
         if (sqlCommand.includes('SELECT FILE_SPEC FROM USER_LIBRARIES')) {
             this.handleUserLibrariesQuery(currentUser);
@@ -705,6 +711,95 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             this.terminal.writeln('Library created.');
             this.terminal.writeln('');
         }
+    };
+
+    // Handle GRANT commands
+    this.handleGrant = function(sqlCommand, asSysdba, currentUser) {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        // Parse GRANT command - basic patterns:
+        // GRANT privilege TO user
+        // GRANT role TO user
+        const grantMatch = sqlCommand.match(/grant\s+(.+?)\s+to\s+(\w+)/i);
+        
+        if (!grantMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00903: invalid table name');
+            return;
+        }
+
+        const privilege = grantMatch[1].trim();
+        const grantee = grantMatch[2].toUpperCase();
+
+        // Check permissions - only SYSDBA or privileged users can grant system privileges/roles
+        const systemPrivileges = ['dba', 'connect', 'resource', 'create session', 'create table', 'create procedure', 'create view'];
+        const isSystemPrivilege = systemPrivileges.some(priv => privilege.toLowerCase().includes(priv.toLowerCase()));
+
+        if (isSystemPrivilege && !asSysdba && currentUser !== 'SYS' && currentUser !== 'SYSTEM') {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01031: insufficient privileges');
+            return;
+        }
+
+        // Handle specific grants
+        if (privilege.toLowerCase().includes('dba') && grantee === 'SDE') {
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            
+            // Update state to reflect that SDE has DBA privileges
+            oracleManager.updateState('psAppRequirements.sdeUserCreated', true);
+            return;
+        }
+
+        if (privilege.toLowerCase().includes('connect') || privilege.toLowerCase().includes('resource')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            return;
+        }
+
+        if (privilege.toLowerCase().includes('create session')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            return;
+        }
+
+        if (privilege.toLowerCase().includes('create table')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            return;
+        }
+
+        if (privilege.toLowerCase().includes('create procedure')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            return;
+        }
+
+        if (privilege.toLowerCase().includes('execute') && privilege.toLowerCase().includes('library')) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            
+            // Update state for library registration if granting execute on spatial library
+            if (privilege.toLowerCase().includes('st_shapelib')) {
+                oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', true);
+            }
+            return;
+        }
+
+        // Default grant success for other privileges
+        this.terminal.writeln('');
+        this.terminal.writeln('Grant succeeded.');
+        this.terminal.writeln('');
     };
 
     // Handle spatial queries to show libraries
