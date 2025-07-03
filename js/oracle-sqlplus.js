@@ -1300,6 +1300,8 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                 node.autoextend = autoextend === 'ON';
                 node.nextSize = nextSize + nextUnit;
                 node.maxSize = maxSize === 'UNLIMITED' ? 'UNLIMITED' : maxSize + maxUnit;
+                // Save filesystem state to persist datafile metadata
+                this.fs.saveState();
             }
             
             this.terminal.writeln('');
@@ -1359,6 +1361,8 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             if (node) {
                 node.size = newSizeInBytes;
                 node.modified = new Date();
+                // Save filesystem state to persist datafile size changes
+                this.fs.saveState();
             }
             
             this.terminal.writeln('');
@@ -1407,6 +1411,8 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
                 node.nextSize = nextSize + nextUnit;
                 node.maxSize = maxSize === 'UNLIMITED' ? 'UNLIMITED' : maxSize + maxUnit;
                 node.modified = new Date();
+                // Save filesystem state to persist datafile autoextend changes
+                this.fs.saveState();
             }
             
             this.terminal.writeln('');
