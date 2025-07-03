@@ -642,6 +642,9 @@ umask 022
             case 'echo':
                 this.cmdEcho(args);
                 break;
+            case 'lynx':
+                this.cmdLynx(args);
+                break;
             case 'clear':
                 this.terminal.clear();
                 break;
@@ -1900,6 +1903,178 @@ umask 022
                 });
             }
         });
+    }
+
+    cmdLynx(args) {
+        if (args.length === 0) {
+            this.terminal.writeln('lynx: No URL specified');
+            this.terminal.writeln('Usage: lynx <file.html>');
+            return;
+        }
+        
+        const filePath = args[0];
+        
+        // Expand environment variables
+        const expandedPath = filePath.replace(/\$([A-Z_]+)/g, (match, varName) => {
+            return this.environmentVars[varName] || match;
+        });
+        
+        // Get file content
+        const content = this.fs.cat(expandedPath);
+        if (content === null) {
+            this.terminal.writeln(`lynx: ${filePath}: No such file or directory`);
+            return;
+        }
+        
+        // Check if it's an HTML file
+        if (!filePath.toLowerCase().endsWith('.html') && !filePath.toLowerCase().endsWith('.htm')) {
+            this.terminal.writeln(`lynx: ${filePath}: Not an HTML file`);
+            return;
+        }
+        
+        this.showHtmlModal(content, filePath);
+    }
+
+    showHtmlModal(htmlContent, fileName) {
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+        
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background-color: white;
+            width: 90%;
+            height: 90%;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        `;
+        
+        // Create header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        header.innerHTML = `
+            <span>Lynx - ${fileName}</span>
+            <span style="background-color: #34495e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Press ESC to close</span>
+        `;
+        
+        // Create content area
+        const contentArea = document.createElement('div');
+        contentArea.style.cssText = `
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+        `;
+        
+        // Render HTML content
+        contentArea.innerHTML = htmlContent;
+        
+        // Style the rendered HTML for better readability
+        const style = document.createElement('style');
+        style.textContent = `
+            .lynx-modal table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 10px 0;
+            }
+            .lynx-modal th, .lynx-modal td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+            .lynx-modal th {
+                background-color: #f5f5f5;
+                font-weight: bold;
+            }
+            .lynx-modal h1, .lynx-modal h2, .lynx-modal h3 {
+                color: #2c3e50;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            }
+            .lynx-modal pre {
+                background-color: #f8f8f8;
+                padding: 10px;
+                border-radius: 4px;
+                overflow-x: auto;
+                font-family: 'Consolas', 'Courier New', monospace;
+            }
+            .lynx-modal code {
+                background-color: #f8f8f8;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-family: 'Consolas', 'Courier New', monospace;
+            }
+        `;
+        modal.classList.add('lynx-modal');
+        document.head.appendChild(style);
+        
+        // Assemble modal
+        modal.appendChild(header);
+        modal.appendChild(contentArea);
+        overlay.appendChild(modal);
+        
+        // Add to document
+        document.body.appendChild(overlay);
+        
+        // Focus the modal for keyboard events
+        modal.tabIndex = -1;
+        modal.focus();
+        
+        // Handle ESC key to close modal
+        const handleKeydown = (event) => {
+            if (event.key === 'Escape') {
+                document.body.removeChild(overlay);
+                document.head.removeChild(style);
+                document.removeEventListener('keydown', handleKeydown);
+                
+                // Return focus to terminal
+                this.terminal.focus();
+            }
+        };
+        
+        // Handle click outside modal to close
+        const handleClickOutside = (event) => {
+            if (event.target === overlay) {
+                document.body.removeChild(overlay);
+                document.head.removeChild(style);
+                document.removeEventListener('keydown', handleKeydown);
+                overlay.removeEventListener('click', handleClickOutside);
+                
+                // Return focus to terminal
+                this.terminal.focus();
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeydown);
+        overlay.addEventListener('click', handleClickOutside);
+        
+        this.terminal.writeln(`Displaying ${fileName} in Lynx viewer (Press ESC to close)`);
     }
 
     cmdEcho(args) {
