@@ -750,6 +750,144 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
+        // DBA_DATA_FILES view for space monitoring
+        if (sqlCommand.startsWith('SELECT * FROM DBA_DATA_FILES') || sqlCommand.startsWith('SELECT*FROM DBA_DATA_FILES')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('FILE_NAME                                    FILE_ID TABLESPACE_NAME   BYTES      BLOCKS  STATUS    RELATIVE_FNO AUTOEXT MAXBYTES   MAXBLOCKS  INCREMENT_BY USER_BYTES  USER_BLOCKS ONLINE_STATUS');
+                this.terminal.writeln('-------------------------------------------- ------- --------------- ---------- ------- --------- ------------ ------- ---------- ---------- ------------ ---------- ----------- -------------');
+                
+                // Standard Oracle tablespace datafiles
+                this.terminal.writeln('/u01/app/oracle/oradata/ORCL/system01.dbf         1 SYSTEM          838860800   102400  AVAILABLE           1 YES     34359721984   4194304         1280  838860800       102400 ONLINE');
+                this.terminal.writeln('/u01/app/oracle/oradata/ORCL/sysaux01.dbf         3 SYSAUX          524288000    64000  AVAILABLE           3 YES     34359721984   4194304         1280  524288000        64000 ONLINE');
+                this.terminal.writeln('/u01/app/oracle/oradata/ORCL/undotbs01.dbf        4 UNDOTBS1        104857600    12800  AVAILABLE           4 YES     34359721984   4194304         1280  104857600        12800 ONLINE');
+                this.terminal.writeln('/u01/app/oracle/oradata/ORCL/users01.dbf          5 USERS             5242880      640  AVAILABLE           5 YES     34359721984   4194304         1280    5242880          640 ONLINE');
+                
+                // Check for additional datafiles that may have been created via SQL*Plus
+                const datafileDir = '/u01/app/oracle/oradata/ORCL';
+                const files = this.fs.ls(datafileDir);
+                let fileId = 6;
+                
+                if (files) {
+                    files.forEach(file => {
+                        if (file.name.endsWith('.dbf') && !['system01.dbf', 'sysaux01.dbf', 'undotbs01.dbf', 'users01.dbf'].includes(file.name)) {
+                            // Determine tablespace name from filename pattern
+                            let tablespace = 'USERS';
+                            if (file.name.includes('system')) tablespace = 'SYSTEM';
+                            else if (file.name.includes('sysaux')) tablespace = 'SYSAUX';
+                            else if (file.name.includes('undo')) tablespace = 'UNDOTBS1';
+                            else if (file.name.includes('temp')) tablespace = 'TEMP';
+                            
+                            // Use the actual file size if available, otherwise default
+                            const fileSize = file.size || 104857600;
+                            const blocks = Math.floor(fileSize / 8192);
+                            const userBytes = fileSize;
+                            const userBlocks = blocks;
+                            
+                            const filePath = `${datafileDir}/${file.name}`.padEnd(44);
+                            const autoext = file.autoextend ? 'YES' : 'NO';
+                            const maxBytes = file.maxSize === 'UNLIMITED' ? '34359721984' : (parseInt(file.maxSize) || 34359721984);
+                            const maxBlocks = Math.floor(maxBytes / 8192);
+                            
+                            this.terminal.writeln(`${filePath} ${fileId.toString().padStart(7)} ${tablespace.padEnd(15)} ${fileSize.toString().padStart(10)} ${blocks.toString().padStart(7)}  AVAILABLE ${fileId.toString().padStart(12)} ${autoext.padEnd(7)} ${maxBytes.toString().padStart(10)} ${maxBlocks.toString().padStart(10)} ${file.nextSize ? '1280' : '1280'.padStart(12)} ${userBytes.toString().padStart(10)} ${userBlocks.toString().padStart(11)} ONLINE`);
+                            fileId++;
+                        }
+                    });
+                }
+                
+                this.terminal.writeln('');
+                const totalFiles = 4 + (files ? files.filter(f => f.name.endsWith('.dbf') && !['system01.dbf', 'sysaux01.dbf', 'undotbs01.dbf', 'users01.dbf'].includes(f.name)).length : 0);
+                this.terminal.writeln(`${totalFiles} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // DBA_FREE_SPACE view for space monitoring
+        if (sqlCommand.startsWith('SELECT * FROM DBA_FREE_SPACE') || sqlCommand.startsWith('SELECT*FROM DBA_FREE_SPACE')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('TABLESPACE_NAME   FILE_ID BLOCK_ID     BYTES      BLOCKS RELATIVE_FNO');
+                this.terminal.writeln('--------------- --------- -------- ---------- ---------- ------------');
+                
+                // Calculate free space based on datafile sizes and usage
+                // SYSTEM tablespace - typically has less free space
+                this.terminal.writeln('SYSTEM                  1    95000  758382592      92432            1');
+                this.terminal.writeln('SYSTEM                  1    98432   80478208       9824            1');
+                
+                // SYSAUX tablespace - moderate usage
+                this.terminal.writeln('SYSAUX                  3    58000  450969600      55032            3');
+                this.terminal.writeln('SYSAUX                  3    61032   73318400       8968            3');
+                
+                // UNDOTBS1 tablespace - usually has good free space
+                this.terminal.writeln('UNDOTBS1                4     8000   96468992      11776            4');
+                this.terminal.writeln('UNDOTBS1                4    11776    8388608       1024            4');
+                
+                // USERS tablespace - check actual file sizes for dynamic calculation
+                const usersFiles = this.fs.ls('/u01/app/oracle/oradata/ORCL');
+                let usersFileCount = 0;
+                let nextFileId = 5;
+                
+                if (usersFiles) {
+                    usersFiles.forEach(file => {
+                        if (file.name.startsWith('users') && file.name.endsWith('.dbf')) {
+                            usersFileCount++;
+                            const fileSize = file.size || 5242880;
+                            // Calculate free space (assume ~80% usage for demonstration)
+                            const usedSpace = Math.floor(fileSize * 0.2);
+                            const freeBlocks = Math.floor(usedSpace / 8192);
+                            const startBlock = Math.floor((fileSize - usedSpace) / 8192);
+                            
+                            this.terminal.writeln(`USERS           ${nextFileId.toString().padStart(8)} ${startBlock.toString().padStart(8)} ${usedSpace.toString().padStart(10)} ${freeBlocks.toString().padStart(10)} ${nextFileId.toString().padStart(12)}`);
+                            nextFileId++;
+                        }
+                    });
+                }
+                
+                // If no additional users files found, show default users01.dbf free space
+                if (usersFileCount === 0) {
+                    this.terminal.writeln('USERS                   5      500    4194304        512            5');
+                    this.terminal.writeln('USERS                   5      512    1048576        128            5');
+                }
+                
+                this.terminal.writeln('');
+                const freeSpaceEntries = 6 + (usersFileCount > 0 ? usersFileCount : 2);
+                this.terminal.writeln(`${freeSpaceEntries} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // DBA_TABLESPACES view for space monitoring
+        if (sqlCommand.startsWith('SELECT * FROM DBA_TABLESPACES') || sqlCommand.startsWith('SELECT*FROM DBA_TABLESPACES')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('TABLESPACE_NAME   BLOCK_SIZE INITIAL_EXTENT NEXT_EXTENT MIN_EXTENTS MAX_EXTENTS PCT_INCREASE MIN_EXTLEN STATUS    CONTENTS  LOGGING   FORCE_LOGGING EXTENT_MANAGEMENT ALLOCATION_TYPE SEGMENT_SPACE_MANAGEMENT DEF_TAB_COMPRESSION RETENTION   BIGFILE PREDICATE_EVALUATION ENCRYPTED COMPRESS_FOR');
+                this.terminal.writeln('--------------- ---------- -------------- ----------- ----------- ----------- ------------ ---------- --------- --------- --------- ------------- ----------------- --------------- ------------------------ ------------------- ----------- -------------------- --------- ------------');
+                
+                // Standard Oracle tablespaces
+                this.terminal.writeln('SYSTEM                 8192          65536               1  2147483645            1      65536 ONLINE    PERMANENT LOGGING   NO            LOCAL             SYSTEM          MANUAL                                                    NO      NONE                 NO');
+                this.terminal.writeln('SYSAUX                 8192          65536               1  2147483645            1      65536 ONLINE    PERMANENT LOGGING   NO            LOCAL             SYSTEM          AUTO                                                      NO      NONE                 NO');
+                this.terminal.writeln('UNDOTBS1               8192          65536               1  2147483645            1      65536 ONLINE    UNDO      LOGGING   NO            LOCAL             SYSTEM          MANUAL                                                    NO      NONE                 NO');
+                this.terminal.writeln('TEMP                   8192        1048576     1048576           1  2147483645           50    1048576 ONLINE    TEMPORARY NOLOGGING NO            LOCAL             UNIFORM         MANUAL                                                    NO      NONE                 NO');
+                this.terminal.writeln('USERS                  8192          65536               1  2147483645            1      65536 ONLINE    PERMANENT LOGGING   NO            LOCAL             SYSTEM          AUTO                                                      NO      NONE                 NO');
+                
+                this.terminal.writeln('');
+                this.terminal.writeln('5 rows selected.');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
         // Handle PS app specific tablespace creation
         if (sqlCommand.startsWith('CREATE TABLESPACE')) {
             this.handleCreateTablespace(sqlLower);
