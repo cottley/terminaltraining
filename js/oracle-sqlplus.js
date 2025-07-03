@@ -865,22 +865,36 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
 
     // Handle CREATE LIBRARY command for spatial functions
     this.handleCreateLibrary = function(sqlCommand, currentUser) {
-        if (sqlCommand.includes('sde_util') && sqlCommand.includes('libsde.so')) {
-            // Check if ArcGIS Server is installed
+        // Parse library name from the command
+        // Pattern: CREATE [OR REPLACE] LIBRARY library_name AS 'path'
+        const libraryMatch = sqlCommand.match(/create\s+(?:or\s+replace\s+)?library\s+(\w+)/i);
+        const libraryName = libraryMatch ? libraryMatch[1].toUpperCase() : '';
+        
+        // Check if this is a spatial library (common names for ArcGIS/Oracle spatial)
+        const isSpatialLibrary = libraryName.includes('ST_SHAPELIB') || 
+                                libraryName.includes('SDE_UTIL') || 
+                                libraryName.includes('SDE') ||
+                                sqlCommand.includes('libsde.so') ||
+                                sqlCommand.includes('libst_shapelib.so') ||
+                                sqlCommand.includes('arcgis') ||
+                                sqlCommand.includes('spatial');
+        
+        if (isSpatialLibrary) {
+            // Check if ArcGIS Server is installed for spatial libraries
             if (!oracleManager.getState('psAppRequirements.arcgisInstalled')) {
                 this.terminal.writeln('ERROR at line 1:');
                 this.terminal.writeln('ORA-06520: PL/SQL: Error loading external library');
-                this.terminal.writeln('ORA-06522: /opt/arcgis/server/lib/libsde.so: cannot open shared object file: No such file or directory');
+                this.terminal.writeln('ORA-06522: library file cannot be found or accessed');
                 return;
             }
 
             this.terminal.writeln('');
-            this.terminal.writeln('Library SDE_UTIL created.');
+            this.terminal.writeln(`Library ${libraryName} created.`);
             this.terminal.writeln('');
             
             // Update Oracle state to track spatial library creation
             oracleManager.updateState('psAppRequirements.spatialLibraryCreated', true);
-            oracleManager.updateState('psAppRequirements.extprocConfigured', true);
+            oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', true);
             
             // Also update the virtual database file for OCP tracking
             const dbfPath = '/u01/app/oracle/oradata/ORCL/system01.dbf';
@@ -895,7 +909,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             this.terminal.writeln('-- You can now use spatial functions via the SDE schema');
         } else {
             this.terminal.writeln('');
-            this.terminal.writeln('Library created.');
+            this.terminal.writeln(`Library ${libraryName || 'UNNAMED'} created.`);
             this.terminal.writeln('');
         }
     };
@@ -1040,7 +1054,12 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             this.terminal.writeln('');
             
             // Update state for library registration if granting execute on spatial library
-            if (privilege.toLowerCase().includes('st_shapelib')) {
+            const isSpatialLibraryGrant = privilege.toLowerCase().includes('st_shapelib') ||
+                                        privilege.toLowerCase().includes('sde_util') ||
+                                        privilege.toLowerCase().includes('sde') ||
+                                        privilege.toLowerCase().includes('spatial');
+            
+            if (isSpatialLibraryGrant) {
                 oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', true);
                 
                 // Also update the virtual database file for OCP tracking
