@@ -372,6 +372,7 @@ term.onData(data => {
             if (!cmdProcessor.waitingForPassword) {
                 const prompt = cmdProcessor.getPrompt();
                 const isSqlMode = prompt === 'SQL> ';
+                const isRmanMode = prompt === 'RMAN> ';
                 
                 if (isSqlMode) {
                     // Use SQL history in SQL mode
@@ -382,6 +383,18 @@ term.onData(data => {
                         
                         cmdProcessor.sqlHistoryIndex--;
                         currentLine = cmdProcessor.sqlHistory[cmdProcessor.sqlHistoryIndex];
+                        cursorPosition = currentLine.length; // Set cursor to end of line
+                        term.write(currentLine);
+                    }
+                } else if (isRmanMode) {
+                    // Use RMAN history in RMAN mode
+                    if (cmdProcessor.rmanHistoryIndex > 0) {
+                        // Clear current line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.rmanHistoryIndex--;
+                        currentLine = cmdProcessor.rmanHistory[cmdProcessor.rmanHistoryIndex];
                         cursorPosition = currentLine.length; // Set cursor to end of line
                         term.write(currentLine);
                     }
@@ -404,6 +417,7 @@ term.onData(data => {
             if (!cmdProcessor.waitingForPassword) {
                 const prompt = cmdProcessor.getPrompt();
                 const isSqlMode = prompt === 'SQL> ';
+                const isRmanMode = prompt === 'RMAN> ';
                 
                 if (isSqlMode) {
                     // Use SQL history in SQL mode
@@ -422,6 +436,26 @@ term.onData(data => {
                         term.write('\r' + prompt);
                         
                         cmdProcessor.sqlHistoryIndex++;
+                        currentLine = '';
+                        cursorPosition = 0;
+                    }
+                } else if (isRmanMode) {
+                    // Use RMAN history in RMAN mode
+                    if (cmdProcessor.rmanHistoryIndex < cmdProcessor.rmanHistory.length - 1) {
+                        // Clear current line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.rmanHistoryIndex++;
+                        currentLine = cmdProcessor.rmanHistory[cmdProcessor.rmanHistoryIndex];
+                        cursorPosition = currentLine.length; // Set cursor to end of line
+                        term.write(currentLine);
+                    } else if (cmdProcessor.rmanHistoryIndex === cmdProcessor.rmanHistory.length - 1) {
+                        // Clear current line and go to empty line
+                        term.write('\r' + prompt + ' '.repeat(currentLine.length));
+                        term.write('\r' + prompt);
+                        
+                        cmdProcessor.rmanHistoryIndex++;
                         currentLine = '';
                         cursorPosition = 0;
                     }

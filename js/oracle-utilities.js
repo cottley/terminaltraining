@@ -177,6 +177,17 @@ CommandProcessor.prototype.enterRmanMode = function() {
     // Override command processor for RMAN mode
     this.processCommand = (input) => {
         const rmanCommand = input.trim().toUpperCase();
+        const rmanInput = input.trim();
+        
+        // Add RMAN command to RMAN history if it's not empty
+        if (rmanInput) {
+            // Don't add duplicate commands
+            if (this.rmanHistory.length === 0 || this.rmanHistory[this.rmanHistory.length - 1] !== rmanInput) {
+                this.rmanHistory.push(rmanInput);
+                this.saveRmanHistory();
+            }
+            this.rmanHistoryIndex = this.rmanHistory.length;
+        }
         
         if (rmanCommand === 'EXIT' || rmanCommand === 'QUIT') {
             // Restore original command processor

@@ -11,6 +11,11 @@ class CommandProcessor {
         this.sqlHistory = [];
         this.sqlHistoryIndex = -1;
         this.loadSqlHistory();
+        
+        // RMAN history for RMAN mode
+        this.rmanHistory = [];
+        this.rmanHistoryIndex = -1;
+        this.loadRmanHistory();
         this.currentCommand = '';
         this.userStack = ['root']; // Stack to track user changes
         this.vimModal = null; // Reference to vim modal
@@ -95,6 +100,28 @@ class CommandProcessor {
     saveSqlHistory() {
         try {
             localStorage.setItem('terminalSqlHistory', JSON.stringify(this.sqlHistory));
+        } catch (e) {
+            // Silently fail if localStorage is not available
+        }
+    }
+
+    loadRmanHistory() {
+        try {
+            const savedRmanHistory = localStorage.getItem('terminalRmanHistory');
+            if (savedRmanHistory) {
+                this.rmanHistory = JSON.parse(savedRmanHistory);
+                this.rmanHistoryIndex = this.rmanHistory.length;
+            }
+        } catch (e) {
+            // If there's an error loading RMAN history, start with empty history
+            this.rmanHistory = [];
+            this.rmanHistoryIndex = -1;
+        }
+    }
+
+    saveRmanHistory() {
+        try {
+            localStorage.setItem('terminalRmanHistory', JSON.stringify(this.rmanHistory));
         } catch (e) {
             // Silently fail if localStorage is not available
         }
