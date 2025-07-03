@@ -41,6 +41,36 @@ CommandProcessor.prototype.refreshOracleState = function() {
     
     // Check if oratab is populated for auto-start
     oracleManager.updateState('oratabPopulated', oracleManager.validateOratabPopulation());
+    
+    // Check ArcGIS spatial configuration tasks
+    this.checkSpatialConfiguration();
+};
+
+// Check spatial configuration tasks
+CommandProcessor.prototype.checkSpatialConfiguration = function() {
+    // Check if EXTPROC is configured
+    const extprocContent = this.fs.cat('/u01/app/oracle/product/19.0.0/dbhome_1/hs/admin/extproc.ora');
+    if (extprocContent && extprocContent.includes('SET EXTPROC_DLLS=$ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/libst_shapelib.so')) {
+        oracleManager.updateState('psAppRequirements.extprocConfigured', true);
+    } else {
+        oracleManager.updateState('psAppRequirements.extprocConfigured', false);
+    }
+    
+    // Check if SDE user exists in Oracle (would need to check through SQL simulation)
+    // For now, we'll check if the Oracle database has the sde user configuration
+    const oraTablesContent = this.fs.cat('/u01/app/oracle/oradata/ORCL/system01.dbf');
+    if (oraTablesContent && oraTablesContent.includes('SDE_USER_CREATED')) {
+        oracleManager.updateState('psAppRequirements.sdeUserCreated', true);
+    } else {
+        oracleManager.updateState('psAppRequirements.sdeUserCreated', false);
+    }
+    
+    // Check if SDE library is registered (would check through SQL simulation)
+    if (oraTablesContent && oraTablesContent.includes('ST_SHAPELIB_REGISTERED')) {
+        oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', true);
+    } else {
+        oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', false);
+    }
 };
 
 // Initialize Oracle commands when CommandProcessor is created

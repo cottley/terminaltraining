@@ -4411,40 +4411,39 @@ class CommandProcessor {
         this.terminal.writeln('');
         this.terminal.writeln('[▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100% Complete');
         this.terminal.writeln('');
-        this.terminal.writeln('Installing ArcSDE components...');
-        this.terminal.writeln('✓ SDE libraries installed to /opt/arcgis/server/lib/');
-        this.terminal.writeln('✓ Spatial data engine configured');
-        this.terminal.writeln('✓ Oracle spatial extensions enabled');
+        this.terminal.writeln('Installing ArcGIS Server components...');
+        this.terminal.writeln('✓ Server framework installed');
+        this.terminal.writeln('✓ Web services configured');
+        this.terminal.writeln('✓ Management tools installed');
         this.terminal.writeln('');
-        this.terminal.writeln('Configuring EXTPROC integration...');
-        this.terminal.writeln('✓ libsde.so library registered');
-        this.terminal.writeln('✓ Spatial function wrappers created');
-        this.terminal.writeln('✓ Oracle EXTPROC configuration updated');
+        this.terminal.writeln('Installing Database Support libraries...');
+        this.terminal.writeln('✓ Oracle Database Support installed to /opt/arcgis/DatabaseSupport/Oracle/Linux64/');
+        this.terminal.writeln('✓ SDE shape library available: libst_shapelib.so');
         this.terminal.writeln('');
         this.terminal.writeln('Installation completed successfully!');
         this.terminal.writeln('');
-        this.terminal.writeln('Next steps:');
-        this.terminal.writeln('1. Create SDE user in Oracle Database');
-        this.terminal.writeln('2. Register spatial libraries with Oracle');
-        this.terminal.writeln('3. Test spatial functions via EXTPROC');
+        this.terminal.writeln('ArcGIS Server is now installed but Oracle integration is not configured.');
         this.terminal.writeln('');
-        this.terminal.writeln('For Oracle integration, run as oracle user:');
-        this.terminal.writeln('  sqlplus / as sysdba');
-        this.terminal.writeln('  CREATE USER sde IDENTIFIED BY sde;');
-        this.terminal.writeln('  GRANT CONNECT, RESOURCE TO sde;');
-        this.terminal.writeln("  CREATE OR REPLACE LIBRARY sde_util AS '/opt/arcgis/server/lib/libsde.so';");
+        this.terminal.writeln('To enable Oracle spatial functions, you must manually:');
+        this.terminal.writeln('1. Configure EXTPROC_DLLS in extproc.ora');
+        this.terminal.writeln('2. Create SDE user in Oracle Database');
+        this.terminal.writeln('3. Register spatial libraries with Oracle');
+        this.terminal.writeln('');
+        this.terminal.writeln('Set ARCGIS_HOME environment variable:');
+        this.terminal.writeln('  export ARCGIS_HOME=/opt/arcgis');
         this.terminal.writeln('');
 
         // Create ArcGIS directory structure
         this.fs.mkdir('/opt/arcgis');
         this.fs.mkdir('/opt/arcgis/server');
-        this.fs.mkdir('/opt/arcgis/server/lib');
         this.fs.mkdir('/opt/arcgis/server/bin');
         this.fs.mkdir('/opt/arcgis/server/framework');
+        this.fs.mkdir('/opt/arcgis/DatabaseSupport');
+        this.fs.mkdir('/opt/arcgis/DatabaseSupport/Oracle');
+        this.fs.mkdir('/opt/arcgis/DatabaseSupport/Oracle/Linux64');
         
-        // Create SDE library file (simulated)
-        this.fs.touch('/opt/arcgis/server/lib/libsde.so', '# ArcSDE Library for Oracle Spatial Integration');
-        this.fs.touch('/opt/arcgis/server/lib/libsde_util.so', '# ArcSDE Utility Library');
+        // Create the correct SDE shape library file
+        this.fs.touch('/opt/arcgis/DatabaseSupport/Oracle/Linux64/libst_shapelib.so', '# ArcSDE Shape Library for Oracle Spatial Integration');
         this.fs.touch('/opt/arcgis/server/bin/sdeconfig', '#!/bin/bash\n# SDE Configuration Tool');
         
         // Create configuration files
@@ -4458,6 +4457,19 @@ class CommandProcessor {
         // Update Oracle state
         oracleManager.updateState('psAppRequirements.arcgisInstalled', true);
         oracleManager.updateState('psAppRequirements.arcgisUserCreated', true);
+        
+        // Create basic extproc.ora file for configuration
+        const extprocPath = '/u01/app/oracle/product/19.0.0/dbhome_1/hs/admin';
+        if (!this.fs.exists(extprocPath)) {
+            // Create Oracle hs/admin directory if it doesn't exist
+            this.fs.mkdir('/u01/app/oracle/product/19.0.0/dbhome_1/hs');
+            this.fs.mkdir('/u01/app/oracle/product/19.0.0/dbhome_1/hs/admin');
+        }
+        this.fs.touch('/u01/app/oracle/product/19.0.0/dbhome_1/hs/admin/extproc.ora', 
+            '# External Procedure Configuration File\n' +
+            '# Add EXTPROC_DLLS setting to enable external libraries\n' +
+            '# Example: SET EXTPROC_DLLS=/path/to/library.so\n'
+        );
 
         this.terminal.writeln('ArcGIS Server installation logged to: /opt/arcgis/server/logs/install.log');
         this.terminal.writeln('');

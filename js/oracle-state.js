@@ -79,7 +79,7 @@ class OracleManager {
                 arcgisUserCreated: false,
                 extprocConfigured: false,
                 sdeUserCreated: false,
-                spatialLibraryCreated: false
+                sdeLibraryRegistered: false
             }
         };
         
@@ -295,7 +295,10 @@ class OracleManager {
             'Oratab Populated for Auto-Start': this.state.oratabPopulated,
             
             // ArcGIS Server for Spatial Extensions
-            'ArcGIS Server Installed': this.state.psAppRequirements.arcgisInstalled
+            'ArcGIS Server Installed': this.state.psAppRequirements.arcgisInstalled,
+            'EXTPROC Configuration Updated': this.state.psAppRequirements.extprocConfigured,
+            'SDE User Created': this.state.psAppRequirements.sdeUserCreated,
+            'SDE Library Registered': this.state.psAppRequirements.sdeLibraryRegistered
         };
         
         const completed = Object.values(tasks).filter(Boolean).length;
@@ -584,26 +587,22 @@ class OracleManager {
                 ]
             },
             'ArcGIS Server Installed': {
-                title: 'Install ArcGIS Server for Spatial Extensions',
-                hint: 'Install ArcGIS Server to enable spatial functions via ArcSDE library and EXTPROC',
+                title: 'Install ArcGIS Server',
+                hint: 'Install ArcGIS Server to provide database support libraries for Oracle spatial integration',
                 commands: [
                     '# Create arcgis user',
                     'useradd -u 54330 -g oinstall -G dba arcgis',
                     'passwd arcgis',
                     'mkdir -p /opt/arcgis',
                     'chown arcgis:oinstall /opt/arcgis',
-                    '# Simulate ArcGIS Server installation',
+                    '# Install ArcGIS Server',
                     'su - arcgis',
                     'cd /install',
                     './ArcGIS_Server_Setup',
-                    '# Configure EXTPROC for spatial functions',
-                    'su - oracle',
-                    'sqlplus / as sysdba',
-                    "CREATE OR REPLACE LIBRARY sde_util AS '/opt/arcgis/server/lib/libsde.so';",
-                    'CREATE USER sde IDENTIFIED BY sde;',
-                    'GRANT CONNECT, RESOURCE TO sde;'
+                    '# Set environment variable',
+                    'export ARCGIS_HOME=/opt/arcgis'
                 ],
-                explanation: 'ArcGIS Server provides the ArcSDE library which enables Oracle to use spatial functions through EXTPROC. The SDE user serves as the spatial data engine administrator for managing geodatabases and spatial operations.',
+                explanation: 'ArcGIS Server provides database support libraries including libst_shapelib.so for Oracle spatial integration. This installation only sets up ArcGIS Server - Oracle integration must be configured separately.',
                 troubleshooting: [
                     {
                         problem: 'ArcGIS installer not found',
@@ -620,6 +619,82 @@ class OracleManager {
                     {
                         problem: 'Spatial functions not working',
                         solution: 'Verify SDE schema objects are created and spatial packages are installed'
+                    }
+                ]
+            },
+            'EXTPROC Configuration Updated': {
+                title: 'Configure EXTPROC for ArcGIS Integration',
+                hint: 'Edit extproc.ora to enable ArcGIS spatial library integration',
+                commands: [
+                    '# Edit extproc.ora file',
+                    'vi $ORACLE_HOME/hs/admin/extproc.ora',
+                    '# Add this line to the file:',
+                    'SET EXTPROC_DLLS=$ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/libst_shapelib.so',
+                    '# Save and exit the file'
+                ],
+                explanation: 'The EXTPROC_DLLS parameter tells Oracle which external libraries can be loaded by the EXTPROC process. This enables Oracle to call functions from the ArcGIS spatial library for geodatabase operations.',
+                troubleshooting: [
+                    {
+                        problem: 'extproc.ora file not found',
+                        solution: 'Check that $ORACLE_HOME is set correctly and Oracle is installed'
+                    },
+                    {
+                        problem: 'ARCGIS_HOME not set',
+                        solution: 'Run: export ARCGIS_HOME=/opt/arcgis'
+                    },
+                    {
+                        problem: 'Permission denied editing file',
+                        solution: 'Switch to oracle user: su - oracle'
+                    }
+                ]
+            },
+            'SDE User Created': {
+                title: 'Create SDE User in Oracle',
+                hint: 'Create the SDE user to manage spatial data engine operations',
+                commands: [
+                    'sqlplus / as sysdba',
+                    'CREATE USER sde IDENTIFIED BY sde;',
+                    'GRANT CONNECT, RESOURCE TO sde;',
+                    'GRANT CREATE SESSION TO sde;',
+                    'GRANT CREATE TABLE TO sde;',
+                    'GRANT CREATE PROCEDURE TO sde;',
+                    'exit'
+                ],
+                explanation: 'The SDE (Spatial Data Engine) user manages geodatabase operations and spatial data structures. This user requires specific privileges to create and manage spatial objects in Oracle.',
+                troubleshooting: [
+                    {
+                        problem: 'User already exists',
+                        solution: 'Drop existing user: DROP USER sde CASCADE; then recreate'
+                    },
+                    {
+                        problem: 'Insufficient privileges',
+                        solution: 'Ensure you are connected as SYSDBA'
+                    }
+                ]
+            },
+            'SDE Library Registered': {
+                title: 'Register ArcGIS Spatial Library with Oracle',
+                hint: 'Create Oracle library object for ArcGIS spatial functions',
+                commands: [
+                    'sqlplus / as sysdba',
+                    "CREATE OR REPLACE LIBRARY st_shapelib AS '$ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/libst_shapelib.so';",
+                    'GRANT EXECUTE ON st_shapelib TO sde;',
+                    'GRANT EXECUTE ON st_shapelib TO public;',
+                    'exit'
+                ],
+                explanation: 'The Oracle LIBRARY object provides a way to call external C libraries from PL/SQL. This registers the ArcGIS spatial library so Oracle can use ArcGIS spatial functions through EXTPROC.',
+                troubleshooting: [
+                    {
+                        problem: 'Library file not found',
+                        solution: 'Verify libst_shapelib.so exists in $ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/'
+                    },
+                    {
+                        problem: 'EXTPROC_DLLS not configured',
+                        solution: 'Ensure extproc.ora contains the EXTPROC_DLLS setting'
+                    },
+                    {
+                        problem: 'Permission errors',
+                        solution: 'Check file permissions on library file: chmod 755 libst_shapelib.so'
                     }
                 ]
             },
