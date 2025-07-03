@@ -888,6 +888,154 @@ class OracleManager {
         this.saveState();
         return true;
     }
+
+    // Role management functions
+    createRole(roleName, password = null) {
+        const upperRoleName = roleName.toUpperCase();
+        this.state.databaseUsers[upperRoleName] = {
+            password: password,
+            privileges: [],
+            locked: false,
+            created: true,
+            isRole: true,
+            grantedRoles: [],
+            grantedPrivileges: []
+        };
+        this.saveState();
+        return true;
+    }
+
+    roleExists(roleName) {
+        const upperRoleName = roleName.toUpperCase();
+        const role = this.state.databaseUsers[upperRoleName];
+        return role && role.created && role.isRole;
+    }
+
+    dropRole(roleName) {
+        const upperRoleName = roleName.toUpperCase();
+        const role = this.state.databaseUsers[upperRoleName];
+        
+        if (!role || !role.isRole) {
+            return false;
+        }
+
+        // Remove role from all users who have it granted
+        Object.keys(this.state.databaseUsers).forEach(username => {
+            const user = this.state.databaseUsers[username];
+            if (user.grantedRoles) {
+                user.grantedRoles = user.grantedRoles.filter(r => r !== upperRoleName);
+            }
+        });
+
+        // Mark role as deleted
+        role.created = false;
+        this.saveState();
+        return true;
+    }
+
+    grantRoleToUser(roleName, username) {
+        const upperRoleName = roleName.toUpperCase();
+        const upperUsername = username.toUpperCase();
+        
+        const role = this.state.databaseUsers[upperRoleName];
+        const user = this.state.databaseUsers[upperUsername];
+
+        if (!role || !role.isRole || !role.created) {
+            return { success: false, error: `ORA-01919: role '${roleName}' does not exist` };
+        }
+
+        if (!user || !user.created || user.isRole) {
+            return { success: false, error: `ORA-00942: user '${username}' does not exist` };
+        }
+
+        // Initialize grantedRoles if it doesn't exist
+        if (!user.grantedRoles) {
+            user.grantedRoles = [];
+        }
+
+        // Check if role is already granted
+        if (user.grantedRoles.includes(upperRoleName)) {
+            return { success: false, error: `ORA-01924: role '${roleName}' not granted or does not exist` };
+        }
+
+        // Grant the role
+        user.grantedRoles.push(upperRoleName);
+        this.saveState();
+        return { success: true };
+    }
+
+    revokeRoleFromUser(roleName, username) {
+        const upperRoleName = roleName.toUpperCase();
+        const upperUsername = username.toUpperCase();
+        
+        const user = this.state.databaseUsers[upperUsername];
+
+        if (!user || !user.created || user.isRole) {
+            return { success: false, error: `ORA-00942: user '${username}' does not exist` };
+        }
+
+        if (!user.grantedRoles || !user.grantedRoles.includes(upperRoleName)) {
+            return { success: false, error: `ORA-01951: ROLE '${roleName}' not granted to '${username}'` };
+        }
+
+        // Revoke the role
+        user.grantedRoles = user.grantedRoles.filter(r => r !== upperRoleName);
+        this.saveState();
+        return { success: true };
+    }
+
+    grantPrivilegeToRole(privilege, roleName) {
+        const upperRoleName = roleName.toUpperCase();
+        const role = this.state.databaseUsers[upperRoleName];
+
+        if (!role || !role.isRole || !role.created) {
+            return { success: false, error: `ORA-01919: role '${roleName}' does not exist` };
+        }
+
+        // Initialize grantedPrivileges if it doesn't exist
+        if (!role.grantedPrivileges) {
+            role.grantedPrivileges = [];
+        }
+
+        // Check if privilege is already granted
+        if (role.grantedPrivileges.includes(privilege.toUpperCase())) {
+            return { success: true }; // Already granted, silently succeed
+        }
+
+        // Grant the privilege
+        role.grantedPrivileges.push(privilege.toUpperCase());
+        this.saveState();
+        return { success: true };
+    }
+
+    getAllRoles() {
+        return Object.keys(this.state.databaseUsers).filter(name => {
+            const entry = this.state.databaseUsers[name];
+            return entry.created && entry.isRole;
+        });
+    }
+
+    getUserRoles(username) {
+        const upperUsername = username.toUpperCase();
+        const user = this.state.databaseUsers[upperUsername];
+        
+        if (!user || !user.created || user.isRole) {
+            return [];
+        }
+
+        return user.grantedRoles || [];
+    }
+
+    getRolePrivileges(roleName) {
+        const upperRoleName = roleName.toUpperCase();
+        const role = this.state.databaseUsers[upperRoleName];
+        
+        if (!role || !role.isRole || !role.created) {
+            return [];
+        }
+
+        return role.grantedPrivileges || [];
+    }
 }
 
 // Create global Oracle manager instance

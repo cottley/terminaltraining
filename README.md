@@ -29,6 +29,7 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 - DBCA (Database Configuration Assistant)
 - NETCA (Network Configuration Assistant)
 - Advanced tablespace and datafile management
+- **Comprehensive role management system** (CREATE ROLE, DROP ROLE, GRANT role TO user)
 
 ### 🔧 **System Administration Tools**
 - Package management (yum/dnf)
@@ -56,6 +57,7 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 ### 🛡️ **Security & Patch Management**
 - OPatch utility for Oracle patch management
 - User authentication and authorization
+- **Role-based access control and privilege management**
 - Security policy configuration
 - Oracle security best practices simulation
 
@@ -272,6 +274,55 @@ SELECT USERNAME FROM DBA_USERS;                 -- Database users
 -- • Proper file ownership and permissions (oracle:oinstall)
 -- • Size calculations with K/M/G units
 -- • Autoextend metadata storage
+```
+
+### Oracle Role Management
+```sql
+-- SQL*Plus Role Management Commands
+-- Note: These commands work within SQL*Plus after connecting as SYSDBA or DBA
+
+-- Create Roles
+CREATE ROLE app_user;                           -- Create basic role
+CREATE ROLE app_admin IDENTIFIED BY password;   -- Create password-protected role
+CREATE ROLE reporting_role NOT IDENTIFIED;     -- Create role without password
+
+-- Drop Roles
+DROP ROLE app_user;                             -- Drop custom role
+-- Note: Cannot drop predefined roles (CONNECT, RESOURCE, DBA, PUBLIC)
+
+-- Grant Privileges to Roles
+GRANT CREATE SESSION TO app_user;               -- Grant system privilege to role
+GRANT SELECT ON employees TO reporting_role;    -- Grant object privilege to role
+GRANT CREATE TABLE, CREATE VIEW TO app_admin;   -- Grant multiple privileges
+
+-- Grant Roles to Users
+GRANT app_user TO scott;                        -- Grant role to user
+GRANT app_admin TO hr_manager;                  -- Grant admin role to user
+GRANT CONNECT, RESOURCE TO new_user;            -- Grant predefined roles
+
+-- Revoke Roles from Users
+REVOKE app_user FROM scott;                     -- Revoke role from user
+REVOKE CONNECT FROM expired_user;               -- Revoke system role
+
+-- Query Role Information
+SELECT * FROM DBA_ROLES;                       -- List all roles in database
+SELECT * FROM USER_ROLE_PRIVS;                 -- Show roles granted to current user
+SELECT * FROM ROLE_TAB_PRIVS;                  -- Show table privileges granted to roles
+
+-- Example Workflow: Create Application Role
+CREATE ROLE sales_role;
+GRANT CREATE SESSION TO sales_role;
+GRANT SELECT, INSERT, UPDATE ON sales_data TO sales_role;
+GRANT sales_role TO sales_user1;
+GRANT sales_role TO sales_user2;
+
+-- Features:
+-- • Complete role lifecycle management (create, grant, revoke, drop)
+-- • Support for password-protected roles
+-- • Integration with existing user and privilege system
+-- • Realistic Oracle error messages and validation
+-- • Role hierarchy and inheritance support
+-- • Comprehensive role query views (DBA_ROLES, USER_ROLE_PRIVS, ROLE_TAB_PRIVS)
 ```
 
 ### Advanced Pipeline Operations

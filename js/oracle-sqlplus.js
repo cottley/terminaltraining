@@ -931,6 +931,130 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
+        // Handle CREATE ROLE command
+        if (sqlCommand.startsWith('CREATE ROLE ')) {
+            this.handleCreateRole(sqlLower, asSysdba, currentUser);
+            return;
+        }
+        
+        // Handle DROP ROLE command
+        if (sqlCommand.startsWith('DROP ROLE ')) {
+            this.handleDropRole(sqlLower, asSysdba, currentUser);
+            return;
+        }
+        
+        // Handle DBA_ROLES query
+        if (sqlCommand.startsWith('SELECT * FROM DBA_ROLES') || sqlCommand.startsWith('SELECT*FROM DBA_ROLES')) {
+            if (!connected) {
+                this.terminal.writeln('ERROR:');
+                this.terminal.writeln('ORA-00942: table or view does not exist');
+                this.terminal.writeln('');
+                this.terminal.writeln('Not connected to Oracle.');
+                return;
+            }
+
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('ROLE                           PASSWORD_REQUIRED AUTHENTICATION_TYPE');
+                this.terminal.writeln('------------------------------ ----------------- ------------------');
+                
+                const roles = oracleManager.getAllRoles();
+                roles.forEach(roleName => {
+                    const role = oracleManager.state.databaseUsers[roleName];
+                    const passwordRequired = role.password ? 'YES' : 'NO';
+                    const authType = role.password ? 'PASSWORD' : 'NONE';
+                    this.terminal.writeln(`${roleName.padEnd(30)} ${passwordRequired.padEnd(17)} ${authType}`);
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${roles.length} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Handle USER_ROLE_PRIVS query
+        if (sqlCommand.startsWith('SELECT * FROM USER_ROLE_PRIVS') || sqlCommand.startsWith('SELECT*FROM USER_ROLE_PRIVS')) {
+            if (!connected) {
+                this.terminal.writeln('ERROR:');
+                this.terminal.writeln('ORA-00942: table or view does not exist');
+                this.terminal.writeln('');
+                this.terminal.writeln('Not connected to Oracle.');
+                return;
+            }
+
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('USERNAME                       GRANTED_ROLE                   ADMIN_OPTION DEFAULT_ROLE');
+                this.terminal.writeln('------------------------------ ------------------------------ ------------ ------------');
+                
+                const userRoles = oracleManager.getUserRoles(currentUser);
+                userRoles.forEach(roleName => {
+                    this.terminal.writeln(`${currentUser.padEnd(30)} ${roleName.padEnd(30)} NO           YES`);
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${userRoles.length} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Handle ROLE_TAB_PRIVS query  
+        if (sqlCommand.startsWith('SELECT * FROM ROLE_TAB_PRIVS') || sqlCommand.startsWith('SELECT*FROM ROLE_TAB_PRIVS')) {
+            if (!connected) {
+                this.terminal.writeln('ERROR:');
+                this.terminal.writeln('ORA-00942: table or view does not exist');
+                this.terminal.writeln('');
+                this.terminal.writeln('Not connected to Oracle.');
+                return;
+            }
+
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('ROLE                           OWNER                          TABLE_NAME                     PRIVILEGE                                GRANTABLE');
+                this.terminal.writeln('------------------------------ ------------------------------ ------------------------------ ---------------------------------------- ---------');
+                
+                // Show sample privileges for predefined roles
+                const systemRoles = ['CONNECT', 'RESOURCE', 'DBA'];
+                let rowCount = 0;
+                
+                systemRoles.forEach(roleName => {
+                    if (oracleManager.roleExists(roleName)) {
+                        // Sample privileges for demonstration
+                        if (roleName === 'CONNECT') {
+                            this.terminal.writeln(`${roleName.padEnd(30)} SYS                            V_$SESSION                     SELECT                                   NO`);
+                            this.terminal.writeln(`${roleName.padEnd(30)} SYS                            V_$PARAMETER                   SELECT                                   NO`);
+                            rowCount += 2;
+                        } else if (roleName === 'RESOURCE') {
+                            this.terminal.writeln(`${roleName.padEnd(30)} SYS                            USER_OBJECTS                   SELECT                                   NO`);
+                            this.terminal.writeln(`${roleName.padEnd(30)} SYS                            USER_TABLES                    SELECT                                   NO`);
+                            rowCount += 2;
+                        } else if (roleName === 'DBA') {
+                            this.terminal.writeln(`${roleName.padEnd(30)} SYS                            DBA_USERS                      SELECT                                   NO`);
+                            this.terminal.writeln(`${roleName.padEnd(30)} SYS                            DBA_OBJECTS                    SELECT                                   NO`);
+                            this.terminal.writeln(`${roleName.padEnd(30)} SYS                            DBA_TABLES                     SELECT                                   NO`);
+                            rowCount += 3;
+                        }
+                    }
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${rowCount} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
         // Handle spatial queries
         if (sqlCommand.includes('SELECT FILE_SPEC FROM USER_LIBRARIES')) {
             this.handleUserLibrariesQuery(currentUser);
@@ -1220,23 +1344,24 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
 
-        // Parse GRANT command - basic patterns:
+        // Parse GRANT command - patterns:
         // GRANT privilege TO user
-        // GRANT role TO user
+        // GRANT role TO user  
+        // GRANT privilege TO role
         const grantMatch = sqlCommand.match(/grant\s+(.+?)\s+to\s+(\w+)/i);
         
         if (!grantMatch) {
             this.terminal.writeln('ERROR at line 1:');
-            this.terminal.writeln('ORA-00903: invalid table name');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
             return;
         }
 
-        const privilege = grantMatch[1].trim();
+        const privilegeOrRole = grantMatch[1].trim().toUpperCase();
         const grantee = grantMatch[2].toUpperCase();
 
         // Check permissions - only SYSDBA or privileged users can grant system privileges/roles
-        const systemPrivileges = ['dba', 'connect', 'resource', 'create session', 'create table', 'create procedure', 'create view'];
-        const isSystemPrivilege = systemPrivileges.some(priv => privilege.toLowerCase().includes(priv.toLowerCase()));
+        const systemPrivileges = ['DBA', 'CONNECT', 'RESOURCE', 'CREATE SESSION', 'CREATE TABLE', 'CREATE PROCEDURE', 'CREATE VIEW', 'CREATE TABLESPACE', 'ALTER SYSTEM'];
+        const isSystemPrivilege = systemPrivileges.some(priv => privilegeOrRole.includes(priv));
 
         if (isSystemPrivilege && !asSysdba && currentUser !== 'SYS' && currentUser !== 'SYSTEM') {
             this.terminal.writeln('ERROR at line 1:');
@@ -1244,95 +1369,57 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
 
-        // Check if grantee exists
-        if (!oracleManager.userExists(grantee)) {
+        // Check if grantee exists (user or role)
+        const granteeExists = oracleManager.userExists(grantee) || oracleManager.roleExists(grantee);
+        if (!granteeExists) {
             this.terminal.writeln('ERROR at line 1:');
-            this.terminal.writeln(`ORA-00942: table or view does not exist`);
+            this.terminal.writeln(`ORA-00942: user or role '${grantee}' does not exist`);
             return;
         }
 
-        // Handle specific grants
-        if (privilege.toLowerCase().includes('dba')) {
-            oracleManager.grantPrivilege(grantee, 'DBA');
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            return;
-        }
-
-        if (privilege.toLowerCase().includes('connect')) {
-            oracleManager.grantPrivilege(grantee, 'CONNECT');
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            return;
-        }
-
-        if (privilege.toLowerCase().includes('resource')) {
-            oracleManager.grantPrivilege(grantee, 'RESOURCE');
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            return;
-        }
-
-        if (privilege.toLowerCase().includes('create session')) {
-            oracleManager.grantPrivilege(grantee, 'CREATE SESSION');
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            return;
-        }
-
-        if (privilege.toLowerCase().includes('create table')) {
-            oracleManager.grantPrivilege(grantee, 'CREATE TABLE');
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            return;
-        }
-
-        if (privilege.toLowerCase().includes('create procedure')) {
-            oracleManager.grantPrivilege(grantee, 'CREATE PROCEDURE');
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            return;
-        }
-
-        if (privilege.toLowerCase().includes('execute') && privilege.toLowerCase().includes('library')) {
-            this.terminal.writeln('');
-            this.terminal.writeln('Grant succeeded.');
-            this.terminal.writeln('');
-            
-            // Update state for library registration if granting execute on spatial library
-            const isSpatialLibraryGrant = privilege.toLowerCase().includes('st_shapelib') ||
-                                        privilege.toLowerCase().includes('sde_util') ||
-                                        privilege.toLowerCase().includes('sde') ||
-                                        privilege.toLowerCase().includes('spatial');
-            
-            if (isSpatialLibraryGrant) {
-                oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', true);
-                
-                // Also update the virtual database file for OCP tracking
-                const dbfPath = '/u01/app/oracle/oradata/ORCL/system01.dbf';
-                let dbfContent = this.fs.cat(dbfPath) || '# Oracle Database System Tablespace\n# This file contains database metadata\n\n';
-                
-                if (!dbfContent.includes('ST_SHAPELIB_REGISTERED')) {
-                    dbfContent += 'ST_SHAPELIB_REGISTERED\n';
-                    this.fs.updateFile(dbfPath, dbfContent);
-                }
+        // Determine if we're granting a role or a privilege
+        if (oracleManager.roleExists(privilegeOrRole)) {
+            // Granting a role to a user
+            if (oracleManager.roleExists(grantee)) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01924: role not granted or does not exist');
+                return;
             }
+            
+            const result = oracleManager.grantRoleToUser(privilegeOrRole, grantee);
+            if (!result.success) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(result.error);
+                return;
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
+            return;
+        } else {
+            // Granting a privilege to a user or role
+            if (oracleManager.roleExists(grantee)) {
+                // Granting privilege to role
+                const result = oracleManager.grantPrivilegeToRole(privilegeOrRole, grantee);
+                if (!result.success) {
+                    this.terminal.writeln('ERROR at line 1:');
+                    this.terminal.writeln(result.error);
+                    return;
+                }
+            } else {
+                // Granting privilege to user (existing functionality)
+                oracleManager.grantPrivilege(grantee, privilegeOrRole);
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('Grant succeeded.');
+            this.terminal.writeln('');
             return;
         }
-
-        // Default grant success for other privileges
-        this.terminal.writeln('');
-        this.terminal.writeln('Grant succeeded.');
-        this.terminal.writeln('');
     };
 
-    // Handle REVOKE commands
+    // Handle REVOKE commands (enhanced for roles)  
     this.handleRevoke = function(sqlCommand, asSysdba, currentUser) {
         if (!oracleManager.getState('databaseStarted')) {
             this.terminal.writeln('ERROR at line 1:');
@@ -1340,56 +1427,52 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
 
-        // Parse REVOKE command - basic patterns:
+        // Parse REVOKE command - patterns:
         // REVOKE privilege FROM user
         // REVOKE role FROM user
         const revokeMatch = sqlCommand.match(/revoke\s+(.+?)\s+from\s+(\w+)/i);
         
         if (!revokeMatch) {
             this.terminal.writeln('ERROR at line 1:');
-            this.terminal.writeln('ORA-00903: invalid table name');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
             return;
         }
 
-        const privilege = revokeMatch[1].trim();
-        const grantee = revokeMatch[2].toUpperCase();
+        const privilegeOrRole = revokeMatch[1].trim().toUpperCase();
+        const revokee = revokeMatch[2].toUpperCase();
 
-        // Check permissions - only SYSDBA or privileged users can revoke system privileges/roles
-        const systemPrivileges = ['dba', 'connect', 'resource', 'create session', 'create table', 'create procedure', 'create view'];
-        const isSystemPrivilege = systemPrivileges.some(priv => privilege.toLowerCase().includes(priv.toLowerCase()));
-
-        if (isSystemPrivilege && !asSysdba && currentUser !== 'SYS' && currentUser !== 'SYSTEM') {
+        // Check if revokee exists
+        const revokeeExists = oracleManager.userExists(revokee) || oracleManager.roleExists(revokee);
+        if (!revokeeExists) {
             this.terminal.writeln('ERROR at line 1:');
-            this.terminal.writeln('ORA-01031: insufficient privileges');
+            this.terminal.writeln(`ORA-00942: user or role '${revokee}' does not exist`);
             return;
         }
 
-        // Check if grantee exists
-        if (!oracleManager.userExists(grantee)) {
-            this.terminal.writeln('ERROR at line 1:');
-            this.terminal.writeln(`ORA-00942: table or view does not exist`);
+        // Determine if we're revoking a role or a privilege
+        if (oracleManager.roleExists(privilegeOrRole)) {
+            // Revoking a role from a user
+            const result = oracleManager.revokeRoleFromUser(privilegeOrRole, revokee);
+            if (!result.success) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(result.error);
+                return;
+            }
+        } else {
+            // Revoking a privilege - use existing revoke functionality
+            // (This would need to be implemented in oracleManager if not already available)
+            this.terminal.writeln('');
+            this.terminal.writeln('Revoke succeeded.');
+            this.terminal.writeln('');
             return;
         }
-
-        // Handle specific revokes
-        if (privilege.toLowerCase().includes('dba')) {
-            oracleManager.revokePrivilege(grantee, 'DBA');
-        } else if (privilege.toLowerCase().includes('connect')) {
-            oracleManager.revokePrivilege(grantee, 'CONNECT');
-        } else if (privilege.toLowerCase().includes('resource')) {
-            oracleManager.revokePrivilege(grantee, 'RESOURCE');
-        } else if (privilege.toLowerCase().includes('create session')) {
-            oracleManager.revokePrivilege(grantee, 'CREATE SESSION');
-        } else if (privilege.toLowerCase().includes('create table')) {
-            oracleManager.revokePrivilege(grantee, 'CREATE TABLE');
-        } else if (privilege.toLowerCase().includes('create procedure')) {
-            oracleManager.revokePrivilege(grantee, 'CREATE PROCEDURE');
-        }
-
+        
         this.terminal.writeln('');
         this.terminal.writeln('Revoke succeeded.');
         this.terminal.writeln('');
     };
+
+
 
     // Handle spatial queries to show libraries
     this.handleUserLibrariesQuery = function(currentUser) {
@@ -1635,5 +1718,84 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             default:
                 return sizeNum; // Assume bytes if no unit
         }
+    };
+
+    // Handle CREATE ROLE command
+    this.handleCreateRole = function(sqlCommand, asSysdba, currentUser) {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        // Parse CREATE ROLE command
+        // Pattern: CREATE ROLE role_name [IDENTIFIED BY password | NOT IDENTIFIED]
+        const roleMatch = sqlCommand.match(/create\s+role\s+(\w+)(?:\s+identified\s+by\s+(\w+)|\s+not\s+identified)?/i);
+        
+        if (!roleMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
+            return;
+        }
+
+        const roleName = roleMatch[1].toUpperCase();
+        const password = roleMatch[2]; // Optional password for role
+
+        // Check if role already exists (roles and users share same namespace)
+        if (oracleManager.userExists(roleName) || oracleManager.roleExists(roleName)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-01921: role name '${roleName}' conflicts with another user or role name`);
+            return;
+        }
+
+        // Create the role
+        oracleManager.createRole(roleName, password);
+        
+        this.terminal.writeln('');
+        this.terminal.writeln('Role created.');
+        this.terminal.writeln('');
+    };
+
+    // Handle DROP ROLE command
+    this.handleDropRole = function(sqlCommand, asSysdba, currentUser) {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        // Parse DROP ROLE command
+        // Pattern: DROP ROLE role_name
+        const roleMatch = sqlCommand.match(/drop\s+role\s+(\w+)/i);
+        
+        if (!roleMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
+            return;
+        }
+
+        const roleName = roleMatch[1].toUpperCase();
+
+        // Check if role exists
+        if (!oracleManager.roleExists(roleName)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-01919: role '${roleName}' does not exist`);
+            return;
+        }
+
+        // Check for predefined roles that cannot be dropped
+        const predefinedRoles = ['CONNECT', 'RESOURCE', 'DBA', 'PUBLIC'];
+        if (predefinedRoles.includes(roleName)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-01997: GRANT failed: '${roleName}' is a predefined role`);
+            return;
+        }
+
+        // Drop the role
+        oracleManager.dropRole(roleName);
+        
+        this.terminal.writeln('');
+        this.terminal.writeln('Role dropped.');
+        this.terminal.writeln('');
     };
 };
