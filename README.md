@@ -43,8 +43,8 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 ### 📊 **Performance Monitoring & Diagnostics**
 - AWR (Automatic Workload Repository) report generation
 - ADDM (Automatic Database Diagnostic Monitor) analysis
-- V$ performance views simulation
-- SQL*Plus performance queries
+- **V$ performance views simulation** (V$INSTANCE, V$SYSTEM_EVENT, V$SQL, V$TABLESPACE)
+- **SQL*Plus performance analysis queries** with realistic wait event and SQL statistics
 - System resource monitoring (ps, df, free, top simulation)
 
 ### 🔄 **Backup & Recovery Tools**
@@ -275,6 +275,57 @@ SELECT * FROM DBA_USERS;                       -- Complete user information
 -- • Proper file ownership and permissions (oracle:oinstall)
 -- • Size calculations with K/M/G units
 -- • Autoextend metadata storage
+```
+
+### Oracle Performance Monitoring Views
+```sql
+-- SQL*Plus Performance Monitoring Queries
+-- Note: These views simulate real Oracle V$ performance views for training
+
+-- Instance Information
+SELECT * FROM V$INSTANCE;                       -- Complete instance details
+SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE;   -- Basic instance status
+
+-- System Wait Events Analysis
+SELECT * FROM V$SYSTEM_EVENT;                   -- All system wait events
+SELECT EVENT, TIME_WAITED, TOTAL_WAITS, AVERAGE_WAIT 
+  FROM V$SYSTEM_EVENT 
+  ORDER BY TIME_WAITED DESC;                    -- Top wait events by time
+
+-- SQL Performance Analysis  
+SELECT * FROM V$SQL;                            -- SQL statements in library cache
+SELECT SQL_TEXT, EXECUTIONS, ELAPSED_TIME, CPU_TIME 
+  FROM V$SQL 
+  ORDER BY EXECUTIONS DESC;                     -- Top SQL by executions
+
+-- Tablespace Information
+SELECT * FROM V$TABLESPACE;                     -- Tablespace metadata
+SELECT TABLESPACE_NAME FROM V$TABLESPACE;       -- Tablespace names only
+
+-- Performance Monitoring Scenarios
+-- Check database performance
+SELECT EVENT, TIME_WAITED, TOTAL_WAITS 
+  FROM V$SYSTEM_EVENT 
+  WHERE EVENT LIKE '%file%' 
+  ORDER BY TIME_WAITED DESC;
+
+-- Find resource-intensive SQL
+SELECT SQL_TEXT, EXECUTIONS, BUFFER_GETS, DISK_READS 
+  FROM V$SQL 
+  WHERE EXECUTIONS > 10 
+  ORDER BY BUFFER_GETS DESC;
+
+-- Monitor instance health
+SELECT INSTANCE_NAME, STATUS, STARTUP_TIME, HOST_NAME 
+  FROM V$INSTANCE;
+
+-- Features:
+-- • Realistic Oracle V$ view formatting and data
+-- • Dynamic tablespace integration with simulation state
+-- • Authentic wait event statistics and SQL performance metrics
+-- • Case-insensitive query support (V$SQL and v$sql both work)
+-- • Common DBA query patterns and performance analysis scenarios
+-- • Real-world Oracle performance monitoring experience
 ```
 
 ### Oracle Role Management

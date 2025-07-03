@@ -490,6 +490,193 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
+        // V$INSTANCE view - complete instance information
+        if (sqlCommand.startsWith('SELECT * FROM V$INSTANCE') || sqlCommand.startsWith('SELECT*FROM V$INSTANCE') ||
+            sqlCommand.startsWith('SELECT * FROM v$instance') || sqlCommand.startsWith('SELECT*FROM v$instance')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('INSTANCE_NUMBER INSTANCE_NAME    HOST_NAME        VERSION           STARTUP_TIME         STATUS       PARALLEL THREAD# ARCHIVER LOG_SWITCH_WAIT LOGINS           SHUTDOWN_PENDING INSTANCE_ROLE      ACTIVE_STATE       BLOCKED');
+                this.terminal.writeln('--------------- ---------------- ---------------- ----------------- -------------------- ------------ -------- ------- -------- --------------- ---------------- ---------------- ------------------ -------');
+                this.terminal.writeln('              1 ORCL             proddb01sim      19.0.0.0.0        01-JAN-24 09:00:00   OPEN         NO            0 STARTED                  ALLOWED          NO               PRIMARY_INSTANCE   NORMAL             NO');
+                this.terminal.writeln('');
+                this.terminal.writeln('1 row selected.');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // V$SYSTEM_EVENT view - system wait events
+        if (sqlCommand.startsWith('SELECT * FROM V$SYSTEM_EVENT') || sqlCommand.startsWith('SELECT*FROM V$SYSTEM_EVENT') ||
+            sqlCommand.startsWith('SELECT * FROM v$system_event') || sqlCommand.startsWith('SELECT*FROM v$system_event')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('EVENT                                                            TOTAL_WAITS   TOTAL_TIMEOUTS   TIME_WAITED AVERAGE_WAIT   TIME_WAITED_MICRO');
+                this.terminal.writeln('---------------------------------------------------------------- ----------- ---------------- ----------- ------------ -----------------');
+                this.terminal.writeln('buffer busy waits                                                       1234                0        1543         1.25           1543000');
+                this.terminal.writeln('db file sequential read                                                 45678                0       12345         0.27          12345000');
+                this.terminal.writeln('db file scattered read                                                   8901                0        4567         0.51           4567000');
+                this.terminal.writeln('log file sync                                                            2345                0         789         0.34            789000');
+                this.terminal.writeln('log file parallel write                                                  2345                0         234         0.10            234000');
+                this.terminal.writeln('control file parallel write                                               456                0          23         0.05             23000');
+                this.terminal.writeln('SQL*Net message from client                                             12345                0      123456        10.01         123456000');
+                this.terminal.writeln('SQL*Net message to client                                               12345                0          12         0.00             12000');
+                this.terminal.writeln('latch: cache buffers chains                                               789                0         123         0.16            123000');
+                this.terminal.writeln('latch: shared pool                                                        234                0          45         0.19             45000');
+                this.terminal.writeln('library cache lock                                                         67                0          89         1.33             89000');
+                this.terminal.writeln('library cache pin                                                         123                0          34         0.28             34000');
+                this.terminal.writeln('enq: TX - row lock contention                                              45                0        5678       126.18           5678000');
+                this.terminal.writeln('');
+                this.terminal.writeln('13 rows selected.');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // V$SQL view - SQL statements in library cache
+        if (sqlCommand.startsWith('SELECT * FROM V$SQL') || sqlCommand.startsWith('SELECT*FROM V$SQL') ||
+            sqlCommand.startsWith('SELECT * FROM v$sql') || sqlCommand.startsWith('SELECT*FROM v$sql')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('SQL_TEXT                                                         SQL_ID        EXECUTIONS DISK_READS BUFFER_GETS ROWS_PROCESSED ELAPSED_TIME CPU_TIME FIRST_LOAD_TIME     LAST_LOAD_TIME      PARSING_SCHEMA_NAME');
+                this.terminal.writeln('---------------------------------------------------------------- ------------- ---------- ---------- ----------- -------------- ------------ -------- ------------------- ------------------- -------------------');
+                this.terminal.writeln('SELECT * FROM DBA_USERS                                         8fq2m9yz7xkjp         12          0        1234            156       456789    123456 2024-01-01/10:30:15 2024-01-01/11:45:23 SYS');
+                this.terminal.writeln('SELECT NAME FROM V$DATABASE                                     4gh8n2kx9mqlr         45          0         234              1        12345      5678 2024-01-01/09:15:30 2024-01-01/11:30:45 SYSTEM');
+                this.terminal.writeln('SELECT TABLESPACE_NAME FROM DBA_TABLESPACES                    7mp3k5vw2nxtr          8          0         567              5        23456      8901 2024-01-01/10:00:00 2024-01-01/10:45:12 SYS');
+                this.terminal.writeln('CREATE USER test_user IDENTIFIED BY password                   2bq9j4hy6zlkm          1          0          89              0         5678      2345 2024-01-01/11:00:15 2024-01-01/11:00:15 SYS');
+                this.terminal.writeln('GRANT CONNECT TO test_user                                      9xr5m7nv3pkts          1          0          45              0         1234       567 2024-01-01/11:01:00 2024-01-01/11:01:00 SYS');
+                this.terminal.writeln('SELECT * FROM DBA_DATA_FILES                                    6kt8p2sw4mqvx          3          0         789              4        34567     12345 2024-01-01/10:45:30 2024-01-01/11:15:45 SYSTEM');
+                this.terminal.writeln('ALTER DATABASE DATAFILE \'users01.dbf\' RESIZE 200M              5nw7q3yt8rvhj          1         12         345              0        67890     23456 2024-01-01/11:30:00 2024-01-01/11:30:00 SYS');
+                this.terminal.writeln('');
+                this.terminal.writeln('7 rows selected.');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // V$TABLESPACE view - tablespace information
+        if (sqlCommand.startsWith('SELECT * FROM V$TABLESPACE') || sqlCommand.startsWith('SELECT*FROM V$TABLESPACE') ||
+            sqlCommand.startsWith('SELECT * FROM v$tablespace') || sqlCommand.startsWith('SELECT*FROM v$tablespace')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('        TS# NAME                           INCLUDED_IN_DATABASE_BACKUP BIGFILE FLASHBACK_ON ENCRYPT_IN_BACKUP');
+                this.terminal.writeln('----------- ------------------------------ ---------------------------- ------- ------------ -----------------');
+                this.terminal.writeln('          0 SYSTEM                         YES                          NO      YES          NO');
+                this.terminal.writeln('          1 SYSAUX                         YES                          NO      YES          NO');
+                this.terminal.writeln('          2 UNDOTBS1                       YES                          NO      YES          NO');
+                this.terminal.writeln('          3 TEMP                           NO                           NO      YES          NO');
+                this.terminal.writeln('          4 USERS                          YES                          NO      YES          NO');
+                
+                // Check for custom tablespaces created through simulation
+                let tsNum = 5;
+                const customTablespaces = ['SDS_TABLE', 'SDS_INDEX', 'SDS_LOB', 'SDS_SMALL_LOB', 'SDS_MEDIUM_LOB', 'SDS_LARGE_LOB'];
+                let customCount = 0;
+                
+                customTablespaces.forEach(tsName => {
+                    if (this.fs.exists(`/oradata/${tsName}.dbf`)) {
+                        this.terminal.writeln(`${tsNum.toString().padStart(11)} ${tsName.padEnd(30)} YES                          NO      YES          NO`);
+                        tsNum++;
+                        customCount++;
+                    }
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${5 + customCount} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Top wait events query (common DBA query)
+        if (sqlCommand.match(/SELECT.*EVENT.*FROM V\$SYSTEM_EVENT.*ORDER BY.*TIME_WAITED.*DESC/i) ||
+            sqlCommand.match(/SELECT.*EVENT.*FROM v\$system_event.*ORDER BY.*time_waited.*desc/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('EVENT                                                            TIME_WAITED TOTAL_WAITS AVERAGE_WAIT');
+                this.terminal.writeln('---------------------------------------------------------------- ----------- ----------- ------------');
+                this.terminal.writeln('SQL*Net message from client                                          123456       12345        10.01');
+                this.terminal.writeln('db file sequential read                                               12345       45678         0.27');
+                this.terminal.writeln('enq: TX - row lock contention                                          5678          45       126.18');
+                this.terminal.writeln('db file scattered read                                                 4567        8901         0.51');
+                this.terminal.writeln('buffer busy waits                                                      1543        1234         1.25');
+                this.terminal.writeln('log file sync                                                           789        2345         0.34');
+                this.terminal.writeln('');
+                this.terminal.writeln('6 rows selected.');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Top SQL by executions query (common DBA query)
+        if (sqlCommand.match(/SELECT.*SQL_TEXT.*FROM V\$SQL.*ORDER BY.*EXECUTIONS.*DESC/i) ||
+            sqlCommand.match(/SELECT.*sql_text.*FROM v\$sql.*ORDER BY.*executions.*desc/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('SQL_TEXT                                                         EXECUTIONS ELAPSED_TIME CPU_TIME');
+                this.terminal.writeln('---------------------------------------------------------------- ---------- ------------ --------');
+                this.terminal.writeln('SELECT NAME FROM V$DATABASE                                             45        12345     5678');
+                this.terminal.writeln('SELECT * FROM DBA_USERS                                                 12       456789   123456');
+                this.terminal.writeln('SELECT TABLESPACE_NAME FROM DBA_TABLESPACES                             8        23456     8901');
+                this.terminal.writeln('SELECT * FROM DBA_DATA_FILES                                             3        34567    12345');
+                this.terminal.writeln('CREATE USER test_user IDENTIFIED BY password                            1         5678     2345');
+                this.terminal.writeln('');
+                this.terminal.writeln('5 rows selected.');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Tablespace usage query (common DBA query)
+        if (sqlCommand.match(/SELECT.*TABLESPACE_NAME.*FROM DBA_TABLESPACES.*UNION.*V\$TABLESPACE/i) ||
+            sqlCommand.startsWith('SELECT TABLESPACE_NAME FROM V$TABLESPACE') ||
+            sqlCommand.startsWith('SELECT tablespace_name FROM v$tablespace')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('TABLESPACE_NAME');
+                this.terminal.writeln('------------------------------');
+                this.terminal.writeln('SYSTEM');
+                this.terminal.writeln('SYSAUX');
+                this.terminal.writeln('UNDOTBS1');
+                this.terminal.writeln('TEMP');
+                this.terminal.writeln('USERS');
+                
+                // Check for custom tablespaces
+                const customTablespaces = ['SDS_TABLE', 'SDS_INDEX', 'SDS_LOB', 'SDS_SMALL_LOB', 'SDS_MEDIUM_LOB', 'SDS_LARGE_LOB'];
+                let customCount = 0;
+                customTablespaces.forEach(tsName => {
+                    if (this.fs.exists(`/oradata/${tsName}.dbf`)) {
+                        this.terminal.writeln(tsName);
+                        customCount++;
+                    }
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${5 + customCount} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
         if (sqlCommand.startsWith('SHOW USER')) {
             if (!connected) {
                 this.terminal.writeln('USER is ""');
