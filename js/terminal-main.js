@@ -488,8 +488,9 @@ term.onData(data => {
                 break;
             }
             const parts = currentLine.trim().split(/\s+/);
+            const hasTrailingSpace = currentLine.endsWith(' ');
             
-            if (parts.length === 1) {
+            if (parts.length === 1 && !hasTrailingSpace) {
                 // Command completion
                 const commands = ['ls', 'cd', 'pwd', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'chmod', 'chown', 'cat', 'echo', 
                                 'clear', 'hostname', 'uname', 'whoami', 'date', 'df', 
@@ -542,7 +543,13 @@ term.onData(data => {
                 }
             } else {
                 // Directory/file completion
-                const lastPart = parts[parts.length - 1];
+                let lastPart;
+                if (hasTrailingSpace && parts.length === 1) {
+                    // cd + space case: treat as empty string for completion
+                    lastPart = '';
+                } else {
+                    lastPart = parts[parts.length - 1];
+                }
                 let searchPath = '.';
                 let prefix = '';
                 
