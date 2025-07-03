@@ -66,6 +66,12 @@ class CommandProcessor {
         // Restore preserved /root folder contents after reboot
         this.restoreRootFolder();
         
+        // Create default .bash_profile files for system users
+        this.createDefaultBashProfile('root');
+        
+        // Apply .bash_profile for the initial root user login
+        this.applyBashProfile('root');
+        
         this.initializeVimModal();
     }
 
@@ -143,6 +149,241 @@ class CommandProcessor {
         } catch (e) {
             // Silently fail if localStorage is not available
         }
+    }
+
+    // Parse and apply .bash_profile settings
+    applyBashProfile(user) {
+        const homeDir = user === 'root' ? '/root' : `/home/${user}`;
+        const bashProfilePath = `${homeDir}/.bash_profile`;
+        
+        // Check if .bash_profile exists
+        if (!this.fs.exists(bashProfilePath)) {
+            return;
+        }
+        
+        const content = this.fs.cat(bashProfilePath);
+        if (!content) {
+            return;
+        }
+        
+        // Parse the .bash_profile file line by line
+        const lines = content.split('\n');
+        
+        for (let line of lines) {
+            line = line.trim();
+            
+            // Skip empty lines and comments
+            if (!line || line.startsWith('#')) {
+                continue;
+            }
+            
+            // Handle export statements: export VAR=value or export VAR="value"
+            const exportMatch = line.match(/^export\s+([A-Z_][A-Z0-9_]*)\s*=\s*(.+)$/i);
+            if (exportMatch) {
+                const varName = exportMatch[1];
+                let varValue = exportMatch[2];
+                
+                // Remove quotes if present
+                if ((varValue.startsWith('"') && varValue.endsWith('"')) ||
+                    (varValue.startsWith("'") && varValue.endsWith("'"))) {
+                    varValue = varValue.slice(1, -1);
+                }
+                
+                // Expand existing environment variables in the value
+                varValue = this.expandEnvironmentVariables(varValue);
+                
+                this.environmentVars[varName] = varValue;
+                continue;
+            }
+            
+            // Handle direct variable assignments: VAR=value
+            const assignMatch = line.match(/^([A-Z_][A-Z0-9_]*)\s*=\s*(.+)$/i);
+            if (assignMatch) {
+                const varName = assignMatch[1];
+                let varValue = assignMatch[2];
+                
+                // Remove quotes if present
+                if ((varValue.startsWith('"') && varValue.endsWith('"')) ||
+                    (varValue.startsWith("'") && varValue.endsWith("'"))) {
+                    varValue = varValue.slice(1, -1);
+                }
+                
+                // Expand existing environment variables in the value
+                varValue = this.expandEnvironmentVariables(varValue);
+                
+                this.environmentVars[varName] = varValue;
+                continue;
+            }
+            
+            // Handle PATH additions: PATH=$PATH:/new/path
+            const pathMatch = line.match(/^(?:export\s+)?PATH\s*=\s*(.+)$/i);
+            if (pathMatch) {
+                let pathValue = pathMatch[1];
+                
+                // Remove quotes if present
+                if ((pathValue.startsWith('"') && pathValue.endsWith('"')) ||
+                    (pathValue.startsWith("'") && pathValue.endsWith("'"))) {
+                    pathValue = pathValue.slice(1, -1);
+                }
+                
+                // Expand environment variables
+                pathValue = this.expandEnvironmentVariables(pathValue);
+                
+                this.environmentVars.PATH = pathValue;
+                continue;
+            }
+            
+            // Handle source or . commands to load additional files
+            const sourceMatch = line.match(/^(?:source|\.)\s+(.+)$/);
+            if (sourceMatch) {
+                let sourcePath = sourceMatch[1];
+                
+                // Remove quotes if present
+                if ((sourcePath.startsWith('"') && sourcePath.endsWith('"')) ||
+                    (sourcePath.startsWith("'") && sourcePath.endsWith("'"))) {
+                    sourcePath = sourcePath.slice(1, -1);
+                }
+                
+                // Expand environment variables in the path
+                sourcePath = this.expandEnvironmentVariables(sourcePath);
+                
+                // Recursively apply the sourced file if it exists
+                if (this.fs.exists(sourcePath)) {
+                    this.applyBashScript(sourcePath);
+                }
+            }
+        }
+    }
+    
+    // Helper method to expand environment variables in strings
+    expandEnvironmentVariables(str) {
+        return str.replace(/\$([A-Z_][A-Z0-9_]*)/g, (match, varName) => {
+            return this.environmentVars[varName] || match;
+        }).replace(/\$\{([A-Z_][A-Z0-9_]*)\}/g, (match, varName) => {
+            return this.environmentVars[varName] || match;
+        });
+    }
+    
+    // Helper method to apply any bash script file (for sourcing)
+    applyBashScript(filePath) {
+        const content = this.fs.cat(filePath);
+        if (!content) {
+            return;
+        }
+        
+        const lines = content.split('\n');
+        
+        for (let line of lines) {
+            line = line.trim();
+            
+            // Skip empty lines and comments
+            if (!line || line.startsWith('#')) {
+                continue;
+            }
+            
+            // Handle export statements
+            const exportMatch = line.match(/^export\s+([A-Z_][A-Z0-9_]*)\s*=\s*(.+)$/i);
+            if (exportMatch) {
+                const varName = exportMatch[1];
+                let varValue = exportMatch[2];
+                
+                // Remove quotes if present
+                if ((varValue.startsWith('"') && varValue.endsWith('"')) ||
+                    (varValue.startsWith("'") && varValue.endsWith("'"))) {
+                    varValue = varValue.slice(1, -1);
+                }
+                
+                varValue = this.expandEnvironmentVariables(varValue);
+                this.environmentVars[varName] = varValue;
+            }
+            
+            // Handle direct assignments
+            const assignMatch = line.match(/^([A-Z_][A-Z0-9_]*)\s*=\s*(.+)$/i);
+            if (assignMatch) {
+                const varName = assignMatch[1];
+                let varValue = assignMatch[2];
+                
+                // Remove quotes if present
+                if ((varValue.startsWith('"') && varValue.endsWith('"')) ||
+                    (varValue.startsWith("'") && varValue.endsWith("'"))) {
+                    varValue = varValue.slice(1, -1);
+                }
+                
+                varValue = this.expandEnvironmentVariables(varValue);
+                this.environmentVars[varName] = varValue;
+            }
+        }
+    }
+
+    // Create default .bash_profile for a user
+    createDefaultBashProfile(username) {
+        const homeDir = username === 'root' ? '/root' : `/home/${username}`;
+        const bashProfilePath = `${homeDir}/.bash_profile`;
+        
+        // Don't overwrite existing .bash_profile
+        if (this.fs.exists(bashProfilePath)) {
+            return;
+        }
+        
+        let profileContent = '';
+        
+        if (username === 'oracle') {
+            profileContent = `# .bash_profile for Oracle user
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+
+# User specific environment and startup programs
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=/u01/app/oracle/product/19.0.0/dbhome_1
+export ORACLE_SID=ORCL
+export PATH=$PATH:$ORACLE_HOME/bin
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+
+# Oracle settings
+export ORACLE_TERM=xterm
+export TNS_ADMIN=$ORACLE_HOME/network/admin
+export ORA_INVENTORY=/u01/app/oraInventory
+
+umask 022
+`;
+        } else if (username === 'root') {
+            profileContent = `# .bash_profile for root user
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+
+# User specific environment and startup programs
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root
+export USER=root
+export SHELL=/bin/bash
+export TERM=xterm-256color
+export LANG=en_US.UTF-8
+
+umask 022
+`;
+        } else {
+            profileContent = `# .bash_profile for ${username}
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+
+# User specific environment and startup programs
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+export HOME=/home/${username}
+export USER=${username}
+export SHELL=/bin/bash
+
+umask 022
+`;
+        }
+        
+        // Create the .bash_profile file
+        this.fs.touch(bashProfilePath, profileContent);
     }
 
     initializeVimModal() {
@@ -406,6 +647,9 @@ class CommandProcessor {
                 break;
             case 'service':
                 this.cmdService(args);
+                break;
+            case 'source':
+                this.cmdSource(args);
                 break;
             case 'cp':
                 this.cmdCp(args);
@@ -2323,6 +2567,43 @@ class CommandProcessor {
         });
     }
 
+    cmdSource(args) {
+        if (args.length === 0) {
+            this.terminal.writeln('source: filename argument required');
+            this.terminal.writeln('source: usage: source filename [arguments]');
+            return;
+        }
+        
+        let filePath = args[0];
+        
+        // Expand environment variables in the file path
+        filePath = this.expandEnvironmentVariables(filePath);
+        
+        // Handle relative paths and special cases
+        if (filePath.startsWith('~/')) {
+            // Replace ~ with home directory
+            filePath = filePath.replace('~', this.environmentVars.HOME);
+        } else if (!filePath.startsWith('/')) {
+            // Relative path - prepend current working directory
+            filePath = this.fs.pwd() + '/' + filePath;
+        }
+        
+        // Check if file exists
+        if (!this.fs.exists(filePath)) {
+            this.terminal.writeln(`source: ${args[0]}: No such file or directory`);
+            return;
+        }
+        
+        // Check if it's a regular file
+        if (!this.fs.isFile(filePath)) {
+            this.terminal.writeln(`source: ${args[0]}: is a directory`);
+            return;
+        }
+        
+        // Apply the bash script
+        this.applyBashScript(filePath);
+    }
+
     cmdGroupadd(args) {
         if (args.length === 0) {
             this.terminal.writeln('Usage: groupadd [options] GROUP');
@@ -2493,6 +2774,11 @@ class CommandProcessor {
             }
         }
         
+        // Create default .bash_profile for the new user (unless -M was specified)
+        if (!noCreateHome) {
+            this.createDefaultBashProfile(user);
+        }
+        
         this.terminal.writeln(`User '${user}' added successfully.`);
         
         // Refresh Oracle state to update OCP status
@@ -2631,6 +2917,9 @@ class CommandProcessor {
                 this.environmentVars.ORACLE_SID = 'ORCL';
                 this.environmentVars.PATH = this.environmentVars.PATH + ':/u01/app/oracle/product/19.0.0/dbhome_1/bin';
             }
+            
+            // Apply .bash_profile settings for login shell
+            this.applyBashProfile(targetUser);
         } else {
             // Non-login shell - keep current directory and minimal environment changes
             this.environmentVars.HOME = targetUser === 'root' ? '/root' : `/home/${targetUser}`;
