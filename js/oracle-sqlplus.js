@@ -1335,20 +1335,41 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
         if (sqlCommand.startsWith('@') || sqlCommand.startsWith('@@')) {
             const scriptPath = sqlCommand.substring(1).trim();
             
-            // Handle AWR report script
-            if (scriptPath === 'awrrpt.sql' || scriptPath === 'awrrpt' || 
+            // Check for AWR report script (case-insensitive and with filesystem check)
+            if (scriptPath.toLowerCase() === 'awrrpt.sql' || scriptPath.toLowerCase() === 'awrrpt' || 
                 scriptPath === '$ORACLE_HOME/rdbms/admin/awrrpt.sql' ||
                 scriptPath === '/u01/app/oracle/product/19.0.0/dbhome_1/rdbms/admin/awrrpt.sql') {
                 this.generateAwrReport();
                 return;
             }
             
-            // Handle ADDM report script
-            if (scriptPath === 'addmrpt.sql' || scriptPath === 'addmrpt' ||
+            // Check for ADDM report script (case-insensitive and with filesystem check)
+            if (scriptPath.toLowerCase() === 'addmrpt.sql' || scriptPath.toLowerCase() === 'addmrpt' ||
                 scriptPath === '$ORACLE_HOME/rdbms/admin/addmrpt.sql' ||
                 scriptPath === '/u01/app/oracle/product/19.0.0/dbhome_1/rdbms/admin/addmrpt.sql') {
                 this.generateAddmReport();
                 return;
+            }
+            
+            // Check if the script exists in the Oracle admin directory
+            const oracleHome = '/u01/app/oracle/product/19.0.0/dbhome_1';
+            const adminDir = `${oracleHome}/rdbms/admin`;
+            const fullScriptPath = `${adminDir}/${scriptPath}`;
+            
+            if (this.fs.exists(fullScriptPath)) {
+                // Handle known scripts by filename
+                if (scriptPath.toLowerCase() === 'awrrpt.sql') {
+                    this.generateAwrReport();
+                    return;
+                } else if (scriptPath.toLowerCase() === 'addmrpt.sql') {
+                    this.generateAddmReport();
+                    return;
+                } else {
+                    // For other scripts, just show that they would be executed
+                    this.terminal.writeln(`Executing script: ${scriptPath}`);
+                    this.terminal.writeln('Script execution completed.');
+                    return;
+                }
             }
             
             // Generic script not found
