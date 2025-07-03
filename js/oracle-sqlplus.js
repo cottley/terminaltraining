@@ -586,6 +586,30 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
         
+        // ALTER TABLESPACE commands for datafile operations
+        if (sqlCommand.match(/ALTER\s+TABLESPACE/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                return;
+            }
+            
+            this.handleAlterTablespace(sqlCommand, input);
+            return;
+        }
+        
+        // ALTER DATABASE commands for datafile operations
+        if (sqlCommand.match(/ALTER\s+DATABASE/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                return;
+            }
+            
+            this.handleAlterDatabase(sqlCommand, input);
+            return;
+        }
+        
         if (sqlCommand.startsWith('SELECT TABLESPACE_NAME FROM DBA_TABLESPACES')) {
             if (!oracleManager.getState('databaseStarted')) {
                 this.terminal.writeln('ERROR at line 1:');
@@ -1202,5 +1226,209 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         this.terminal.writeln('');
         this.terminal.writeln('1 row selected.');
         this.terminal.writeln('');
+    };
+
+    // Handle ALTER TABLESPACE commands for datafile operations
+    this.handleAlterTablespace = function(sqlCommand, input) {
+        // Parse tablespace name
+        const tablespaceMatch = sqlCommand.match(/alter\s+tablespace\s+(\w+)/i);
+        if (!tablespaceMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
+            return;
+        }
+        
+        const tablespaceName = tablespaceMatch[1].toUpperCase();
+        
+        // Handle ADD DATAFILE operations
+        if (sqlCommand.match(/add\s+datafile/i)) {
+            const datafileMatch = sqlCommand.match(/add\s+datafile\s+['"']([^'"]+)['"](?:\s+size\s+(\d+)([kmg]?))?(?:\s+autoextend\s+(on|off))?(?:\s+next\s+(\d+)([kmg]?))?(?:\s+maxsize\s+(\d+)([kmg]?)|unlimited)?/i);
+            
+            if (!datafileMatch) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-00922: missing or invalid option');
+                return;
+            }
+            
+            const datafileName = datafileMatch[1];
+            const size = datafileMatch[2] || '100';
+            const sizeUnit = (datafileMatch[3] || 'M').toUpperCase();
+            const autoextend = datafileMatch[4] ? datafileMatch[4].toUpperCase() : 'OFF';
+            const nextSize = datafileMatch[5] || '1';
+            const nextUnit = (datafileMatch[6] || 'M').toUpperCase();
+            const maxSize = datafileMatch[7] || 'UNLIMITED';
+            const maxUnit = (datafileMatch[8] || 'M').toUpperCase();
+            
+            // Validate tablespace exists
+            const validTablespaces = ['USERS', 'SYSTEM', 'SYSAUX', 'UNDOTBS1', 'TEMP', 'SDS_TABLE', 'SDS_INDEX', 'SDS_LOB', 'SDS_SMALL_LOB', 'SDS_MEDIUM_LOB', 'SDS_LARGE_LOB'];
+            if (!validTablespaces.includes(tablespaceName)) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(`ORA-00959: tablespace '${tablespaceName}' does not exist`);
+                return;
+            }
+            
+            // Determine full path
+            let fullPath = datafileName;
+            if (!datafileName.startsWith('/')) {
+                // Relative path - add to Oracle data directory
+                fullPath = `/u01/app/oracle/oradata/ORCL/${datafileName}`;
+            }
+            
+            // Check if datafile already exists
+            if (this.fs.exists(fullPath)) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(`ORA-01119: error in creating database file '${fullPath}'`);
+                this.terminal.writeln(`ORA-27038: created file already exists`);
+                return;
+            }
+            
+            // Calculate size in bytes for file creation
+            const sizeInBytes = this.calculateSizeInBytes(size, sizeUnit);
+            
+            // Create the datafile
+            this.fs.touch(fullPath, '');
+            
+            // Set file metadata to reflect the datafile properties
+            const pathArray = this.fs.resolvePath(fullPath);
+            const node = this.fs.getNode(pathArray);
+            if (node) {
+                node.size = sizeInBytes;
+                node.owner = 'oracle';
+                node.group = 'oinstall';
+                node.permissions = '-rw-r-----';
+                node.autoextend = autoextend === 'ON';
+                node.nextSize = nextSize + nextUnit;
+                node.maxSize = maxSize === 'UNLIMITED' ? 'UNLIMITED' : maxSize + maxUnit;
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('Tablespace altered.');
+            this.terminal.writeln('');
+            return;
+        }
+        
+        // Handle other tablespace operations
+        this.terminal.writeln('ERROR at line 1:');
+        this.terminal.writeln('ORA-00922: missing or invalid option');
+    };
+
+    // Handle ALTER DATABASE commands for datafile operations
+    this.handleAlterDatabase = function(sqlCommand, input) {
+        // Handle DATAFILE RESIZE operations
+        if (sqlCommand.match(/datafile.*resize/i)) {
+            const resizeMatch = sqlCommand.match(/datafile\s+['"']([^'"]+)['"](?:\s+resize\s+(\d+)([kmg]?))?/i);
+            
+            if (!resizeMatch) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-00922: missing or invalid option');
+                return;
+            }
+            
+            const datafileName = resizeMatch[1];
+            const newSize = resizeMatch[2];
+            const sizeUnit = (resizeMatch[3] || 'M').toUpperCase();
+            
+            if (!newSize) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-00922: missing or invalid option');
+                return;
+            }
+            
+            // Determine full path
+            let fullPath = datafileName;
+            if (!datafileName.startsWith('/')) {
+                fullPath = `/u01/app/oracle/oradata/ORCL/${datafileName}`;
+            }
+            
+            // Check if datafile exists
+            if (!this.fs.exists(fullPath)) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(`ORA-01119: error in creating database file '${fullPath}'`);
+                this.terminal.writeln(`ORA-27038: file does not exist`);
+                return;
+            }
+            
+            // Calculate new size in bytes
+            const newSizeInBytes = this.calculateSizeInBytes(newSize, sizeUnit);
+            
+            // Update the datafile size
+            const pathArray = this.fs.resolvePath(fullPath);
+            const node = this.fs.getNode(pathArray);
+            if (node) {
+                node.size = newSizeInBytes;
+                node.modified = new Date();
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('Database altered.');
+            this.terminal.writeln('');
+            return;
+        }
+        
+        // Handle DATAFILE AUTOEXTEND operations
+        if (sqlCommand.match(/datafile.*autoextend/i)) {
+            const autoextendMatch = sqlCommand.match(/datafile\s+['"']([^'"]+)['"](?:\s+autoextend\s+(on|off))?(?:\s+next\s+(\d+)([kmg]?))?(?:\s+maxsize\s+(\d+)([kmg]?)|unlimited)?/i);
+            
+            if (!autoextendMatch) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-00922: missing or invalid option');
+                return;
+            }
+            
+            const datafileName = autoextendMatch[1];
+            const autoextend = autoextendMatch[2] ? autoextendMatch[2].toUpperCase() : 'ON';
+            const nextSize = autoextendMatch[3] || '1';
+            const nextUnit = (autoextendMatch[4] || 'M').toUpperCase();
+            const maxSize = autoextendMatch[5] || 'UNLIMITED';
+            const maxUnit = (autoextendMatch[6] || 'M').toUpperCase();
+            
+            // Determine full path
+            let fullPath = datafileName;
+            if (!datafileName.startsWith('/')) {
+                fullPath = `/u01/app/oracle/oradata/ORCL/${datafileName}`;
+            }
+            
+            // Check if datafile exists
+            if (!this.fs.exists(fullPath)) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(`ORA-01119: error in creating database file '${fullPath}'`);
+                this.terminal.writeln(`ORA-27038: file does not exist`);
+                return;
+            }
+            
+            // Update the datafile autoextend settings
+            const pathArray = this.fs.resolvePath(fullPath);
+            const node = this.fs.getNode(pathArray);
+            if (node) {
+                node.autoextend = autoextend === 'ON';
+                node.nextSize = nextSize + nextUnit;
+                node.maxSize = maxSize === 'UNLIMITED' ? 'UNLIMITED' : maxSize + maxUnit;
+                node.modified = new Date();
+            }
+            
+            this.terminal.writeln('');
+            this.terminal.writeln('Database altered.');
+            this.terminal.writeln('');
+            return;
+        }
+        
+        // Handle other database operations
+        this.terminal.writeln('ERROR at line 1:');
+        this.terminal.writeln('ORA-00922: missing or invalid option');
+    };
+
+    // Helper method to calculate size in bytes
+    this.calculateSizeInBytes = function(size, unit) {
+        const sizeNum = parseInt(size);
+        switch (unit.toUpperCase()) {
+            case 'K':
+                return sizeNum * 1024;
+            case 'M':
+                return sizeNum * 1024 * 1024;
+            case 'G':
+                return sizeNum * 1024 * 1024 * 1024;
+            default:
+                return sizeNum; // Assume bytes if no unit
+        }
     };
 };

@@ -11,20 +11,23 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 ### 🖥️ **Realistic Linux Terminal Simulation**
 - Full RHEL 9 filesystem structure
 - Authentic command prompt and shell behavior
-- Command history with arrow key navigation
+- Mode-aware command history (separate for bash, SQL*Plus, RMAN)
 - Tab completion for commands and file paths
 - Cursor navigation with left/right arrow keys for line editing
 - Text selection and automatic clipboard copying
 - Pipe functionality with command chaining
+- Automatic .bash_profile processing on login shells
+- `source` command for manual script sourcing
 
 ### 📦 **Complete Oracle Database Ecosystem**
 - Oracle Database 19c Enterprise Edition simulation
-- SQL*Plus with comprehensive command support
-- RMAN (Recovery Manager) backup and recovery tools
+- SQL*Plus with comprehensive command support and datafile operations
+- RMAN (Recovery Manager) backup and recovery tools with separate command history
 - Oracle Net Services (Listener and TNS configuration)
 - Oracle Universal Installer simulation
 - DBCA (Database Configuration Assistant)
 - NETCA (Network Configuration Assistant)
+- Advanced tablespace and datafile management
 
 ### 🔧 **System Administration Tools**
 - Package management (yum/dnf)
@@ -180,6 +183,11 @@ set                   # Display variables
 export VAR=value      # Set environment variable
 env                   # Display environment
 env | grep <pattern>  # Filter environment variables
+
+# .bash_profile Support
+source ~/.bash_profile      # Manually reload profile settings
+source <filename>           # Source any bash script
+# Note: .bash_profile is automatically applied on login shells (su - user)
 ```
 
 ### Oracle Database Commands
@@ -205,6 +213,47 @@ adrci                # Automatic Diagnostic Repository
 awrrpt               # AWR report generation
 addmrpt              # ADDM analysis
 opatch               # Patch management
+```
+
+### Oracle Datafile Operations
+```sql
+-- SQL*Plus Datafile Management Commands
+-- Note: These commands work within SQL*Plus after connecting as SYSDBA
+
+-- Add Datafiles to Tablespaces
+ALTER TABLESPACE USERS ADD DATAFILE 'users02.dbf' SIZE 100M;
+ALTER TABLESPACE USERS ADD DATAFILE '/u01/app/oracle/oradata/ORCL/users03.dbf' 
+  SIZE 500M AUTOEXTEND ON NEXT 50M MAXSIZE 2G;
+ALTER TABLESPACE SYSTEM ADD DATAFILE 'system02.dbf' 
+  SIZE 1G AUTOEXTEND ON NEXT 100M MAXSIZE UNLIMITED;
+
+-- Resize Existing Datafiles
+ALTER DATABASE DATAFILE 'users01.dbf' RESIZE 200M;
+ALTER DATABASE DATAFILE '/u01/app/oracle/oradata/ORCL/system01.dbf' RESIZE 1G;
+ALTER DATABASE DATAFILE 'sysaux01.dbf' RESIZE 800M;
+
+-- Configure Autoextend Settings
+ALTER DATABASE DATAFILE 'users01.dbf' AUTOEXTEND ON NEXT 10M MAXSIZE 2G;
+ALTER DATABASE DATAFILE 'temp01.dbf' AUTOEXTEND ON NEXT 50M MAXSIZE UNLIMITED;
+ALTER DATABASE DATAFILE 'undotbs01.dbf' AUTOEXTEND OFF;
+
+-- Advanced Datafile Operations
+ALTER DATABASE DATAFILE 'users02.dbf' 
+  AUTOEXTEND ON NEXT 25M MAXSIZE 1G;
+
+-- Query Datafile Information
+SELECT NAME FROM V$DATABASE;                    -- Database name
+SELECT TABLESPACE_NAME FROM DBA_TABLESPACES;    -- Available tablespaces
+SELECT USERNAME FROM DBA_USERS;                 -- Database users
+
+-- Features:
+-- • Creates actual .dbf files in the virtual filesystem
+-- • Supports relative and absolute paths
+-- • Validates tablespace existence and prevents duplicates
+-- • Realistic Oracle error messages (ORA-00959, ORA-01119, etc.)
+-- • Proper file ownership and permissions (oracle:oinstall)
+-- • Size calculations with K/M/G units
+-- • Autoextend metadata storage
 ```
 
 ### Advanced Pipeline Operations
@@ -470,6 +519,62 @@ The environment includes realistic systemd service definitions:
 
 Service states persist across sessions and can be managed with the `service` command.
 
+## Advanced Shell Features
+
+### Command History Separation
+The terminal environment provides realistic command history management with mode-aware navigation:
+
+- **Bash History**: Standard Linux commands (ls, cd, etc.) are stored in bash history
+- **SQL*Plus History**: SQL commands are stored separately when in SQL*Plus mode
+- **RMAN History**: RMAN commands have their own dedicated history
+- **Mode Detection**: Arrow key navigation automatically uses the correct history based on current prompt
+- **Persistent Storage**: All command histories are saved to browser localStorage
+- **Cross-Session**: Command histories persist across browser sessions
+
+```bash
+# Each mode maintains separate command history:
+[root@proddb01sim ~]# sqlplus / as sysdba    # Enter SQL*Plus
+SQL> SELECT NAME FROM V$DATABASE;            # SQL command (stored in SQL history)
+SQL> exit                                    # Return to bash
+[root@proddb01sim ~]# rman target /          # Enter RMAN  
+RMAN> BACKUP DATABASE;                       # RMAN command (stored in RMAN history)
+RMAN> exit                                   # Return to bash
+[root@proddb01sim ~]# ls -la                # Bash command (stored in bash history)
+
+# Up/down arrows access the appropriate history for each mode
+```
+
+### .bash_profile Workflow
+Realistic Linux login experience with automatic profile processing:
+
+**Automatic Profile Loading:**
+- Login shells (`su - username`) automatically source .bash_profile
+- Environment variables are parsed and applied from profile files
+- Supports `export VAR=value`, direct assignments, and variable expansion
+
+**Profile Features:**
+- **Oracle User**: Gets Oracle-specific environment (ORACLE_HOME, ORACLE_SID, PATH)
+- **Root User**: Gets comprehensive system administrator environment
+- **Other Users**: Get standard user environment settings
+- **Manual Sourcing**: Use `source ~/.bash_profile` to reload settings
+
+**Profile Syntax Support:**
+```bash
+# Supported .bash_profile syntax:
+export ORACLE_HOME=/u01/app/oracle/product/19.0.0/dbhome_1
+export PATH=$PATH:$ORACLE_HOME/bin
+ORACLE_SID=ORCL
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+
+# Variable expansion works correctly:
+export TNS_ADMIN=$ORACLE_HOME/network/admin
+export PATH=/usr/local/bin:$PATH
+
+# Source additional files:
+source ~/.bashrc
+. ~/.oracle_env
+```
+
 ## Persistent State Management
 
 - **Automatic Save**: All changes are automatically saved to browser localStorage
@@ -520,6 +625,9 @@ This environment is designed for:
 - **Follow OCP Guidance**: Use the built-in progress tracker for structured learning
 - **Experiment Safely**: The simulation environment is safe for experimentation
 - **Practice Pipe Operations**: Master Linux text processing with pipes and filters
+- **Test Datafile Operations**: Practice adding and resizing datafiles in SQL*Plus
+- **Use Command History**: Each mode (bash/SQL*Plus/RMAN) has separate command history
+- **Leverage .bash_profile**: Customize your environment and practice shell configuration
 
 ## Support & Documentation
 
