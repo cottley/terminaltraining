@@ -399,6 +399,20 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             return;
         }
         
+        if (sqlCommand.startsWith('SELECT NAME FROM V$DATABASE')) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('NAME');
+                this.terminal.writeln('---------');
+                this.terminal.writeln('ORCL');
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
         if (sqlCommand.startsWith('SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE')) {
             if (!oracleManager.getState('databaseStarted')) {
                 this.terminal.writeln('ERROR at line 1:');
