@@ -728,6 +728,26 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
         // Create the user
         oracleManager.createDatabaseUser(username, password);
         
+        // For SDE user, also update the virtual database file for OCP tracking
+        if (username === 'SDE') {
+            // Ensure oradata directory exists
+            if (!this.fs.exists('/u01/app/oracle/oradata')) {
+                this.fs.mkdir('/u01/app/oracle/oradata');
+            }
+            if (!this.fs.exists('/u01/app/oracle/oradata/ORCL')) {
+                this.fs.mkdir('/u01/app/oracle/oradata/ORCL');
+            }
+            
+            // Create or update system01.dbf with SDE user marker
+            const dbfPath = '/u01/app/oracle/oradata/ORCL/system01.dbf';
+            let dbfContent = this.fs.cat(dbfPath) || '# Oracle Database System Tablespace\n# This file contains database metadata\n\n';
+            
+            if (!dbfContent.includes('SDE_USER_CREATED')) {
+                dbfContent += 'SDE_USER_CREATED\n';
+                this.fs.updateFile(dbfPath, dbfContent);
+            }
+        }
+        
         this.terminal.writeln('');
         this.terminal.writeln(`User ${username} created.`);
         this.terminal.writeln('');
@@ -751,6 +771,15 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             // Update Oracle state to track spatial library creation
             oracleManager.updateState('psAppRequirements.spatialLibraryCreated', true);
             oracleManager.updateState('psAppRequirements.extprocConfigured', true);
+            
+            // Also update the virtual database file for OCP tracking
+            const dbfPath = '/u01/app/oracle/oradata/ORCL/system01.dbf';
+            let dbfContent = this.fs.cat(dbfPath) || '# Oracle Database System Tablespace\n# This file contains database metadata\n\n';
+            
+            if (!dbfContent.includes('ST_SHAPELIB_REGISTERED')) {
+                dbfContent += 'ST_SHAPELIB_REGISTERED\n';
+                this.fs.updateFile(dbfPath, dbfContent);
+            }
             
             this.terminal.writeln('-- Spatial library successfully configured for EXTPROC');
             this.terminal.writeln('-- You can now use spatial functions via the SDE schema');
@@ -857,6 +886,15 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba) {
             // Update state for library registration if granting execute on spatial library
             if (privilege.toLowerCase().includes('st_shapelib')) {
                 oracleManager.updateState('psAppRequirements.sdeLibraryRegistered', true);
+                
+                // Also update the virtual database file for OCP tracking
+                const dbfPath = '/u01/app/oracle/oradata/ORCL/system01.dbf';
+                let dbfContent = this.fs.cat(dbfPath) || '# Oracle Database System Tablespace\n# This file contains database metadata\n\n';
+                
+                if (!dbfContent.includes('ST_SHAPELIB_REGISTERED')) {
+                    dbfContent += 'ST_SHAPELIB_REGISTERED\n';
+                    this.fs.updateFile(dbfPath, dbfContent);
+                }
             }
             return;
         }
