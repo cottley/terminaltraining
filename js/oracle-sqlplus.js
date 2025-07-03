@@ -267,19 +267,20 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
-        // Handle CONNECT/CONN command
-        const isConnectCmd = sqlCommand.startsWith('CONNECT ') || 
-                           sqlCommand.startsWith('CONN ') ||
-                           sqlCommand === 'CONNECT' ||
-                           sqlCommand === 'CONN';
+        // Handle CONNECT/CONN command (strip semicolon for parsing)
+        const sqlCommandNoSemicolon = sqlCommand.endsWith(';') ? sqlCommand.slice(0, -1).trim() : sqlCommand;
+        const isConnectCmd = sqlCommandNoSemicolon.startsWith('CONNECT ') || 
+                           sqlCommandNoSemicolon.startsWith('CONN ') ||
+                           sqlCommandNoSemicolon === 'CONNECT' ||
+                           sqlCommandNoSemicolon === 'CONN';
         
         if (isConnectCmd) {
             let connectPart = '';
-            if (sqlCommand.startsWith('CONNECT ')) {
-                connectPart = sqlCommand.substring(8).trim();
-            } else if (sqlCommand.startsWith('CONN ')) {
-                connectPart = sqlCommand.substring(5).trim();
-            } else if (sqlCommand === 'CONNECT' || sqlCommand === 'CONN') {
+            if (sqlCommandNoSemicolon.startsWith('CONNECT ')) {
+                connectPart = sqlCommandNoSemicolon.substring(8).trim();
+            } else if (sqlCommandNoSemicolon.startsWith('CONN ')) {
+                connectPart = sqlCommandNoSemicolon.substring(5).trim();
+            } else if (sqlCommandNoSemicolon === 'CONNECT' || sqlCommandNoSemicolon === 'CONN') {
                 // Just the command without arguments - should prompt for username
                 this.terminal.writeln('Enter user-name: ');
                 
