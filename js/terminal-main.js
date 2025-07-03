@@ -556,9 +556,18 @@ term.onData(data => {
                     // Get files in the directory
                     const files = fs.ls(searchPath);
                     if (files) {
-                        const matches = files
+                        let matches = files
                             .map(f => f.name)
                             .filter(name => name.startsWith(searchTerm));
+                        
+                        // For cd command, only show directories
+                        const firstCommand = parts[0].toLowerCase();
+                        if (firstCommand === 'cd') {
+                            matches = matches.filter(name => {
+                                const fullPath = searchPath === '/' ? `/${name}` : `${searchPath}/${name}`;
+                                return fs.isDirectory(fullPath);
+                            });
+                        }
                         
                         if (matches.length === 1) {
                             const completion = matches[0].slice(searchTerm.length);
@@ -596,9 +605,15 @@ term.onData(data => {
                     // Complete from current directory
                     const files = fs.ls('.');
                     if (files) {
-                        const matches = files
+                        let matches = files
                             .map(f => f.name)
                             .filter(name => name.startsWith(lastPart));
+                        
+                        // For cd command, only show directories
+                        const firstCommand = parts[0].toLowerCase();
+                        if (firstCommand === 'cd') {
+                            matches = matches.filter(name => fs.isDirectory(name));
+                        }
                         
                         if (matches.length === 1) {
                             const completion = matches[0].slice(lastPart.length);
