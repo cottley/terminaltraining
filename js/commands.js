@@ -503,17 +503,25 @@ class CommandProcessor {
         if (longFormat) {
             this.terminal.writeln(`total ${files.length * 4}`);
             
-            // Find the maximum size length for dynamic padding
+            // Find the maximum lengths for dynamic padding
             const maxSizeLength = Math.max(
                 ...files.map(file => this.formatFileSize(file.size || 4096, humanReadable).length)
+            );
+            const maxOwnerLength = Math.max(
+                ...files.map(file => (file.owner || 'root').length)
+            );
+            const maxGroupLength = Math.max(
+                ...files.map(file => (file.group || 'root').length)
             );
             
             files.forEach(file => {
                 const date = file.modified ? this.formatDate(file.modified) : 'Jan  1 00:00';
                 const formattedSize = this.formatFileSize(file.size || 4096, humanReadable);
-                const paddedSize = formattedSize.padStart(maxSizeLength, ' '); // Dynamic padding based on largest file
+                const paddedSize = formattedSize.padStart(maxSizeLength, ' ');
+                const paddedOwner = (file.owner || 'root').padEnd(maxOwnerLength, ' ');
+                const paddedGroup = (file.group || 'root').padEnd(maxGroupLength, ' ');
                 this.terminal.writeln(
-                    `${file.permissions || 'drwxr-xr-x'} 1 ${file.owner || 'root'} ${file.group || 'root'} ${paddedSize} ${date} ${file.name}`
+                    `${file.permissions || 'drwxr-xr-x'} 1 ${paddedOwner} ${paddedGroup} ${paddedSize} ${date} ${file.name}`
                 );
             });
         } else {
