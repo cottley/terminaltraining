@@ -261,10 +261,11 @@ ALTER DATABASE DATAFILE 'undotbs01.dbf' AUTOEXTEND OFF;
 ALTER DATABASE DATAFILE 'users02.dbf' 
   AUTOEXTEND ON NEXT 25M MAXSIZE 1G;
 
--- Query Datafile Information
+-- Query Database Information
 SELECT NAME FROM V$DATABASE;                    -- Database name
 SELECT TABLESPACE_NAME FROM DBA_TABLESPACES;    -- Available tablespaces
-SELECT USERNAME FROM DBA_USERS;                 -- Database users
+SELECT USERNAME FROM DBA_USERS;                 -- Database user names only
+SELECT * FROM DBA_USERS;                       -- Complete user information
 
 -- Features:
 -- • Creates actual .dbf files in the virtual filesystem
@@ -304,10 +305,12 @@ GRANT CONNECT, RESOURCE TO new_user;            -- Grant predefined roles
 REVOKE app_user FROM scott;                     -- Revoke role from user
 REVOKE CONNECT FROM expired_user;               -- Revoke system role
 
--- Query Role Information
+-- Query Role and User Information
 SELECT * FROM DBA_ROLES;                       -- List all roles in database
 SELECT * FROM USER_ROLE_PRIVS;                 -- Show roles granted to current user
 SELECT * FROM ROLE_TAB_PRIVS;                  -- Show table privileges granted to roles
+SELECT * FROM DBA_USERS;                       -- List all database users with details
+SELECT USERNAME FROM DBA_USERS;                -- List user names only
 
 -- Example Workflow: Create Application Role
 CREATE ROLE sales_role;

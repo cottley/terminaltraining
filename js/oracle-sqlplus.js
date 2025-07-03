@@ -732,8 +732,11 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                                    'SI_INFORMTN_SCHEMA', 'SYS$UMF', 'SYSBACKUP', 'SYSDG', 'SYSKM',
                                    'SYSRAC', 'WMSYS', 'XDB', 'XS$NULL'];
                 
-                // Show all database users from tracking system
-                const allUsers = oracleManager.getAllUsers();
+                // Show all database users from tracking system (exclude roles)
+                const allUsers = oracleManager.getAllUsers().filter(username => {
+                    const user = oracleManager.state.databaseUsers[username];
+                    return !user.isRole;
+                });
                 allUsers.forEach(username => {
                     this.terminal.writeln(username);
                 });
@@ -746,6 +749,81 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                 this.terminal.writeln('');
                 const count = allUsers.length + systemUsers.length;
                 this.terminal.writeln(`${count} rows selected.`);
+                this.terminal.writeln('');
+            }
+            return;
+        }
+        
+        // Full DBA_USERS query  
+        if (sqlCommand.startsWith('SELECT * FROM DBA_USERS') || sqlCommand.startsWith('SELECT*FROM DBA_USERS') ||
+            sqlCommand.startsWith('SELECT * FROM dba_users') || sqlCommand.startsWith('SELECT*FROM dba_users')) {
+            if (!connected) {
+                this.terminal.writeln('ERROR:');
+                this.terminal.writeln('ORA-00942: table or view does not exist');
+                this.terminal.writeln('');
+                this.terminal.writeln('Not connected to Oracle.');
+                return;
+            }
+
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                this.terminal.writeln('');
+                this.terminal.writeln('USERNAME                       USER_ID ACCOUNT_STATUS                   LOCK_DATE EXPIRY_DATE DEFAULT_TABLESPACE     TEMPORARY_TABLESPACE   CREATED   PROFILE                        INITIAL_RSRC_CONSUMER_GROUP    EXTERNAL_NAME');
+                this.terminal.writeln('------------------------------ ------- -------------------------------- --------- ----------- ---------------------- ---------------------- --------- ------------------------------ ------------------------------ -------------');
+                
+                // Get all users from the database users tracking system
+                const allDatabaseUsers = Object.keys(oracleManager.state.databaseUsers);
+                let userId = 1;
+                
+                allDatabaseUsers.forEach(username => {
+                    const user = oracleManager.state.databaseUsers[username];
+                    // Only show actual users, not roles
+                    if (user.created && !user.isRole) {
+                        const accountStatus = user.locked ? 'EXPIRED & LOCKED' : 'OPEN';
+                        const lockDate = user.locked ? '01-JAN-24' : '';
+                        const expiryDate = user.locked ? '01-JAN-24' : '';
+                        const defaultTablespace = (username === 'SYS' || username === 'SYSTEM') ? 'SYSTEM' : 'USERS';
+                        const tempTablespace = 'TEMP';
+                        const created = '01-JAN-24';
+                        const profile = 'DEFAULT';
+                        const consumerGroup = 'DEFAULT_CONSUMER_GROUP';
+                        
+                        this.terminal.writeln(`${username.padEnd(30)} ${userId.toString().padStart(7)} ${accountStatus.padEnd(32)} ${lockDate.padEnd(9)} ${expiryDate.padEnd(11)} ${defaultTablespace.padEnd(22)} ${tempTablespace.padEnd(22)} ${created.padEnd(9)} ${profile.padEnd(30)} ${consumerGroup.padEnd(30)}`);
+                        userId++;
+                    }
+                });
+                
+                // Add some standard system users that are always present
+                const systemUsers = [
+                    { name: 'ANONYMOUS', status: 'LOCKED', tablespace: 'SYSAUX' },
+                    { name: 'CTXSYS', status: 'LOCKED', tablespace: 'SYSAUX' },
+                    { name: 'GSMADMIN_INTERNAL', status: 'LOCKED', tablespace: 'SYSAUX' },
+                    { name: 'MDSYS', status: 'LOCKED', tablespace: 'SYSAUX' },
+                    { name: 'OUTLN', status: 'LOCKED', tablespace: 'SYSTEM' },
+                    { name: 'REMOTE_SCHEDULER_AGENT', status: 'LOCKED', tablespace: 'SYSAUX' },
+                    { name: 'WMSYS', status: 'LOCKED', tablespace: 'SYSAUX' },
+                    { name: 'XDB', status: 'LOCKED', tablespace: 'SYSAUX' }
+                ];
+                
+                systemUsers.forEach(sysUser => {
+                    const accountStatus = sysUser.status + ' & EXPIRED';
+                    const lockDate = '01-JAN-24';
+                    const expiryDate = '01-JAN-24';
+                    const defaultTablespace = sysUser.tablespace;
+                    const tempTablespace = 'TEMP';
+                    const created = '01-JAN-24';
+                    const profile = 'DEFAULT';
+                    const consumerGroup = 'DEFAULT_CONSUMER_GROUP';
+                    
+                    this.terminal.writeln(`${sysUser.name.padEnd(30)} ${userId.toString().padStart(7)} ${accountStatus.padEnd(32)} ${lockDate.padEnd(9)} ${expiryDate.padEnd(11)} ${defaultTablespace.padEnd(22)} ${tempTablespace.padEnd(22)} ${created.padEnd(9)} ${profile.padEnd(30)} ${consumerGroup.padEnd(30)}`);
+                    userId++;
+                });
+                
+                this.terminal.writeln('');
+                const totalUsers = Object.values(oracleManager.state.databaseUsers).filter(u => u.created && !u.isRole).length + systemUsers.length;
+                this.terminal.writeln(`${totalUsers} rows selected.`);
                 this.terminal.writeln('');
             }
             return;
