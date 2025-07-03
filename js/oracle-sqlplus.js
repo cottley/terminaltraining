@@ -157,10 +157,12 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     this.terminal.writeln('Connected.');
                     currentUser = 'SYS';
                     asSysdba = true;
+                    connected = true;
                 } else {
                     this.terminal.writeln('Connected to an idle instance.');
                     currentUser = 'SYS';
                     asSysdba = true;
+                    connected = true;
                 }
             } else if (connString === '/') {
                 // OS authentication as regular user
@@ -171,6 +173,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     this.terminal.writeln('Connected.');
                     currentUser = 'SYSTEM';
                     asSysdba = false;
+                    connected = true;
                 }
             } else {
                 // Check if it's just a username without password
@@ -300,10 +303,12 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     this.terminal.writeln('Connected.');
                     currentUser = 'SYS';
                     asSysdba = true;
+                    connected = true;
                 } else {
                     this.terminal.writeln('Connected to an idle instance.');
                     currentUser = 'SYS';
                     asSysdba = true;
+                    connected = true;
                 }
             } else if (connString === '/') {
                 // OS authentication as regular user
@@ -314,6 +319,7 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     this.terminal.writeln('Connected.');
                     currentUser = 'SYSTEM';
                     asSysdba = false;
+                    connected = true;
                 }
             } else {
                 // Check if it's just a username without password
