@@ -657,6 +657,12 @@ umask 022
             case 'whoami':
                 this.terminal.writeln(this.fs.currentUser);
                 break;
+            case 'about':
+                this.terminal.writeln(`Terminal Training Environment v${VERSION_INFO.version}`);
+                this.terminal.writeln(`Build: ${VERSION_INFO.build}`);
+                this.terminal.writeln(`Creator: ${VERSION_INFO.creator}`);
+                this.terminal.writeln(`Co-Creator: ${VERSION_INFO.coCreator}`);
+                break;
             case 'date':
                 this.terminal.writeln(new Date().toString());
                 break;

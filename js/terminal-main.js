@@ -17,6 +17,18 @@ const cmdProcessor = new CommandProcessor(term, fs);
 
 term.open(document.getElementById('terminal'));
 
+// Update title bar with version information
+function updateTitleWithVersion() {
+    const titleElement = document.getElementById('terminal-title');
+    if (titleElement && window.VERSION_INFO) {
+        const versionText = `v${VERSION_INFO.version} (${VERSION_INFO.build})`;
+        titleElement.textContent = `Terminal - root@proddb01sim - ${versionText}`;
+    }
+}
+
+// Call the function to update the title
+updateTitleWithVersion();
+
 // Helper function to find longest common prefix among strings
 function getLongestCommonPrefix(strings) {
     if (strings.length === 0) return '';
