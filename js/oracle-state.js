@@ -92,6 +92,17 @@ class OracleManager {
                 'CONNECT': { password: null, privileges: [], locked: false, created: true, isRole: true },
                 'RESOURCE': { password: null, privileges: [], locked: false, created: true, isRole: true },
                 'DBA': { password: null, privileges: [], locked: false, created: true, isRole: true }
+            },
+            
+            // Flashback restore points tracking
+            restorePoints: {
+                // Example format:
+                // 'RESTORE_POINT_NAME': {
+                //     scn: 1234567,
+                //     time: '2024-01-01 10:30:15',
+                //     guarantee: false,
+                //     storage_size: 0
+                // }
             }
         };
         
@@ -1035,6 +1046,44 @@ class OracleManager {
         }
 
         return role.grantedPrivileges || [];
+    }
+    
+    // Restore Point Management
+    createRestorePoint(name, guarantee = false) {
+        // Generate a realistic SCN (System Change Number)
+        const scn = Math.floor(Math.random() * 9000000) + 1000000;
+        
+        // Generate current timestamp
+        const now = new Date();
+        const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+        
+        this.state.restorePoints[name.toUpperCase()] = {
+            scn: scn,
+            time: timestamp,
+            guarantee: guarantee,
+            storage_size: guarantee ? 0 : null
+        };
+        
+        this.saveState();
+        return { scn, timestamp };
+    }
+    
+    dropRestorePoint(name) {
+        const upperName = name.toUpperCase();
+        if (this.state.restorePoints[upperName]) {
+            delete this.state.restorePoints[upperName];
+            this.saveState();
+            return true;
+        }
+        return false;
+    }
+    
+    getRestorePoints() {
+        return this.state.restorePoints;
+    }
+    
+    restorePointExists(name) {
+        return this.state.restorePoints.hasOwnProperty(name.toUpperCase());
     }
 }
 

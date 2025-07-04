@@ -855,6 +855,43 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
+        // CREATE RESTORE POINT commands
+        if (sqlCommand.match(/CREATE\s+RESTORE\s+POINT/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                return;
+            }
+            
+            this.handleCreateRestorePoint(sqlCommand, input);
+            return;
+        }
+        
+        // DROP RESTORE POINT commands
+        if (sqlCommand.match(/DROP\s+RESTORE\s+POINT/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                return;
+            }
+            
+            this.handleDropRestorePoint(sqlCommand, input);
+            return;
+        }
+        
+        // Query restore points
+        if (sqlCommand.match(/SELECT.*FROM\s+V\$RESTORE_POINT/i) || 
+            sqlCommand.match(/SELECT.*FROM\s+DBA_RESTORE_POINT/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                return;
+            }
+            
+            this.handleQueryRestorePoints(sqlCommand);
+            return;
+        }
+        
         if (sqlCommand.startsWith('SELECT TABLESPACE_NAME FROM DBA_TABLESPACES')) {
             if (!oracleManager.getState('databaseStarted')) {
                 this.terminal.writeln('ERROR at line 1:');
@@ -2384,6 +2421,148 @@ Generated: ${new Date().toLocaleString()}
         
         this.terminal.writeln('');
         this.terminal.writeln('Role dropped.');
+        this.terminal.writeln('');
+    };
+    
+    // Handle CREATE RESTORE POINT command
+    this.handleCreateRestorePoint = function(sqlCommand, input) {
+        // Parse CREATE RESTORE POINT command
+        // Supports: CREATE RESTORE POINT point_name [GUARANTEE FLASHBACK DATABASE]
+        const restorePointMatch = sqlCommand.match(/CREATE\s+RESTORE\s+POINT\s+(\w+)(?:\s+GUARANTEE\s+FLASHBACK\s+DATABASE)?/i);
+        
+        if (!restorePointMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00900: invalid SQL statement');
+            return;
+        }
+        
+        const pointName = restorePointMatch[1].toUpperCase();
+        const isGuaranteed = sqlCommand.match(/GUARANTEE\s+FLASHBACK\s+DATABASE/i) !== null;
+        
+        // Check if restore point already exists
+        if (oracleManager.restorePointExists(pointName)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-38778: cannot create restore point '${pointName}'`);
+            this.terminal.writeln('ORA-38780: restore point '${pointName}' already exists');
+            return;
+        }
+        
+        // Create the restore point
+        const result = oracleManager.createRestorePoint(pointName, isGuaranteed);
+        
+        this.terminal.writeln('');
+        this.terminal.writeln('Restore point created.');
+        this.terminal.writeln('');
+    };
+    
+    // Handle DROP RESTORE POINT command
+    this.handleDropRestorePoint = function(sqlCommand, input) {
+        // Parse DROP RESTORE POINT command
+        const restorePointMatch = sqlCommand.match(/DROP\s+RESTORE\s+POINT\s+(\w+)/i);
+        
+        if (!restorePointMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00900: invalid SQL statement');
+            return;
+        }
+        
+        const pointName = restorePointMatch[1].toUpperCase();
+        
+        // Check if restore point exists
+        if (!oracleManager.restorePointExists(pointName)) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-38779: cannot drop restore point '${pointName}'`);
+            this.terminal.writeln('ORA-38781: restore point '${pointName}' does not exist');
+            return;
+        }
+        
+        // Drop the restore point
+        const success = oracleManager.dropRestorePoint(pointName);
+        
+        if (success) {
+            this.terminal.writeln('');
+            this.terminal.writeln('Restore point dropped.');
+            this.terminal.writeln('');
+        } else {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln(`ORA-38779: cannot drop restore point '${pointName}'`);
+        }
+    };
+    
+    // Handle query restore points
+    this.handleQueryRestorePoints = function(sqlCommand) {
+        const restorePoints = oracleManager.getRestorePoints();
+        const pointNames = Object.keys(restorePoints);
+        
+        if (sqlCommand.match(/SELECT.*\*.*FROM\s+V\$RESTORE_POINT/i)) {
+            // V$RESTORE_POINT view - complete information
+            this.terminal.writeln('');
+            this.terminal.writeln('       SCN NAME                           TIME                         DATABASE_INCARNATION# GUARANTEE_ STORAGE_SIZE');
+            this.terminal.writeln('---------- ------------------------------ ---------------------------- ---------------------- ---------- ------------');
+            
+            if (pointNames.length === 0) {
+                this.terminal.writeln('');
+                this.terminal.writeln('no rows selected');
+            } else {
+                pointNames.forEach(name => {
+                    const point = restorePoints[name];
+                    const scn = point.scn.toString().padStart(10);
+                    const pointName = name.padEnd(30);
+                    const timestamp = point.time.padEnd(28);
+                    const incarnation = '1'.padStart(22);
+                    const guarantee = point.guarantee ? 'YES'.padEnd(10) : 'NO'.padEnd(10);
+                    const storageSize = (point.storage_size !== null ? point.storage_size.toString() : '').padStart(12);
+                    
+                    this.terminal.writeln(`${scn} ${pointName} ${timestamp} ${incarnation} ${guarantee} ${storageSize}`);
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${pointNames.length} row${pointNames.length === 1 ? '' : 's'} selected.`);
+            }
+            
+        } else if (sqlCommand.match(/SELECT.*NAME.*FROM/i)) {
+            // Just restore point names
+            this.terminal.writeln('');
+            this.terminal.writeln('NAME');
+            this.terminal.writeln('------------------------------');
+            
+            if (pointNames.length === 0) {
+                this.terminal.writeln('');
+                this.terminal.writeln('no rows selected');
+            } else {
+                pointNames.forEach(name => {
+                    this.terminal.writeln(name);
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${pointNames.length} row${pointNames.length === 1 ? '' : 's'} selected.`);
+            }
+            
+        } else {
+            // Default view - basic information
+            this.terminal.writeln('');
+            this.terminal.writeln('NAME                           TIME                         GUARANTEE_ SCN');
+            this.terminal.writeln('------------------------------ ---------------------------- ---------- ----------');
+            
+            if (pointNames.length === 0) {
+                this.terminal.writeln('');
+                this.terminal.writeln('no rows selected');
+            } else {
+                pointNames.forEach(name => {
+                    const point = restorePoints[name];
+                    const pointName = name.padEnd(30);
+                    const timestamp = point.time.padEnd(28);
+                    const guarantee = point.guarantee ? 'YES'.padEnd(10) : 'NO'.padEnd(10);
+                    const scn = point.scn.toString().padStart(10);
+                    
+                    this.terminal.writeln(`${pointName} ${timestamp} ${guarantee} ${scn}`);
+                });
+                
+                this.terminal.writeln('');
+                this.terminal.writeln(`${pointNames.length} row${pointNames.length === 1 ? '' : 's'} selected.`);
+            }
+        }
+        
         this.terminal.writeln('');
     };
 };

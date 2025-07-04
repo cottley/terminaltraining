@@ -54,6 +54,7 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 - Export/Import utilities (expdp/impdp)
 - Archive log management
 - Point-in-time recovery simulation
+- **Flashback restore points** (create, list, and drop restore points)
 
 ### 🛡️ **Security & Patch Management**
 - OPatch utility for Oracle patch management
@@ -470,6 +471,61 @@ GRANT sales_role TO sales_user2;
 -- • Realistic Oracle error messages and validation
 -- • Role hierarchy and inheritance support
 -- • Comprehensive role query views (DBA_ROLES, USER_ROLE_PRIVS, ROLE_TAB_PRIVS)
+```
+
+### Oracle Flashback Restore Points
+```sql
+-- SQL*Plus Flashback Restore Point Management
+-- Note: These commands work within SQL*Plus after connecting as SYSDBA
+
+-- Create Restore Points
+CREATE RESTORE POINT before_upgrade;                 -- Create normal restore point
+CREATE RESTORE POINT critical_point GUARANTEE FLASHBACK DATABASE;  -- Create guaranteed restore point
+
+-- Query Restore Points
+SELECT * FROM V$RESTORE_POINT;                       -- View all restore point details
+SELECT NAME, TIME, GUARANTEE_, SCN FROM V$RESTORE_POINT;  -- View basic restore point info
+SELECT NAME FROM V$RESTORE_POINT;                    -- List restore point names only
+
+-- Drop Restore Points
+DROP RESTORE POINT before_upgrade;                   -- Drop specific restore point
+DROP RESTORE POINT critical_point;                   -- Drop guaranteed restore point
+
+-- Example Workflow: Database Maintenance
+CREATE RESTORE POINT before_patch;                   -- Create restore point before patching
+-- ... perform database maintenance ...
+SELECT * FROM V$RESTORE_POINT;                       -- Verify restore point exists
+-- ... if maintenance successful ...
+DROP RESTORE POINT before_patch;                     -- Clean up restore point
+
+-- Example: Critical Operations
+CREATE RESTORE POINT major_upgrade GUARANTEE FLASHBACK DATABASE;  -- Guaranteed point for major changes
+-- ... perform critical operations ...
+SELECT NAME, TIME, GUARANTEE_ FROM V$RESTORE_POINT;   -- Check restore point status
+-- ... if operations successful ...
+DROP RESTORE POINT major_upgrade;                    -- Remove guarantee restore point
+
+-- Query Examples
+-- List all restore points with timestamps
+SELECT NAME, TIME, GUARANTEE_, SCN FROM V$RESTORE_POINT ORDER BY TIME;
+
+-- Check for guaranteed restore points
+SELECT NAME, GUARANTEE_, STORAGE_SIZE FROM V$RESTORE_POINT WHERE GUARANTEE_ = 'YES';
+
+-- Count restore points
+SELECT COUNT(*) as RESTORE_POINT_COUNT FROM V$RESTORE_POINT;
+
+-- Features:
+-- • Create normal and guaranteed restore points
+-- • Automatic SCN (System Change Number) generation with realistic values
+-- • Persistent storage across SQL*Plus sessions
+-- • Realistic Oracle error messages (ORA-38778, ORA-38779, ORA-38780, ORA-38781)
+-- • Duplicate name validation and prevention
+-- • Proper timestamp formatting (YYYY-MM-DD HH24:MI:SS)
+-- • Support for V$RESTORE_POINT queries with multiple output formats
+-- • Integration with Oracle flashback database simulation
+-- • Realistic guarantee flag and storage size tracking
+-- • Case-insensitive restore point names (automatically converted to uppercase)
 ```
 
 ### Advanced Pipeline Operations
