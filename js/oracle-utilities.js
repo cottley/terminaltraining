@@ -613,3 +613,52 @@ CommandProcessor.prototype.cmdOraenv = function(args) {
     
     oracleManager.updateState('oracleEnvironmentSet', true);
 };
+
+// dbhome command - returns Oracle Home path for given SID
+CommandProcessor.prototype.cmdDbhome = function(args) {
+    if (!oracleManager.getState('softwareInstalled')) {
+        this.terminal.writeln('-bash: dbhome: command not found');
+        return;
+    }
+    
+    let sid = 'ORCL';
+    if (args.length > 0) {
+        sid = args[0].toUpperCase();
+    }
+    
+    // Check if SID exists in oratab (simulate oratab lookup)
+    const oratab = this.getOratab();
+    let found = false;
+    let oracleHome = '';
+    
+    for (let entry of oratab) {
+        if (entry.sid === sid) {
+            found = true;
+            oracleHome = entry.oracleHome;
+            break;
+        }
+    }
+    
+    if (!found) {
+        this.terminal.writeln(`dbhome: ORACLE_SID ${sid} not found in oratab`);
+        return;
+    }
+    
+    this.terminal.writeln(oracleHome);
+};
+
+// Helper function to simulate oratab content
+CommandProcessor.prototype.getOratab = function() {
+    // Simulate oratab entries based on current Oracle state
+    let oratab = [];
+    
+    if (oracleManager.getState('databaseCreated')) {
+        oratab.push({
+            sid: 'ORCL',
+            oracleHome: '/u01/app/oracle/product/19.0.0/dbhome_1',
+            autostart: 'Y'
+        });
+    }
+    
+    return oratab;
+};

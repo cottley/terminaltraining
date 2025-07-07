@@ -450,6 +450,9 @@ CommandProcessor.prototype.processOracleCommand = function(command, args) {
         case 'oraenv':
             this.cmdOraenv(args);
             return true;
+        case 'dbhome':
+            this.cmdDbhome(args);
+            return true;
         case '.':
             // Handle sourcing commands like '. oraenv'
             if (args.length > 0 && args[0] === 'oraenv') {
