@@ -1109,6 +1109,82 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
+        // DBA_DATA_FILES specific column queries
+        if (sqlCommand.match(/SELECT\s+.*FROM\s+DBA_DATA_FILES/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                // Parse the SELECT columns
+                const selectMatch = sqlCommand.match(/SELECT\s+(.*?)\s+FROM\s+DBA_DATA_FILES/i);
+                if (selectMatch) {
+                    const columns = selectMatch[1].trim();
+                    
+                    // Handle specific query: tablespace_name, bytes/1024/1024 (with or without alias)
+                    if (columns.match(/TABLESPACE_NAME\s*,\s*BYTES\s*\/\s*1024\s*\/\s*1024/i)) {
+                        this.terminal.writeln('');
+                        // Check if there's an alias like "BM"
+                        const aliasMatch = columns.match(/BYTES\s*\/\s*1024\s*\/\s*1024\s+(\w+)/i);
+                        const columnHeader = aliasMatch ? aliasMatch[1].toUpperCase() : 'MB';
+                        this.terminal.writeln(`TABLESPACE_NAME ${columnHeader.padStart(9)}`);
+                        this.terminal.writeln('--------------- ---------');
+                        
+                        // Standard Oracle tablespace datafiles with sizes in MB
+                        this.terminal.writeln('SYSTEM                800');
+                        this.terminal.writeln('SYSAUX                500');
+                        this.terminal.writeln('UNDOTBS1              100');
+                        this.terminal.writeln('USERS                   5');
+                        
+                        // Check for additional datafiles
+                        const datafileDir = '/u01/app/oracle/oradata/ORCL';
+                        const files = this.fs.ls(datafileDir);
+                        let additionalFiles = 0;
+                        
+                        if (files) {
+                            files.forEach(file => {
+                                if (file.name.endsWith('.dbf') && !['system01.dbf', 'sysaux01.dbf', 'undotbs01.dbf', 'users01.dbf'].includes(file.name)) {
+                                    let tablespace = 'USERS';
+                                    if (file.name.includes('system')) tablespace = 'SYSTEM';
+                                    else if (file.name.includes('sysaux')) tablespace = 'SYSAUX';
+                                    else if (file.name.includes('undo')) tablespace = 'UNDOTBS1';
+                                    else if (file.name.includes('temp')) tablespace = 'TEMP';
+                                    
+                                    const fileSize = file.size || 104857600;
+                                    const sizeMB = Math.floor(fileSize / 1024 / 1024);
+                                    
+                                    this.terminal.writeln(`${tablespace.padEnd(15)} ${sizeMB.toString().padStart(9)}`);
+                                    additionalFiles++;
+                                }
+                            });
+                        }
+                        
+                        this.terminal.writeln('');
+                        this.terminal.writeln(`${4 + additionalFiles} rows selected.`);
+                        this.terminal.writeln('');
+                        return;
+                    }
+                    
+                    // Handle other column combinations for DBA_DATA_FILES
+                    if (columns.match(/TABLESPACE_NAME\s*,\s*BYTES/i)) {
+                        this.terminal.writeln('');
+                        this.terminal.writeln('TABLESPACE_NAME      BYTES');
+                        this.terminal.writeln('--------------- ----------');
+                        
+                        this.terminal.writeln('SYSTEM           838860800');
+                        this.terminal.writeln('SYSAUX           524288000');
+                        this.terminal.writeln('UNDOTBS1         104857600');
+                        this.terminal.writeln('USERS              5242880');
+                        
+                        this.terminal.writeln('');
+                        this.terminal.writeln('4 rows selected.');
+                        this.terminal.writeln('');
+                        return;
+                    }
+                }
+            }
+            return;
+        }
+        
         // DBA_FREE_SPACE view for space monitoring
         if (sqlCommand.startsWith('SELECT * FROM DBA_FREE_SPACE') || sqlCommand.startsWith('SELECT*FROM DBA_FREE_SPACE')) {
             if (!oracleManager.getState('databaseStarted')) {
