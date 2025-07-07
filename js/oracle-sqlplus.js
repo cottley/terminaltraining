@@ -1185,7 +1185,112 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
-        // DBA_FREE_SPACE view for space monitoring
+        // DBA_FREE_SPACE specific column queries with aggregation
+        if (sqlCommand.match(/SELECT\s+.*FROM\s+DBA_FREE_SPACE/i)) {
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else {
+                // Parse the SELECT columns
+                const selectMatch = sqlCommand.match(/SELECT\s+(.*?)\s+FROM\s+DBA_FREE_SPACE/i);
+                if (selectMatch) {
+                    const columns = selectMatch[1].trim();
+                    
+                    // Handle GROUP BY queries with SUM aggregation
+                    if (columns.match(/TABLESPACE_NAME\s*,\s*SUM\s*\(\s*BYTES\s*\)/i) && sqlCommand.match(/GROUP\s+BY\s+TABLESPACE_NAME/i)) {
+                        this.terminal.writeln('');
+                        
+                        // Check if there's an alias for the SUM expression
+                        const aliasMatch = columns.match(/SUM\s*\(\s*BYTES\s*\)\s*\/\s*1024\s*\/\s*1024\s+(\w+)/i);
+                        const columnHeader = aliasMatch ? aliasMatch[1].toUpperCase() : 'SUM(BYTES)';
+                        
+                        // Check if it's bytes/1024/1024 calculation
+                        const isMBCalculation = columns.match(/SUM\s*\(\s*BYTES\s*\)\s*\/\s*1024\s*\/\s*1024/i);
+                        
+                        if (isMBCalculation) {
+                            this.terminal.writeln(`TABLESPACE_NAME ${columnHeader.padStart(9)}`);
+                            this.terminal.writeln('--------------- ---------');
+                            
+                            // Calculate total free space per tablespace in MB
+                            // SYSTEM - sum of free space extents
+                            const systemFreeBytes = 758382592 + 80478208;
+                            const systemFreeMB = Math.floor(systemFreeBytes / 1024 / 1024);
+                            this.terminal.writeln(`SYSTEM          ${systemFreeMB.toString().padStart(9)}`);
+                            
+                            // SYSAUX - sum of free space extents
+                            const sysauxFreeBytes = 450969600 + 73318400;
+                            const sysauxFreeMB = Math.floor(sysauxFreeBytes / 1024 / 1024);
+                            this.terminal.writeln(`SYSAUX          ${sysauxFreeMB.toString().padStart(9)}`);
+                            
+                            // UNDOTBS1 - sum of free space extents
+                            const undoFreeBytes = 96468992 + 8388608;
+                            const undoFreeMB = Math.floor(undoFreeBytes / 1024 / 1024);
+                            this.terminal.writeln(`UNDOTBS1        ${undoFreeMB.toString().padStart(9)}`);
+                            
+                            // USERS - calculate based on actual files or default
+                            const usersFiles = this.fs.ls('/u01/app/oracle/oradata/ORCL');
+                            let usersFreeBytes = 4194304 + 1048576; // Default free space
+                            
+                            if (usersFiles) {
+                                let totalUsersFree = 0;
+                                usersFiles.forEach(file => {
+                                    if (file.name.startsWith('users') && file.name.endsWith('.dbf')) {
+                                        const fileSize = file.size || 5242880;
+                                        const usedSpace = Math.floor(fileSize * 0.2); // 20% free
+                                        totalUsersFree += usedSpace;
+                                    }
+                                });
+                                if (totalUsersFree > 0) {
+                                    usersFreeBytes = totalUsersFree;
+                                }
+                            }
+                            
+                            const usersFreeMB = Math.floor(usersFreeBytes / 1024 / 1024);
+                            this.terminal.writeln(`USERS           ${usersFreeMB.toString().padStart(9)}`);
+                        } else {
+                            this.terminal.writeln(`TABLESPACE_NAME ${columnHeader.padStart(12)}`);
+                            this.terminal.writeln('--------------- ------------');
+                            
+                            // Show bytes values
+                            this.terminal.writeln(`SYSTEM          ${(758382592 + 80478208).toString().padStart(12)}`);
+                            this.terminal.writeln(`SYSAUX          ${(450969600 + 73318400).toString().padStart(12)}`);
+                            this.terminal.writeln(`UNDOTBS1        ${(96468992 + 8388608).toString().padStart(12)}`);
+                            this.terminal.writeln(`USERS           ${(4194304 + 1048576).toString().padStart(12)}`);
+                        }
+                        
+                        this.terminal.writeln('');
+                        this.terminal.writeln('4 rows selected.');
+                        this.terminal.writeln('');
+                        return;
+                    }
+                    
+                    // Handle other column combinations for DBA_FREE_SPACE
+                    if (columns.match(/TABLESPACE_NAME\s*,\s*BYTES/i)) {
+                        this.terminal.writeln('');
+                        this.terminal.writeln('TABLESPACE_NAME      BYTES');
+                        this.terminal.writeln('--------------- ----------');
+                        
+                        // Show individual free space extents
+                        this.terminal.writeln('SYSTEM           758382592');
+                        this.terminal.writeln('SYSTEM            80478208');
+                        this.terminal.writeln('SYSAUX           450969600');
+                        this.terminal.writeln('SYSAUX            73318400');
+                        this.terminal.writeln('UNDOTBS1          96468992');
+                        this.terminal.writeln('UNDOTBS1           8388608');
+                        this.terminal.writeln('USERS              4194304');
+                        this.terminal.writeln('USERS              1048576');
+                        
+                        this.terminal.writeln('');
+                        this.terminal.writeln('8 rows selected.');
+                        this.terminal.writeln('');
+                        return;
+                    }
+                }
+            }
+            return;
+        }
+        
+        // DBA_FREE_SPACE view for space monitoring (SELECT * queries)
         if (sqlCommand.startsWith('SELECT * FROM DBA_FREE_SPACE') || sqlCommand.startsWith('SELECT*FROM DBA_FREE_SPACE')) {
             if (!oracleManager.getState('databaseStarted')) {
                 this.terminal.writeln('ERROR at line 1:');
