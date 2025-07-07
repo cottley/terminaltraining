@@ -110,9 +110,14 @@ CommandProcessor.prototype.cmdOrainstRoot = function(args) {
     this.terminal.writeln('Changing groupname of /u01/app/oraInventory to oinstall.');
     this.terminal.writeln('The execution of the script is complete.');
     
-    // Update inventory permissions
+    // Create and update inventory permissions
     const invPath = this.fs.resolvePath('/u01/app/oraInventory');
-    const invNode = this.fs.getNode(invPath);
+    let invNode = this.fs.getNode(invPath);
+    if (!invNode) {
+        // Create the directory if it doesn't exist
+        this.fs.mkdir('/u01/app/oraInventory', true);
+        invNode = this.fs.getNode(invPath);
+    }
     if (invNode) {
         invNode.permissions = 'drwxrwx---';
         invNode.group = 'oinstall';
