@@ -2653,7 +2653,7 @@ Generated: ${new Date().toLocaleString()}
         if (!oracleManager.restorePointExists(pointName)) {
             this.terminal.writeln('ERROR at line 1:');
             this.terminal.writeln(`ORA-38779: cannot drop restore point '${pointName}'`);
-            this.terminal.writeln('ORA-38781: restore point '${pointName}' does not exist');
+            this.terminal.writeln(`ORA-38781: restore point '${pointName}' does not exist`);
             return;
         }
         
