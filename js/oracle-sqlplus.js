@@ -2443,7 +2443,7 @@ Generated: ${new Date().toLocaleString()}
         if (oracleManager.restorePointExists(pointName)) {
             this.terminal.writeln('ERROR at line 1:');
             this.terminal.writeln(`ORA-38778: cannot create restore point '${pointName}'`);
-            this.terminal.writeln('ORA-38780: restore point '${pointName}' already exists');
+            this.terminal.writeln(`ORA-38780: restore point '${pointName}' already exists`);
             return;
         }
         
