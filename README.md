@@ -285,7 +285,8 @@ BACKUP ARCHIVELOG ALL;                  # Archive log backup
 LIST BACKUP;                            # List all backup sets
 LIST BACKUP BY FILE;                    # List backups by file
 VALIDATE BACKUPSET;                     # Validate backup integrity
-VALIDATE DATABASE;                      # Validate database files
+VALIDATE DATABASE;                      # Validate database files (comprehensive)
+VALIDATE DATABASE CHECK LOGICAL;        # Validate with logical block checking
 
 # Archive Log Management
 LIST ARCHIVELOG ALL;                    # List all archived logs

@@ -519,6 +519,55 @@ CommandProcessor.prototype.enterRmanMode = function() {
         
         // Validate commands
         if (rmanCommand.includes('VALIDATE')) {
+            if (rmanCommand === 'VALIDATE DATABASE CHECK LOGICAL' || rmanCommand === 'VALIDATE DATABASE CHECK LOGICAL;') {
+                // Check database state
+                if (!oracleManager.getState('databaseStarted')) {
+                    this.terminal.writeln('RMAN-00571: ===========================================================');
+                    this.terminal.writeln('RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============');
+                    this.terminal.writeln('RMAN-00571: ===========================================================');
+                    this.terminal.writeln('RMAN-03002: failure of validate command at ' + new Date().toLocaleString());
+                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                    this.terminal.writeln('');
+                    return;
+                }
+                
+                this.terminal.writeln('');
+                this.terminal.writeln('Starting validate at ' + new Date().toLocaleString());
+                this.terminal.writeln('using target database control file instead of recovery catalog');
+                this.terminal.writeln('');
+                this.terminal.writeln('allocated channel: ORA_DISK_1');
+                this.terminal.writeln('channel ORA_DISK_1: SID=254 device type=DISK');
+                this.terminal.writeln('');
+                this.terminal.writeln('channel ORA_DISK_1: starting validation of datafile');
+                this.terminal.writeln('channel ORA_DISK_1: specifying datafile 1 for validation');
+                this.terminal.writeln('channel ORA_DISK_1: reading file 1');
+                this.terminal.writeln('channel ORA_DISK_1: performing logical block checking');
+                this.terminal.writeln('channel ORA_DISK_1: checking data block integrity');
+                this.terminal.writeln('channel ORA_DISK_1: checking index block integrity');
+                this.terminal.writeln('channel ORA_DISK_1: file 1 is valid');
+                this.terminal.writeln('channel ORA_DISK_1: specifying datafile 2 for validation');
+                this.terminal.writeln('channel ORA_DISK_1: reading file 2');
+                this.terminal.writeln('channel ORA_DISK_1: performing logical block checking');
+                this.terminal.writeln('channel ORA_DISK_1: checking data block integrity');
+                this.terminal.writeln('channel ORA_DISK_1: file 2 is valid');
+                this.terminal.writeln('channel ORA_DISK_1: specifying datafile 3 for validation');
+                this.terminal.writeln('channel ORA_DISK_1: reading file 3');
+                this.terminal.writeln('channel ORA_DISK_1: performing logical block checking');
+                this.terminal.writeln('channel ORA_DISK_1: file 3 is valid');
+                this.terminal.writeln('channel ORA_DISK_1: specifying datafile 4 for validation');
+                this.terminal.writeln('channel ORA_DISK_1: reading file 4');
+                this.terminal.writeln('channel ORA_DISK_1: performing logical block checking');
+                this.terminal.writeln('channel ORA_DISK_1: file 4 is valid');
+                this.terminal.writeln('channel ORA_DISK_1: validation complete, elapsed time: 00:00:12');
+                this.terminal.writeln('');
+                this.terminal.writeln('Finished validate at ' + new Date().toLocaleString());
+                this.terminal.writeln('');
+                this.terminal.writeln('Logical validation completed successfully.');
+                this.terminal.writeln('No corruption detected in database files.');
+                this.terminal.writeln('');
+                return;
+            }
+            
             if (rmanCommand.includes('BACKUPSET')) {
                 this.terminal.writeln('');
                 this.terminal.writeln('Starting validate at ' + new Date().toLocaleString());
@@ -531,16 +580,68 @@ CommandProcessor.prototype.enterRmanMode = function() {
                 this.terminal.writeln('Finished validate at ' + new Date().toLocaleString());
                 this.terminal.writeln('');
             } else if (rmanCommand.includes('DATABASE')) {
+                // Check database state
+                if (!oracleManager.getState('databaseStarted')) {
+                    this.terminal.writeln('RMAN-00571: ===========================================================');
+                    this.terminal.writeln('RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============');
+                    this.terminal.writeln('RMAN-00571: ===========================================================');
+                    this.terminal.writeln('RMAN-03002: failure of validate command at ' + new Date().toLocaleString());
+                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                    this.terminal.writeln('');
+                    return;
+                }
+                
                 this.terminal.writeln('');
                 this.terminal.writeln('Starting validate at ' + new Date().toLocaleString());
-                this.terminal.writeln('using channel ORA_DISK_1');
+                this.terminal.writeln('using target database control file instead of recovery catalog');
+                this.terminal.writeln('');
+                this.terminal.writeln('allocated channel: ORA_DISK_1');
+                this.terminal.writeln('channel ORA_DISK_1: SID=254 device type=DISK');
+                this.terminal.writeln('');
+                
+                // Validate individual datafiles
+                const datafiles = [
+                    { file: 1, name: '/u01/app/oracle/oradata/ORCL/system01.dbf', size: '800.00M', tablespace: 'SYSTEM' },
+                    { file: 2, name: '/u01/app/oracle/oradata/ORCL/sysaux01.dbf', size: '550.00M', tablespace: 'SYSAUX' },
+                    { file: 3, name: '/u01/app/oracle/oradata/ORCL/undotbs01.dbf', size: '200.00M', tablespace: 'UNDOTBS1' },
+                    { file: 4, name: '/u01/app/oracle/oradata/ORCL/users01.dbf', size: '5.00M', tablespace: 'USERS' },
+                    { file: 5, name: '/u01/app/oracle/oradata/ORCL/temp01.dbf', size: '20.00M', tablespace: 'TEMP' }
+                ];
+                
                 this.terminal.writeln('channel ORA_DISK_1: starting validation of datafile');
-                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/system01.dbf');
-                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/sysaux01.dbf');
-                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/undotbs01.dbf');
-                this.terminal.writeln('channel ORA_DISK_1: reading datafile=/u01/app/oracle/oradata/ORCL/users01.dbf');
-                this.terminal.writeln('channel ORA_DISK_1: validation complete, elapsed time: 00:00:08');
+                datafiles.forEach(df => {
+                    this.terminal.writeln(`channel ORA_DISK_1: specifying datafile ${df.file} for validation`);
+                    this.terminal.writeln(`channel ORA_DISK_1: reading file ${df.file}`);
+                    this.terminal.writeln(`channel ORA_DISK_1: file ${df.file} is valid`);
+                });
+                
+                this.terminal.writeln('channel ORA_DISK_1: validation complete, elapsed time: 00:00:07');
+                this.terminal.writeln('');
+                
+                // Validate control files
+                this.terminal.writeln('channel ORA_DISK_1: starting validation of control file');
+                this.terminal.writeln('channel ORA_DISK_1: reading control file /u01/app/oracle/oradata/ORCL/control01.ctl');
+                this.terminal.writeln('channel ORA_DISK_1: reading control file /u01/app/oracle/oradata/ORCL/control02.ctl');
+                this.terminal.writeln('channel ORA_DISK_1: control file validation complete, elapsed time: 00:00:01');
+                this.terminal.writeln('');
+                
+                // Validate spfile
+                this.terminal.writeln('channel ORA_DISK_1: starting validation of spfile');
+                this.terminal.writeln('channel ORA_DISK_1: reading spfile /u01/app/oracle/product/19.0.0/dbhome_1/dbs/spfileORCL.ora');
+                this.terminal.writeln('channel ORA_DISK_1: spfile validation complete, elapsed time: 00:00:01');
+                this.terminal.writeln('');
+                
+                // Summary
                 this.terminal.writeln('Finished validate at ' + new Date().toLocaleString());
+                this.terminal.writeln('');
+                this.terminal.writeln('Validation Summary:');
+                this.terminal.writeln('==================');
+                this.terminal.writeln('Files validated: ' + datafiles.length + ' datafiles');
+                this.terminal.writeln('Control files validated: 2');
+                this.terminal.writeln('SPfile validated: 1');
+                this.terminal.writeln('Total files: ' + (datafiles.length + 3));
+                this.terminal.writeln('');
+                this.terminal.writeln('All database files are valid and consistent.');
                 this.terminal.writeln('');
             }
             return;
