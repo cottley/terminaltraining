@@ -475,6 +475,132 @@ CommandProcessor.prototype.processOracleCommand = function(command, args) {
     }
 };
 
+// AWR Report command
+CommandProcessor.prototype.cmdAwrrpt = function(args) {
+    if (!oracleManager.checkPrerequisites('database')) {
+        this.terminal.writeln('-bash: awrrpt.sql: command not found');
+        return;
+    }
+    
+    if (!oracleManager.getState('databaseStarted')) {
+        this.terminal.writeln('ERROR:');
+        this.terminal.writeln('ORA-01034: ORACLE not available');
+        return;
+    }
+    
+    this.terminal.writeln('');
+    this.terminal.writeln('Current Instance');
+    this.terminal.writeln('~~~~~~~~~~~~~~~~');
+    this.terminal.writeln('   DB Id    DB Name      Inst Num Instance');
+    this.terminal.writeln('----------- ------------ -------- ------------');
+    this.terminal.writeln(' 1234567890 ORCL                1 ORCL');
+    this.terminal.writeln('');
+    this.terminal.writeln('Specify the Report Type');
+    this.terminal.writeln('~~~~~~~~~~~~~~~~~~~~~~~');
+    this.terminal.writeln('Would you like an HTML report, or a plain text report?');
+    this.terminal.writeln('Enter \'html\' for an HTML report, or \'text\' for plain text');
+    this.terminal.writeln('Defaults to \'html\'');
+    this.terminal.writeln('Enter value for report_type: html');
+    this.terminal.writeln('');
+    this.terminal.writeln('Type Specified:  html');
+    this.terminal.writeln('');
+    this.terminal.writeln('AWR HTML Report Generated: awrrpt_1_123_124.html');
+    this.terminal.writeln('Report location: /tmp/awrrpt_1_123_124.html');
+    this.terminal.writeln('');
+    
+    // Create AWR report file
+    const awrContent = `<!DOCTYPE html>
+<html><head><title>Automatic Workload Repository Report</title></head>
+<body>
+<h1>WORKLOAD REPOSITORY report for</h1>
+<h2>DB Name: ORCL  Inst Num: 1  Startup Time: ${new Date().toLocaleString()}</h2>
+<h3>Snap Id: 123  Snap Time: ${new Date(Date.now() - 3600000).toLocaleString()}</h3>
+<h3>Snap Id: 124  Snap Time: ${new Date().toLocaleString()}</h3>
+
+<h2>Report Summary</h2>
+<table border="1">
+<tr><th>Cache Sizes</th><th>Begin</th><th>End</th></tr>
+<tr><td>Buffer Cache:</td><td>800M</td><td>800M</td></tr>
+<tr><td>Shared Pool Size:</td><td>256M</td><td>256M</td></tr>
+</table>
+
+<h2>Load Profile</h2>
+<table border="1">
+<tr><th>Per Second</th><th>Per Transaction</th></tr>
+<tr><td>DB Time(s): 1.2</td><td>DB Time(s): 2.4</td></tr>
+<tr><td>DB CPU(s): 0.8</td><td>DB CPU(s): 1.6</td></tr>
+<tr><td>Redo size: 15,234</td><td>Redo size: 30,468</td></tr>
+<tr><td>Logical reads: 1,234</td><td>Logical reads: 2,468</td></tr>
+<tr><td>Physical reads: 45</td><td>Physical reads: 90</td></tr>
+</table>
+
+<h2>Top 5 Timed Foreground Events</h2>
+<table border="1">
+<tr><th>Event</th><th>Waits</th><th>Time(s)</th><th>Avg wait (ms)</th><th>% DB time</th></tr>
+<tr><td>CPU time</td><td></td><td>2,876</td><td></td><td>67.8</td></tr>
+<tr><td>db file sequential read</td><td>45,123</td><td>876</td><td>19.4</td><td>20.6</td></tr>
+<tr><td>log file sync</td><td>2,345</td><td>234</td><td>99.8</td><td>5.5</td></tr>
+</table>
+</body></html>`;
+    
+    this.fs.touch('/tmp/awrrpt_1_123_124.html', awrContent);
+};
+
+// ADDM Report command
+CommandProcessor.prototype.cmdAddmrpt = function(args) {
+    if (!oracleManager.checkPrerequisites('database')) {
+        this.terminal.writeln('-bash: addmrpt.sql: command not found');
+        return;
+    }
+    
+    if (!oracleManager.getState('databaseStarted')) {
+        this.terminal.writeln('ERROR:');
+        this.terminal.writeln('ORA-01034: ORACLE not available');
+        return;
+    }
+    
+    this.terminal.writeln('');
+    this.terminal.writeln('Current Instance');
+    this.terminal.writeln('~~~~~~~~~~~~~~~~');
+    this.terminal.writeln('   DB Id    DB Name      Inst Num Instance');
+    this.terminal.writeln('----------- ------------ -------- ------------');
+    this.terminal.writeln(' 1234567890 ORCL                1 ORCL');
+    this.terminal.writeln('');
+    this.terminal.writeln('ADDM Report Generated: addmrpt_1_123_124.txt');
+    this.terminal.writeln('Report location: /tmp/addmrpt_1_123_124.txt');
+    this.terminal.writeln('');
+    
+    const addmContent = `ADDM Report for Task 'ADDM:1234567890_1_124'
+------------------------------------------
+
+Analysis Period: ${new Date(Date.now() - 3600000).toLocaleString()} to ${new Date().toLocaleString()}
+Database 'ORCL' with DB ID 1234567890.
+
+Activity During the Analysis Period
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Total database time was 4,321 seconds.
+The average number of active sessions was 1.2.
+
+Summary of Findings
+~~~~~~~~~~~~~~~~~~~
+   Description                 Active Sessions  Recommendation
+   --------------------------- --------------- --------------
+1. Top SQL Statements              0.8         SQL Tuning
+2. PGA Memory                      0.2         Increase PGA
+3. Buffer Cache                    0.1         Consider increase
+
+FINDING 1: 65% impact (0.8 active sessions)
+--------------------------------------------
+SQL statements were found to be the top consumer of database time.
+
+   RECOMMENDATION 1: SQL Tuning, 65% benefit (0.8 active sessions)
+   Action: Tune the following SQL statements with the SQL Tuning Advisor.
+   Rationale: The SQL statements with the highest impact are identified.
+`;
+    
+    this.fs.touch('/tmp/addmrpt_1_123_124.txt', addmContent);
+};
+
 // Update the original initialization
 const originalInit = CommandProcessor.prototype.initializeVimModal;
 CommandProcessor.prototype.initializeVimModal = function() {
