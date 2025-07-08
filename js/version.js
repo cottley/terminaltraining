@@ -1,7 +1,7 @@
 // Version information for Terminal Training Environment
 const VERSION_INFO = {
-    version: '1.1',
-    build: '20250707112957',
+    version: '1.2',
+    build: '20250708133508',
     creator: 'Christopher Ottley',
     coCreator: 'Claude.ai'
 };
