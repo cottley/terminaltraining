@@ -22,13 +22,13 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 
 ### 📦 **Complete Oracle Database Ecosystem**
 - Oracle Database 19c Enterprise Edition simulation
-- SQL*Plus with comprehensive command support and datafile operations
-- RMAN (Recovery Manager) backup and recovery tools with separate command history
+- **Enhanced SQL*Plus** with comprehensive command support and datafile operations
+- **RMAN (Recovery Manager)** with dynamic backup tracking and separate command history
+- **Advanced tablespace management** - CREATE TABLESPACE with proper file size simulation
 - Oracle Net Services (Listener and TNS configuration)
 - Oracle Universal Installer simulation
 - DBCA (Database Configuration Assistant)
 - NETCA (Network Configuration Assistant)
-- Advanced tablespace and datafile management
 - **Comprehensive role management system** (CREATE ROLE, DROP ROLE, GRANT role TO user)
 
 ### 🔧 **System Administration Tools**
@@ -43,18 +43,22 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 ### 📊 **Performance Monitoring & Diagnostics**
 - AWR (Automatic Workload Repository) report generation
 - ADDM (Automatic Database Diagnostic Monitor) analysis
-- **V$ performance views simulation** (V$INSTANCE, V$SYSTEM_EVENT, V$SQL, V$TABLESPACE)
+- **Enhanced V$ performance views** (V$INSTANCE, V$SYSTEM_EVENT, V$SQL, V$TABLESPACE, V$SESSION)
+- **Dynamic V$SESSION view** - Shows active sessions for all created database users
 - **SQL*Plus performance analysis queries** with realistic wait event and SQL statistics
 - **HTML Report Viewer** (lynx command for viewing AWR/ADDM reports in modal popup)
 - System resource monitoring (ps, df, free, top simulation)
 
 ### 🔄 **Backup & Recovery Tools**
-- RMAN backup scenarios (full, incremental, compressed)
+- **Dynamic RMAN backup tracking** - User-created backups appear in LIST BACKUP
+- **Comprehensive backup scenarios** (full, incremental, compressed)
+- **Complete restore procedures** - Practice shutdown, mount, restore, recover workflows
+- **Point-in-time recovery simulation** with UNTIL TIME syntax
 - Database validation and recovery testing
 - Export/Import utilities (expdp/impdp)
 - Archive log management
-- Point-in-time recovery simulation
 - **Flashback restore points** (create, list, and drop restore points)
+- **Persistent backup history** across sessions with realistic metadata
 
 ### 🛡️ **Security & Patch Management**
 - OPatch utility for Oracle patch management
@@ -65,7 +69,8 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 
 ### 🗺️ **Spatial Extensions Support**
 - ArcGIS Server installation simulation
-- ArcSDE library integration
+- **Consistent library paths** - EXTPROC and OCP instructions use `/opt/arcgis/server/lib/libsde.so`
+- ArcSDE library integration with proper virtual file system integration
 - Oracle spatial functions via EXTPROC
 - SDE schema setup for geodatabase support
 
@@ -74,8 +79,9 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
   - Real-time installation progress monitoring
   - Task-by-task completion tracking
   - Detailed hints and guidance system
-  - Comprehensive troubleshooting help
-  - Practice scenarios for skill development
+  - **Enhanced troubleshooting scenarios** with `troubleshoot` command
+  - **SQL permissions troubleshooting** (`troubleshoot sqlpermissions`)
+  - Practice scenarios for skill development including complete backup & recovery workflows
 
 ### 🎮 **Interactive Features**
 - Built-in tic-tac-toe game for breaks
@@ -238,6 +244,61 @@ addmrpt              # ADDM analysis
 opatch               # Patch management
 ```
 
+### Troubleshooting Commands
+```bash
+# Comprehensive troubleshooting help
+troubleshoot                    # Show all available troubleshooting topics
+troubleshoot startup            # Database startup issues
+troubleshoot listener           # Listener connection problems
+troubleshoot tablespace         # Tablespace full errors
+troubleshoot performance        # Slow query performance
+troubleshoot sqlpermissions     # SQL user permissions and grants
+troubleshoot backup             # Backup and recovery issues
+troubleshoot network            # TNS and connectivity problems
+troubleshoot memory             # Out of memory errors
+troubleshoot disk               # Disk space problems
+troubleshoot permissions        # File permission issues
+troubleshoot environment        # Environment variable problems
+```
+
+### RMAN Backup & Recovery Commands
+```bash
+# Connect to RMAN
+rman target /                           # Connect to local database
+
+# Backup Commands (with dynamic tracking)
+BACKUP DATABASE;                        # Full database backup
+BACKUP INCREMENTAL LEVEL 0 DATABASE;   # Level 0 incremental backup
+BACKUP INCREMENTAL LEVEL 1 DATABASE;   # Level 1 incremental backup
+BACKUP AS COMPRESSED BACKUPSET DATABASE; # Compressed backup
+BACKUP TABLESPACE users;                # Tablespace backup
+BACKUP ARCHIVELOG ALL;                  # Archive log backup
+
+# Backup Management (shows user-created backups)
+LIST BACKUP;                            # List all backup sets
+LIST BACKUP BY FILE;                    # List backups by file
+VALIDATE BACKUPSET;                     # Validate backup integrity
+VALIDATE DATABASE;                      # Validate database files
+
+# Restore & Recovery Commands
+SHUTDOWN IMMEDIATE;                     # Shutdown for restore
+STARTUP MOUNT;                          # Mount database for restore
+RESTORE DATABASE;                       # Restore database from backup
+RECOVER DATABASE;                       # Apply redo logs for recovery
+ALTER DATABASE OPEN;                    # Open database after recovery
+ALTER DATABASE OPEN RESETLOGS;          # Open with resetlogs after incomplete recovery
+
+# Point-in-Time Recovery
+SET UNTIL TIME = "TO_DATE('2024-01-01 10:00:00', 'YYYY-MM-DD HH24:MI:SS')";
+RESTORE DATABASE UNTIL TIME "TO_DATE('2024-01-01 10:00:00', 'YYYY-MM-DD HH24:MI:SS')";
+RECOVER DATABASE UNTIL TIME "TO_DATE('2024-01-01 10:00:00', 'YYYY-MM-DD HH24:MI:SS')";
+
+# Flashback Restore Points
+CREATE RESTORE POINT before_upgrade;    # Create restore point
+LIST RESTORE POINT ALL;                 # List all restore points
+DROP RESTORE POINT before_upgrade;      # Drop restore point
+```
+
 ### Oracle Datafile Operations
 ```sql
 -- SQL*Plus Datafile Management Commands
@@ -264,20 +325,27 @@ ALTER DATABASE DATAFILE 'undotbs01.dbf' AUTOEXTEND OFF;
 ALTER DATABASE DATAFILE 'users02.dbf' 
   AUTOEXTEND ON NEXT 25M MAXSIZE 1G;
 
+-- Tablespace Management
+CREATE TABLESPACE users2 DATAFILE '/u01/app/oracle/oradata/ORCL/users02.dbf' SIZE 100M;
+CREATE TABLESPACE temp2 DATAFILE '/u01/app/oracle/oradata/ORCL/temp02.dbf' SIZE 50M AUTOEXTEND ON NEXT 10M;
+CREATE TABLESPACE app_data DATAFILE '/u01/app/oracle/oradata/ORCL/app_data01.dbf' SIZE 200M AUTOEXTEND ON NEXT 50M MAXSIZE 2G;
+
 -- Query Database Information
 SELECT NAME FROM V$DATABASE;                    -- Database name
-SELECT TABLESPACE_NAME FROM DBA_TABLESPACES;    -- Available tablespaces
+SELECT TABLESPACE_NAME FROM DBA_TABLESPACES;    -- Available tablespaces (includes created ones)
 SELECT USERNAME FROM DBA_USERS;                 -- Database user names only
 SELECT * FROM DBA_USERS;                       -- Complete user information
 
 -- Features:
--- • Creates actual .dbf files in the virtual filesystem
+-- • Creates actual .dbf files in the virtual filesystem with correct sizes
+-- • CREATE TABLESPACE with proper size simulation in virtual filesystem
 -- • Supports relative and absolute paths
 -- • Validates tablespace existence and prevents duplicates
 -- • Realistic Oracle error messages (ORA-00959, ORA-01119, etc.)
 -- • Proper file ownership and permissions (oracle:oinstall)
 -- • Size calculations with K/M/G units
 -- • Autoextend metadata storage
+-- • Dynamic DBA_TABLESPACES view updates
 ```
 
 ### Oracle Performance Monitoring Views
@@ -304,6 +372,11 @@ SELECT SQL_TEXT, EXECUTIONS, ELAPSED_TIME, CPU_TIME
 -- Tablespace Information
 SELECT * FROM V$TABLESPACE;                     -- Tablespace metadata
 SELECT TABLESPACE_NAME FROM V$TABLESPACE;       -- Tablespace names only
+
+-- Session Information (Enhanced)
+SELECT * FROM V$SESSION;                        -- Complete session details with all created users
+SELECT SID, USERNAME, STATUS, PROGRAM FROM V$SESSION;  -- Basic session information
+SELECT SID, USERNAME, STATUS FROM V$SESSION WHERE USERNAME IS NOT NULL;  -- Active user sessions
 
 -- Performance Monitoring Scenarios
 -- Check database performance
@@ -723,10 +796,11 @@ ocp --simulate <scenario>   # Run practice scenarios
 
 ### Practice Scenarios
 - **Performance Troubleshooting**: AWR analysis, session monitoring, SGA tuning
-- **Backup & Recovery**: RMAN scenarios, validation, point-in-time recovery
-- **Security Configuration**: User management, auditing, role-based access
+- **Backup & Recovery**: Complete 4-phase workflows (assessment, restore, point-in-time recovery, verification)
+- **Security Configuration**: User management, auditing, role-based access, SQL permissions
 - **Network Troubleshooting**: Listener issues, TNS configuration, connectivity
 - **Storage Management**: Tablespace administration, space optimization
+- **Troubleshooting Help**: `troubleshoot sqlpermissions` for SQL permission issues
 
 ## Spatial Database Features
 
