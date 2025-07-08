@@ -401,19 +401,41 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
         
         // Database startup/shutdown commands (SYSDBA only)
         if (asSysdba) {
-            if (sqlCommand === 'STARTUP' || sqlCommand === 'STARTUP;') {
-                if (oracleManager.getState('databaseStarted')) {
+            if (sqlCommand.startsWith('STARTUP')) {
+                const currentState = oracleManager.getState('databaseState');
+                
+                if (currentState !== 'SHUTDOWN') {
                     this.terminal.writeln('ORA-01081: cannot start already-running ORACLE - shut it down first');
+                    return;
+                }
+                
+                // Parse startup options
+                const startupCommand = sqlCommand.replace(/;$/, '').trim();
+                const startupType = startupCommand.split(' ')[1] || 'OPEN';
+                
+                // Start the instance (always happens first)
+                this.terminal.writeln('ORACLE instance started.');
+                this.terminal.writeln('');
+                this.terminal.writeln('Total System Global Area 2147479552 bytes');
+                this.terminal.writeln('Fixed Size                  8897536 bytes');
+                this.terminal.writeln('Variable Size             486539264 bytes');
+                this.terminal.writeln('Database Buffers         1644167168 bytes');
+                this.terminal.writeln('Redo Buffers                7876608 bytes');
+                
+                if (startupType.toUpperCase() === 'NOMOUNT') {
+                    // STARTUP NOMOUNT - instance started but database not mounted
+                    oracleManager.updateState('databaseState', 'NOMOUNT');
+                    oracleManager.updateState('databaseStarted', true);
+                } else if (startupType.toUpperCase() === 'MOUNT') {
+                    // STARTUP MOUNT - instance started and database mounted but not opened
+                    this.terminal.writeln('Database mounted.');
+                    oracleManager.updateState('databaseState', 'MOUNT');
+                    oracleManager.updateState('databaseStarted', true);
                 } else {
-                    this.terminal.writeln('ORACLE instance started.');
-                    this.terminal.writeln('');
-                    this.terminal.writeln('Total System Global Area 2147479552 bytes');
-                    this.terminal.writeln('Fixed Size                  8897536 bytes');
-                    this.terminal.writeln('Variable Size             486539264 bytes');
-                    this.terminal.writeln('Database Buffers         1644167168 bytes');
-                    this.terminal.writeln('Redo Buffers                7876608 bytes');
+                    // STARTUP or STARTUP OPEN - full startup
                     this.terminal.writeln('Database mounted.');
                     this.terminal.writeln('Database opened.');
+                    oracleManager.updateState('databaseState', 'OPEN');
                     oracleManager.updateState('databaseStarted', true);
                 }
                 return;
@@ -428,16 +450,61 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     this.terminal.writeln('Database dismounted.');
                     this.terminal.writeln('ORACLE instance shut down.');
                     oracleManager.updateState('databaseStarted', false);
+                    oracleManager.updateState('databaseState', 'SHUTDOWN');
                 }
                 return;
+            }
+            
+            // ALTER DATABASE commands for state transitions
+            if (sqlCommand.startsWith('ALTER DATABASE')) {
+                const currentState = oracleManager.getState('databaseState');
+                
+                if (sqlCommand === 'ALTER DATABASE MOUNT' || sqlCommand === 'ALTER DATABASE MOUNT;') {
+                    if (currentState === 'SHUTDOWN') {
+                        this.terminal.writeln('ORA-01034: ORACLE not available');
+                    } else if (currentState === 'NOMOUNT') {
+                        this.terminal.writeln('Database mounted.');
+                        oracleManager.updateState('databaseState', 'MOUNT');
+                    } else if (currentState === 'MOUNT') {
+                        this.terminal.writeln('Database is already mounted.');
+                    } else {
+                        this.terminal.writeln('Database is already open.');
+                    }
+                    return;
+                }
+                
+                if (sqlCommand === 'ALTER DATABASE OPEN' || sqlCommand === 'ALTER DATABASE OPEN;') {
+                    if (currentState === 'SHUTDOWN') {
+                        this.terminal.writeln('ORA-01034: ORACLE not available');
+                    } else if (currentState === 'NOMOUNT') {
+                        this.terminal.writeln('ORA-01507: database not mounted');
+                    } else if (currentState === 'MOUNT') {
+                        this.terminal.writeln('Database opened.');
+                        oracleManager.updateState('databaseState', 'OPEN');
+                    } else {
+                        this.terminal.writeln('Database is already open.');
+                    }
+                    return;
+                }
             }
         }
         
         // Common SQL queries
         if (sqlCommand.startsWith('SELECT NAME, OPEN_MODE FROM V$DATABASE')) {
-            if (!oracleManager.getState('databaseStarted')) {
+            const currentState = oracleManager.getState('databaseState');
+            
+            if (currentState === 'SHUTDOWN') {
                 this.terminal.writeln('ERROR at line 1:');
                 this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else if (currentState === 'NOMOUNT') {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01507: database not mounted');
+            } else if (currentState === 'MOUNT') {
+                this.terminal.writeln('');
+                this.terminal.writeln('NAME      OPEN_MODE');
+                this.terminal.writeln('--------- --------------------');
+                this.terminal.writeln('ORCL      MOUNTED');
+                this.terminal.writeln('');
             } else {
                 this.terminal.writeln('');
                 this.terminal.writeln('NAME      OPEN_MODE');
@@ -449,9 +516,14 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
         }
         
         if (sqlCommand.startsWith('SELECT NAME FROM V$DATABASE')) {
-            if (!oracleManager.getState('databaseStarted')) {
+            const currentState = oracleManager.getState('databaseState');
+            
+            if (currentState === 'SHUTDOWN') {
                 this.terminal.writeln('ERROR at line 1:');
                 this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else if (currentState === 'NOMOUNT') {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01507: database not mounted');
             } else {
                 this.terminal.writeln('');
                 this.terminal.writeln('NAME');
@@ -463,14 +535,24 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
         }
         
         if (sqlCommand.startsWith('SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE')) {
-            if (!oracleManager.getState('databaseStarted')) {
+            const currentState = oracleManager.getState('databaseState');
+            
+            if (currentState === 'SHUTDOWN') {
                 this.terminal.writeln('ERROR at line 1:');
                 this.terminal.writeln('ORA-01034: ORACLE not available');
             } else {
                 this.terminal.writeln('');
                 this.terminal.writeln('INSTANCE_NAME    STATUS');
                 this.terminal.writeln('---------------- ------------');
-                this.terminal.writeln('ORCL             OPEN');
+                
+                if (currentState === 'NOMOUNT') {
+                    this.terminal.writeln('ORCL             STARTED');
+                } else if (currentState === 'MOUNT') {
+                    this.terminal.writeln('ORCL             MOUNTED');
+                } else {
+                    this.terminal.writeln('ORCL             OPEN');
+                }
+                
                 this.terminal.writeln('');
             }
             return;
