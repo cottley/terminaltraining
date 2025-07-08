@@ -103,7 +103,31 @@ class OracleManager {
                 //     guarantee: false,
                 //     storage_size: 0
                 // }
-            }
+            },
+            
+            // RMAN backup tracking
+            rmanBackups: [
+                // Default backup for demonstration
+                {
+                    backupSet: 1,
+                    type: 'Full',
+                    level: null,
+                    size: '800.00M',
+                    deviceType: 'DISK',
+                    elapsedTime: '00:00:25',
+                    completionTime: new Date().toLocaleDateString(),
+                    status: 'AVAILABLE',
+                    compressed: false,
+                    tag: 'TAG' + Date.now(),
+                    pieceName: '/u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set1.bkp',
+                    datafiles: [
+                        {file: 1, type: 'Full', ckpSCN: 2194304, ckpTime: new Date().toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/system01.dbf'},
+                        {file: 3, type: 'Full', ckpSCN: 2194304, ckpTime: new Date().toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/sysaux01.dbf'},
+                        {file: 4, type: 'Full', ckpSCN: 2194304, ckpTime: new Date().toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/undotbs01.dbf'},
+                        {file: 7, type: 'Full', ckpSCN: 2194304, ckpTime: new Date().toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/users01.dbf'}
+                    ]
+                }
+            ]
         };
         
         // Load state from localStorage on initialization
@@ -1084,6 +1108,55 @@ class OracleManager {
     
     restorePointExists(name) {
         return this.state.restorePoints.hasOwnProperty(name.toUpperCase());
+    }
+    
+    // RMAN backup management methods
+    addBackup(backupType, level = null, compressed = false) {
+        const newBackupSet = this.state.rmanBackups.length + 1;
+        const now = new Date();
+        
+        const backup = {
+            backupSet: newBackupSet,
+            type: backupType,
+            level: level,
+            size: this.calculateBackupSize(backupType, level),
+            deviceType: 'DISK',
+            elapsedTime: this.generateElapsedTime(),
+            completionTime: now.toLocaleDateString(),
+            status: 'AVAILABLE',
+            compressed: compressed,
+            tag: 'TAG' + Date.now(),
+            pieceName: `/u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set${newBackupSet}.bkp`,
+            datafiles: [
+                {file: 1, type: backupType, ckpSCN: 2194304 + (newBackupSet * 1000), ckpTime: now.toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/system01.dbf'},
+                {file: 3, type: backupType, ckpSCN: 2194304 + (newBackupSet * 1000), ckpTime: now.toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/sysaux01.dbf'},
+                {file: 4, type: backupType, ckpSCN: 2194304 + (newBackupSet * 1000), ckpTime: now.toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/undotbs01.dbf'},
+                {file: 7, type: backupType, ckpSCN: 2194304 + (newBackupSet * 1000), ckpTime: now.toLocaleDateString(), name: '/u01/app/oracle/oradata/ORCL/users01.dbf'}
+            ]
+        };
+        
+        this.state.rmanBackups.push(backup);
+        this.saveState();
+        return backup;
+    }
+    
+    getBackups() {
+        return this.state.rmanBackups;
+    }
+    
+    calculateBackupSize(backupType, level) {
+        if (backupType === 'Full' || level === 0) {
+            return (Math.random() * 500 + 500).toFixed(2) + 'M'; // 500-1000M
+        } else if (level === 1) {
+            return (Math.random() * 100 + 50).toFixed(2) + 'M'; // 50-150M
+        }
+        return (Math.random() * 200 + 100).toFixed(2) + 'M'; // 100-300M
+    }
+    
+    generateElapsedTime() {
+        const minutes = Math.floor(Math.random() * 5);
+        const seconds = Math.floor(Math.random() * 60);
+        return `00:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 }
 

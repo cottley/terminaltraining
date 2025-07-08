@@ -229,10 +229,30 @@ CommandProcessor.prototype.enterRmanMode = function() {
                 this.terminal.writeln('RMAN-03002: failure of backup command');
                 this.terminal.writeln('ORA-01034: ORACLE not available');
             } else {
+                // Determine backup type and level
+                let backupType = 'Full';
+                let level = null;
+                let compressed = false;
+                
+                if (rmanCommand.includes('INCREMENTAL LEVEL 0')) {
+                    backupType = 'Incr';
+                    level = 0;
+                } else if (rmanCommand.includes('INCREMENTAL LEVEL 1')) {
+                    backupType = 'Incr';
+                    level = 1;
+                }
+                
+                if (rmanCommand.includes('COMPRESSED') || rmanCommand.includes('AS COMPRESSED BACKUPSET')) {
+                    compressed = true;
+                }
+                
+                // Add backup to tracking system
+                const newBackup = oracleManager.addBackup(backupType, level, compressed);
+                
                 this.terminal.writeln('');
                 this.terminal.writeln('Starting backup at ' + new Date().toLocaleString());
                 this.terminal.writeln('using channel ORA_DISK_1');
-                this.terminal.writeln('channel ORA_DISK_1: starting full datafile backup set');
+                this.terminal.writeln(`channel ORA_DISK_1: starting ${backupType === 'Full' ? 'full' : 'incremental level ' + level} datafile backup set`);
                 this.terminal.writeln('channel ORA_DISK_1: specifying datafile(s) in backup set');
                 this.terminal.writeln('input datafile file number=00001 name=/u01/app/oracle/oradata/ORCL/system01.dbf');
                 this.terminal.writeln('input datafile file number=00003 name=/u01/app/oracle/oradata/ORCL/sysaux01.dbf');
@@ -240,8 +260,11 @@ CommandProcessor.prototype.enterRmanMode = function() {
                 this.terminal.writeln('input datafile file number=00007 name=/u01/app/oracle/oradata/ORCL/users01.dbf');
                 this.terminal.writeln('channel ORA_DISK_1: starting piece 1 at ' + new Date().toLocaleString());
                 this.terminal.writeln('channel ORA_DISK_1: finished piece 1 at ' + new Date().toLocaleString());
-                this.terminal.writeln('piece handle=/u01/app/oracle/recovery_area/ORCL/backupset/' + new Date().toISOString().replace(/[:.]/g, '') + '_TAG.bkp tag=TAG' + Date.now() + ' comment=NONE');
-                this.terminal.writeln('channel ORA_DISK_1: backup set complete, elapsed time: 00:00:25');
+                this.terminal.writeln(`piece handle=${newBackup.pieceName} tag=${newBackup.tag} comment=NONE`);
+                this.terminal.writeln(`channel ORA_DISK_1: backup set complete, elapsed time: ${newBackup.elapsedTime}`);
+                if (compressed) {
+                    this.terminal.writeln('channel ORA_DISK_1: backup set compressed');
+                }
                 this.terminal.writeln('Finished backup at ' + new Date().toLocaleString());
                 this.terminal.writeln('');
                 this.terminal.writeln('Starting Control File and SPFILE Autobackup at ' + new Date().toLocaleString());
@@ -300,19 +323,33 @@ CommandProcessor.prototype.enterRmanMode = function() {
             this.terminal.writeln('List of Backup Sets');
             this.terminal.writeln('===================');
             this.terminal.writeln('');
+            
+            const backups = oracleManager.getBackups();
+            if (backups.length === 0) {
+                this.terminal.writeln('specification does not match any backup in the repository');
+                this.terminal.writeln('');
+                return;
+            }
+            
             this.terminal.writeln('BS Key  Type LV Size       Device Type Elapsed Time Completion Time');
             this.terminal.writeln('------- ---- -- ---------- ----------- ------------ ---------------');
-            this.terminal.writeln('1       Full    800.00M    DISK        00:00:25     ' + new Date().toLocaleDateString());
-            this.terminal.writeln('        BP Key: 1   Status: AVAILABLE  Compressed: NO  Tag: TAG' + Date.now());
-            this.terminal.writeln('        Piece Name: /u01/app/oracle/recovery_area/ORCL/backupset/backup_ORCL_set1.bkp');
-            this.terminal.writeln('  List of Datafiles in backup set 1');
-            this.terminal.writeln('  File LV Type Ckp SCN    Ckp Time  Name');
-            this.terminal.writeln('  ---- -- ---- ---------- --------- ----');
-            this.terminal.writeln('  1       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/system01.dbf');
-            this.terminal.writeln('  3       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/sysaux01.dbf');
-            this.terminal.writeln('  4       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/undotbs01.dbf');
-            this.terminal.writeln('  7       Full 2194304    ' + new Date().toLocaleDateString() + ' /u01/app/oracle/oradata/ORCL/users01.dbf');
-            this.terminal.writeln('');
+            
+            backups.forEach(backup => {
+                const levelStr = backup.level !== null ? backup.level.toString().padStart(2) : '  ';
+                this.terminal.writeln(`${backup.backupSet.toString().padStart(7)} ${backup.type.padEnd(4)} ${levelStr} ${backup.size.padStart(10)} ${backup.deviceType.padEnd(11)} ${backup.elapsedTime} ${backup.completionTime}`);
+                this.terminal.writeln(`        BP Key: ${backup.backupSet}   Status: ${backup.status}  Compressed: ${backup.compressed ? 'YES' : 'NO'}  Tag: ${backup.tag}`);
+                this.terminal.writeln(`        Piece Name: ${backup.pieceName}`);
+                this.terminal.writeln(`  List of Datafiles in backup set ${backup.backupSet}`);
+                this.terminal.writeln('  File LV Type Ckp SCN    Ckp Time  Name');
+                this.terminal.writeln('  ---- -- ---- ---------- --------- ----');
+                
+                backup.datafiles.forEach(datafile => {
+                    this.terminal.writeln(`  ${datafile.file.toString().padStart(4)}    ${datafile.type} ${datafile.ckpSCN.toString().padStart(10)} ${datafile.ckpTime} ${datafile.name}`);
+                });
+                
+                this.terminal.writeln('');
+            });
+            
             return;
         }
         

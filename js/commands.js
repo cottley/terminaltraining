@@ -3664,14 +3664,36 @@ umask 022
                 this.terminal.writeln('Scenario: Critical datafile corruption detected!');
                 this.terminal.writeln('You need to restore the database from backup.');
                 this.terminal.writeln('');
-                this.terminal.writeln('Your tasks:');
+                this.terminal.writeln('\x1b[36mPhase 1: Assessment & Backup Practice\x1b[0m');
                 this.terminal.writeln('1. Connect to RMAN: rman target /');
                 this.terminal.writeln('2. Check backup status: LIST BACKUP;');
                 this.terminal.writeln('3. Validate backups: VALIDATE BACKUPSET;');
                 this.terminal.writeln('4. Practice full backup: BACKUP DATABASE;');
                 this.terminal.writeln('5. Practice incremental backup: BACKUP INCREMENTAL LEVEL 1 DATABASE;');
                 this.terminal.writeln('');
-                this.terminal.writeln('\x1b[32mHint: Always validate backups before attempting recovery\x1b[0m');
+                this.terminal.writeln('\x1b[36mPhase 2: Restore & Recovery Practice\x1b[0m');
+                this.terminal.writeln('6. Shutdown database: SHUTDOWN IMMEDIATE;');
+                this.terminal.writeln('7. Start in mount mode: STARTUP MOUNT;');
+                this.terminal.writeln('8. Restore database: RESTORE DATABASE;');
+                this.terminal.writeln('9. Recover database: RECOVER DATABASE;');
+                this.terminal.writeln('10. Open database: ALTER DATABASE OPEN;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[36mPhase 3: Point-in-Time Recovery\x1b[0m');
+                this.terminal.writeln('11. Set restore point: SET UNTIL TIME = "TO_DATE(\'2024-01-01 10:00:00\', \'YYYY-MM-DD HH24:MI:SS\')";');
+                this.terminal.writeln('12. Restore to point: RESTORE DATABASE UNTIL TIME "TO_DATE(\'2024-01-01 10:00:00\', \'YYYY-MM-DD HH24:MI:SS\')";');
+                this.terminal.writeln('13. Recover to point: RECOVER DATABASE UNTIL TIME "TO_DATE(\'2024-01-01 10:00:00\', \'YYYY-MM-DD HH24:MI:SS\')";');
+                this.terminal.writeln('14. Open with resetlogs: ALTER DATABASE OPEN RESETLOGS;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[36mPhase 4: Verification\x1b[0m');
+                this.terminal.writeln('15. Verify recovery: SELECT * FROM V$RECOVERY_FILE_DEST;');
+                this.terminal.writeln('16. Check archive logs: LIST ARCHIVELOG ALL;');
+                this.terminal.writeln('17. Validate database: VALIDATE DATABASE;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[32mHints:\x1b[0m');
+                this.terminal.writeln('• Always validate backups before attempting recovery');
+                this.terminal.writeln('• Use SHUTDOWN IMMEDIATE for clean shutdown before restore');
+                this.terminal.writeln('• STARTUP MOUNT allows access to controlfile for restore operations');
+                this.terminal.writeln('• RESETLOGS is required after incomplete recovery');
                 break;
                 
             case 'security':
