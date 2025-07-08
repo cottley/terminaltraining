@@ -287,6 +287,11 @@ LIST BACKUP BY FILE;                    # List backups by file
 VALIDATE BACKUPSET;                     # Validate backup integrity
 VALIDATE DATABASE;                      # Validate database files
 
+# Archive Log Management
+LIST ARCHIVELOG ALL;                    # List all archived logs
+LIST ARCHIVELOG SUMMARY;                # Archive log summary view
+LIST ARCHIVELOG FROM SEQUENCE 3;       # List logs from specific sequence number
+
 # Restore & Recovery Commands
 SHUTDOWN IMMEDIATE;                     # Shutdown for restore
 STARTUP MOUNT;                          # Mount database for restore

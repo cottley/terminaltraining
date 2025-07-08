@@ -353,6 +353,170 @@ CommandProcessor.prototype.enterRmanMode = function() {
             return;
         }
         
+        if (rmanCommand === 'LIST ARCHIVELOG ALL' || rmanCommand === 'LIST ARCHIVELOG ALL;') {
+            this.terminal.writeln('');
+            this.terminal.writeln('List of Archived Log Copies for database with db_unique_name ORCL');
+            this.terminal.writeln('=====================================================================');
+            this.terminal.writeln('');
+            
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('RMAN-00571: ===========================================================');
+                this.terminal.writeln('RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============');
+                this.terminal.writeln('RMAN-00571: ===========================================================');
+                this.terminal.writeln('RMAN-03002: failure of list command at ' + new Date().toLocaleString());
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                this.terminal.writeln('');
+                return;
+            }
+            
+            // Generate archive log listing
+            const currentDate = new Date();
+            const archiveLogs = [
+                {
+                    key: 1,
+                    thrd: 1,
+                    seq: 1,
+                    low_scn: 1234567,
+                    low_time: '01-JAN-24',
+                    next_scn: 1245678,
+                    bs_key: 0,
+                    s: 'A',
+                    name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_1_abcdef01_.arc'
+                },
+                {
+                    key: 2,
+                    thrd: 1,
+                    seq: 2,
+                    low_scn: 1245678,
+                    low_time: '01-JAN-24',
+                    next_scn: 1256789,
+                    bs_key: 0,
+                    s: 'A',
+                    name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_2_abcdef02_.arc'
+                },
+                {
+                    key: 3,
+                    thrd: 1,
+                    seq: 3,
+                    low_scn: 1256789,
+                    low_time: '01-JAN-24',
+                    next_scn: 1267890,
+                    bs_key: 0,
+                    s: 'A',
+                    name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_3_abcdef03_.arc'
+                },
+                {
+                    key: 4,
+                    thrd: 1,
+                    seq: 4,
+                    low_scn: 1267890,
+                    low_time: '01-JAN-24',
+                    next_scn: 1278901,
+                    bs_key: 0,
+                    s: 'A',
+                    name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_4_abcdef04_.arc'
+                },
+                {
+                    key: 5,
+                    thrd: 1,
+                    seq: 5,
+                    low_scn: 1278901,
+                    low_time: '01-JAN-24',
+                    next_scn: 1289012,
+                    bs_key: 0,
+                    s: 'A',
+                    name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_5_abcdef05_.arc'
+                }
+            ];
+            
+            this.terminal.writeln('Key     Thrd Seq     Low SCN    Low Time  Next SCN           BS Key  S #Copies');
+            this.terminal.writeln('------- ---- ------- ---------- --------- ---------- ---------- - --------');
+            
+            archiveLogs.forEach(log => {
+                this.terminal.writeln(`${log.key.toString().padStart(7)} ${log.thrd.toString().padStart(4)} ${log.seq.toString().padStart(7)} ${log.low_scn.toString().padStart(10)} ${log.low_time} ${log.next_scn.toString().padStart(10)} ${log.bs_key.toString().padStart(10)} ${log.s}        1`);
+                this.terminal.writeln(`        Name: ${log.name}`);
+                this.terminal.writeln('');
+            });
+            
+            return;
+        }
+        
+        if (rmanCommand === 'LIST ARCHIVELOG SUMMARY' || rmanCommand === 'LIST ARCHIVELOG SUMMARY;') {
+            this.terminal.writeln('');
+            this.terminal.writeln('Archive Log Summary for database with db_unique_name ORCL');
+            this.terminal.writeln('===========================================================');
+            this.terminal.writeln('');
+            
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('RMAN-00571: ===========================================================');
+                this.terminal.writeln('RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============');
+                this.terminal.writeln('RMAN-00571: ===========================================================');
+                this.terminal.writeln('RMAN-03002: failure of list command at ' + new Date().toLocaleString());
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                this.terminal.writeln('');
+                return;
+            }
+            
+            this.terminal.writeln('Thrd Seq     Low SCN    Low Time  Next SCN           Next Time      #Copies');
+            this.terminal.writeln('---- ------- ---------- --------- ---------- -------------------- --------');
+            this.terminal.writeln('   1       1    1234567 01-JAN-24    1245678 01-JAN-24 09:15:00         1');
+            this.terminal.writeln('   1       2    1245678 01-JAN-24    1256789 01-JAN-24 09:30:00         1');
+            this.terminal.writeln('   1       3    1256789 01-JAN-24    1267890 01-JAN-24 09:45:00         1');
+            this.terminal.writeln('   1       4    1267890 01-JAN-24    1278901 01-JAN-24 10:00:00         1');
+            this.terminal.writeln('   1       5    1278901 01-JAN-24    1289012 01-JAN-24 10:15:00         1');
+            this.terminal.writeln('');
+            
+            return;
+        }
+        
+        if (rmanCommand.match(/^LIST ARCHIVELOG FROM SEQUENCE \d+/)) {
+            const sequenceMatch = rmanCommand.match(/FROM SEQUENCE (\d+)/);
+            const startSequence = sequenceMatch ? parseInt(sequenceMatch[1]) : 1;
+            
+            this.terminal.writeln('');
+            this.terminal.writeln(`List of Archived Log Copies for database with db_unique_name ORCL`);
+            this.terminal.writeln('=====================================================================');
+            this.terminal.writeln('');
+            
+            if (!oracleManager.getState('databaseStarted')) {
+                this.terminal.writeln('RMAN-00571: ===========================================================');
+                this.terminal.writeln('RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============');
+                this.terminal.writeln('RMAN-00571: ===========================================================');
+                this.terminal.writeln('RMAN-03002: failure of list command at ' + new Date().toLocaleString());
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+                this.terminal.writeln('');
+                return;
+            }
+            
+            // Filter archive logs from specified sequence
+            const allLogs = [
+                { key: 1, thrd: 1, seq: 1, low_scn: 1234567, low_time: '01-JAN-24', next_scn: 1245678, bs_key: 0, s: 'A', name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_1_abcdef01_.arc' },
+                { key: 2, thrd: 1, seq: 2, low_scn: 1245678, low_time: '01-JAN-24', next_scn: 1256789, bs_key: 0, s: 'A', name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_2_abcdef02_.arc' },
+                { key: 3, thrd: 1, seq: 3, low_scn: 1256789, low_time: '01-JAN-24', next_scn: 1267890, bs_key: 0, s: 'A', name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_3_abcdef03_.arc' },
+                { key: 4, thrd: 1, seq: 4, low_scn: 1267890, low_time: '01-JAN-24', next_scn: 1278901, bs_key: 0, s: 'A', name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_4_abcdef04_.arc' },
+                { key: 5, thrd: 1, seq: 5, low_scn: 1278901, low_time: '01-JAN-24', next_scn: 1289012, bs_key: 0, s: 'A', name: '/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_5_abcdef05_.arc' }
+            ];
+            
+            const filteredLogs = allLogs.filter(log => log.seq >= startSequence);
+            
+            if (filteredLogs.length === 0) {
+                this.terminal.writeln('specification does not match any archived log in the repository');
+                this.terminal.writeln('');
+                return;
+            }
+            
+            this.terminal.writeln('Key     Thrd Seq     Low SCN    Low Time  Next SCN           BS Key  S #Copies');
+            this.terminal.writeln('------- ---- ------- ---------- --------- ---------- ---------- - --------');
+            
+            filteredLogs.forEach(log => {
+                this.terminal.writeln(`${log.key.toString().padStart(7)} ${log.thrd.toString().padStart(4)} ${log.seq.toString().padStart(7)} ${log.low_scn.toString().padStart(10)} ${log.low_time} ${log.next_scn.toString().padStart(10)} ${log.bs_key.toString().padStart(10)} ${log.s}        1`);
+                this.terminal.writeln(`        Name: ${log.name}`);
+                this.terminal.writeln('');
+            });
+            
+            return;
+        }
+        
         // Validate commands
         if (rmanCommand.includes('VALIDATE')) {
             if (rmanCommand.includes('BACKUPSET')) {
