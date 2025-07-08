@@ -2007,7 +2007,26 @@ TABLESPACE_${tablespaceName}_CREATED
         // Use the basename of the datafile path for the actual file
         const fileName = datafilePath.split('/').pop();
         const fullPath = `/u01/app/oracle/oradata/ORCL/${fileName}`;
-        this.fs.updateFile(fullPath, dbfContent);
+        
+        // Calculate size in bytes
+        const sizeMultiplier = {
+            'K': 1024,
+            'M': 1024 * 1024,
+            'G': 1024 * 1024 * 1024,
+            'T': 1024 * 1024 * 1024 * 1024
+        };
+        const sizeInBytes = size * (sizeMultiplier[sizeUnit] || sizeMultiplier['M']);
+        
+        // Create the file with the correct size
+        this.fs.touch(fullPath, dbfContent);
+        
+        // Update the file size to match the tablespace size
+        const pathArray = this.fs.resolvePath(fullPath);
+        const node = this.fs.getNode(pathArray);
+        if (node && node.type === 'file') {
+            node.size = sizeInBytes;
+            this.fs.saveState();
+        }
 
         // Update the PS app requirements state if this is a PS tablespace
         if (psAppRequirements && psAppRequirements.tablespaces && psAppRequirements.tablespaces[tablespaceName]) {
