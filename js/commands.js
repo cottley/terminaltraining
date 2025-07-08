@@ -3742,6 +3742,7 @@ umask 022
             this.terminal.writeln('  troubleshoot performance     - Slow query performance');
             this.terminal.writeln('  troubleshoot archive         - Archive log issues');
             this.terminal.writeln('  troubleshoot network         - TNS and connectivity problems');
+            this.terminal.writeln('  troubleshoot sqlpermissions  - SQL user permissions and grants');
             this.terminal.writeln('');
             this.terminal.writeln('\x1b[33mSystem Issues:\x1b[0m');
             this.terminal.writeln('  troubleshoot memory          - Out of memory errors');
@@ -4144,13 +4145,69 @@ umask 022
                 this.terminal.writeln('• Apply patches during maintenance windows');
                 break;
                 
+            case 'sqlpermissions':
+                this.terminal.writeln('\x1b[31m=== SQL User Permissions Issues ===\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[33mCommon Errors: ORA-00942, ORA-01031, ORA-01917\x1b[0m');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[91mSymptoms:\x1b[0m');
+                this.terminal.writeln('• ORA-00942: table or view does not exist');
+                this.terminal.writeln('• ORA-01031: insufficient privileges');
+                this.terminal.writeln('• ORA-01917: user or role does not exist');
+                this.terminal.writeln('• Cannot access tables/views owned by other users');
+                this.terminal.writeln('• Cannot execute stored procedures or functions');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[92mDiagnostic Steps:\x1b[0m');
+                this.terminal.writeln('1. Check current user privileges:');
+                this.terminal.writeln('   SELECT * FROM USER_SYS_PRIVS;');
+                this.terminal.writeln('   SELECT * FROM USER_TAB_PRIVS;');
+                this.terminal.writeln('   SELECT * FROM USER_ROLE_PRIVS;');
+                this.terminal.writeln('');
+                this.terminal.writeln('2. Check object ownership:');
+                this.terminal.writeln('   SELECT owner, object_name, object_type FROM ALL_OBJECTS WHERE object_name = \'TABLE_NAME\';');
+                this.terminal.writeln('');
+                this.terminal.writeln('3. Check granted privileges on specific objects:');
+                this.terminal.writeln('   SELECT * FROM ALL_TAB_PRIVS WHERE table_name = \'TABLE_NAME\';');
+                this.terminal.writeln('');
+                this.terminal.writeln('4. Verify user exists and is unlocked:');
+                this.terminal.writeln('   SELECT username, account_status FROM DBA_USERS WHERE username = \'USERNAME\';');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[94mCommon Solutions:\x1b[0m');
+                this.terminal.writeln('• Grant system privileges: GRANT CREATE SESSION TO username;');
+                this.terminal.writeln('• Grant object privileges: GRANT SELECT, INSERT, UPDATE, DELETE ON table_name TO username;');
+                this.terminal.writeln('• Grant role privileges: GRANT CONNECT, RESOURCE TO username;');
+                this.terminal.writeln('• Use qualified names: SELECT * FROM owner.table_name;');
+                this.terminal.writeln('• Create synonym: CREATE SYNONYM table_name FOR owner.table_name;');
+                this.terminal.writeln('• Grant with admin option: GRANT role_name TO username WITH ADMIN OPTION;');
+                this.terminal.writeln('• Grant with grant option: GRANT SELECT ON table_name TO username WITH GRANT OPTION;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[95mAdvanced Permission Scenarios:\x1b[0m');
+                this.terminal.writeln('• Check effective privileges: SELECT * FROM SESSION_PRIVS;');
+                this.terminal.writeln('• View all granted roles: SELECT * FROM SESSION_ROLES;');
+                this.terminal.writeln('• Create custom role: CREATE ROLE app_role;');
+                this.terminal.writeln('• Grant privileges to role: GRANT SELECT ON table_name TO app_role;');
+                this.terminal.writeln('• Revoke privileges: REVOKE SELECT ON table_name FROM username;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[96mTroubleshooting Steps:\x1b[0m');
+                this.terminal.writeln('1. Connect as SYSDBA to check user status');
+                this.terminal.writeln('2. Verify tablespace quota: SELECT * FROM USER_TS_QUOTAS;');
+                this.terminal.writeln('3. Check for password expiration: ALTER USER username IDENTIFIED BY new_password;');
+                this.terminal.writeln('4. Unlock account if needed: ALTER USER username ACCOUNT UNLOCK;');
+                this.terminal.writeln('');
+                this.terminal.writeln('\x1b[32mBest Practices:\x1b[0m');
+                this.terminal.writeln('• Follow principle of least privilege');
+                this.terminal.writeln('• Use roles instead of direct grants when possible');
+                this.terminal.writeln('• Regularly audit user permissions');
+                this.terminal.writeln('• Document all permission changes');
+                break;
+                
             default:
                 this.terminal.writeln(`\x1b[91mUnknown issue type: ${issue}\x1b[0m`);
                 this.terminal.writeln('');
                 this.terminal.writeln('Available troubleshooting topics:');
                 this.terminal.writeln('startup, listener, tablespace, performance, archive, memory,');
                 this.terminal.writeln('disk, permissions, environment, installation, prerequisites,');
-                this.terminal.writeln('patches, network');
+                this.terminal.writeln('patches, network, sqlpermissions');
                 this.terminal.writeln('');
                 this.terminal.writeln('Usage: troubleshoot <issue_type>');
         }
@@ -5188,6 +5245,7 @@ umask 022
         
         // Create the correct SDE shape library file
         this.fs.touch('/opt/arcgis/DatabaseSupport/Oracle/Linux64/libst_shapelib.so', '# ArcSDE Shape Library for Oracle Spatial Integration');
+        this.fs.touch('/opt/arcgis/DatabaseSupport/Oracle/Linux64/libsde.so', '# SDE Library for Oracle Spatial Integration');
         this.fs.touch('/opt/arcgis/server/bin/sdeconfig', '#!/bin/bash\n# SDE Configuration Tool');
         
         // Create configuration files

@@ -50,7 +50,7 @@ CommandProcessor.prototype.refreshOracleState = function() {
 CommandProcessor.prototype.checkSpatialConfiguration = function() {
     // Check if EXTPROC is configured
     const extprocContent = this.fs.cat('/u01/app/oracle/product/19.0.0/dbhome_1/hs/admin/extproc.ora');
-    if (extprocContent && extprocContent.includes('SET EXTPROC_DLLS=$ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/libst_shapelib.so')) {
+    if (extprocContent && extprocContent.includes('SET EXTPROC_DLLS=/opt/arcgis/server/lib/libsde.so')) {
         oracleManager.updateState('psAppRequirements.extprocConfigured', true);
     } else {
         oracleManager.updateState('psAppRequirements.extprocConfigured', false);

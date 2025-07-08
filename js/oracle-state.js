@@ -655,7 +655,7 @@ class OracleManager {
                     '# Edit extproc.ora file',
                     'vi $ORACLE_HOME/hs/admin/extproc.ora',
                     '# Add this line to the file:',
-                    'SET EXTPROC_DLLS=$ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/libst_shapelib.so',
+                    'SET EXTPROC_DLLS=/opt/arcgis/server/lib/libsde.so',
                     '# Save and exit the file'
                 ],
                 explanation: 'The EXTPROC_DLLS parameter tells Oracle which external libraries can be loaded by the EXTPROC process. This enables Oracle to call functions from the ArcGIS spatial library for geodatabase operations.',
@@ -703,7 +703,7 @@ class OracleManager {
                 hint: 'Create Oracle library object for ArcGIS spatial functions',
                 commands: [
                     'sqlplus / as sysdba',
-                    "CREATE OR REPLACE LIBRARY st_shapelib AS '$ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/libst_shapelib.so';",
+                    "CREATE OR REPLACE LIBRARY st_shapelib AS '/opt/arcgis/server/lib/libsde.so';",
                     'GRANT EXECUTE ON st_shapelib TO sde;',
                     'GRANT EXECUTE ON st_shapelib TO public;',
                     'exit'
@@ -712,7 +712,7 @@ class OracleManager {
                 troubleshooting: [
                     {
                         problem: 'Library file not found',
-                        solution: 'Verify libst_shapelib.so exists in $ARCGIS_HOME/DatabaseSupport/Oracle/Linux64/'
+                        solution: 'Verify libsde.so exists in /opt/arcgis/server/lib/'
                     },
                     {
                         problem: 'EXTPROC_DLLS not configured',
@@ -720,7 +720,7 @@ class OracleManager {
                     },
                     {
                         problem: 'Permission errors',
-                        solution: 'Check file permissions on library file: chmod 755 libst_shapelib.so'
+                        solution: 'Check file permissions on library file: chmod 755 libsde.so'
                     }
                 ]
             },
@@ -756,7 +756,7 @@ class OracleManager {
                 commands: [
                     'cd $ORACLE_HOME/hs/admin',
                     'vim extproc.ora',
-                    '# Add: SET EXTPROC_DLLS=/u01/arcgis/server/DatabaseSupport/Oracle/Linux64/libst_shapelib.so',
+                    '# Add: SET EXTPROC_DLLS=/opt/arcgis/server/lib/libsde.so',
                     'lsnrctl reload'
                 ]
             },
@@ -772,7 +772,7 @@ class OracleManager {
                 hint: 'Register the spatial library in Oracle',
                 commands: [
                     'sqlplus sde/sde',
-                    'CREATE OR REPLACE LIBRARY SDE.ST_SHAPELIB IS \'/u01/arcgis/server/DatabaseSupport/Oracle/Linux64/libst_shapelib.so\';'
+                    'CREATE OR REPLACE LIBRARY SDE.ST_SHAPELIB IS \'/opt/arcgis/server/lib/libsde.so\';'
                 ]
             }
         };

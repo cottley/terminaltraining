@@ -745,15 +745,69 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                 this.terminal.writeln('ERROR at line 1:');
                 this.terminal.writeln('ORA-01034: ORACLE not available');
             } else {
+                // Check if it's SELECT * or specific columns
+                const isSelectAll = sqlCommand.match(/SELECT\s+\*\s+FROM\s+V\$SESSION/i);
+                const isSelectSpecific = sqlCommand.match(/SELECT\s+(.+?)\s+FROM\s+V\$SESSION/i);
+                
                 this.terminal.writeln('');
-                this.terminal.writeln('    SID    SERIAL# USERNAME  STATUS   PROGRAM');
-                this.terminal.writeln('------- ---------- --------- -------- ------------------------------');
-                this.terminal.writeln('      1          1           ACTIVE   oracle@localhost (PMON)');
-                this.terminal.writeln('      2          1           ACTIVE   oracle@localhost (PSP0)');
-                this.terminal.writeln('      3          1           ACTIVE   oracle@localhost (VKTM)');
-                this.terminal.writeln('    156         23 SYS       ACTIVE   sqlplus@localhost (TNS V1-V3)');
-                this.terminal.writeln('');
-                this.terminal.writeln('4 rows selected.');
+                
+                if (isSelectAll) {
+                    // Full V$SESSION output with all major columns
+                    this.terminal.writeln('       SID    SERIAL# USERNAME                       STATUS   SCHEMANAME                     OSUSER                         PROCESS      MACHINE                        TERMINAL                       PROGRAM                        TYPE       SQL_ADDRESS      SQL_HASH_VALUE     SQL_ID        PREV_SQL_ADDR    PREV_HASH_VALUE PREV_SQL_ID   LOGON_TIME           LAST_CALL_ET');
+                    this.terminal.writeln('---------- ---------- ------------------------------ -------- ------------------------------ ------------------------------ ------------ ------------------------------ ------------------------------ ------------------------------ ---------- ---------------- --------------- ------------- ---------------- --------------- ------------- -------------------- ------------');
+                    this.terminal.writeln('         1          1                                ACTIVE                                  oracle                         12345        proddb01sim                    pts/0                          oracle@localhost (PMON)        BACKGROUND 0000000000000000               0                           0000000000000000               0               01-JAN-24 09:00:00        86400');
+                    this.terminal.writeln('         2          1                                ACTIVE                                  oracle                         12346        proddb01sim                    pts/0                          oracle@localhost (PSP0)        BACKGROUND 0000000000000000               0                           0000000000000000               0               01-JAN-24 09:00:00        86400');
+                    this.terminal.writeln('         3          1                                ACTIVE                                  oracle                         12347        proddb01sim                    pts/0                          oracle@localhost (VKTM)        BACKGROUND 0000000000000000               0                           0000000000000000               0               01-JAN-24 09:00:00        86400');
+                    this.terminal.writeln('         4          1                                ACTIVE                                  oracle                         12348        proddb01sim                    pts/0                          oracle@localhost (GEN0)        BACKGROUND 0000000000000000               0                           0000000000000000               0               01-JAN-24 09:00:00        86400');
+                    this.terminal.writeln('         5          1                                ACTIVE                                  oracle                         12349        proddb01sim                    pts/0                          oracle@localhost (MMAN)        BACKGROUND 0000000000000000               0                           0000000000000000               0               01-JAN-24 09:00:00        86400');
+                    this.terminal.writeln('       156         23 SYS                            ACTIVE   SYS                            oracle                         23456        proddb01sim                    pts/1                          sqlplus@localhost (TNS V1-V3)  USER       070000007F123456        12345678 8fq2m9yz7xkjp 070000007F123457        12345679 7mp3k5vw2nxtr 01-JAN-24 10:30:15          120');
+                    
+                    // Add sessions for any created users
+                    const users = oracleManager.getAllUsers();
+                    let sessionId = 200;
+                    let serialNum = 1;
+                    let additionalRows = 0;
+                    
+                    users.forEach(user => {
+                        if (user.username !== 'SYS' && user.username !== 'SYSTEM' && user.username !== 'PUBLIC') {
+                            this.terminal.writeln(`       ${sessionId.toString().padStart(3)}         ${serialNum.toString().padStart(2)} ${user.username.padEnd(30)} ACTIVE   ${user.username.padEnd(30)} oracle                         ${(25000 + sessionId).toString().padStart(12)} proddb01sim                    pts/${sessionId % 10}                          sqlplus@localhost (TNS V1-V3)  USER       070000007F${sessionId.toString(16).padStart(6, '0')}        ${(sessionId * 100).toString().padStart(8)} ${user.username.toLowerCase().padStart(13, 'a')} 070000007F${(sessionId+1).toString(16).padStart(6, '0')}        ${((sessionId+1) * 100).toString().padStart(8)} ${user.username.toLowerCase().padStart(13, 'b')} 01-JAN-24 11:${(sessionId % 60).toString().padStart(2, '0')}:${((sessionId * 7) % 60).toString().padStart(2, '0')}           ${(sessionId % 300).toString().padStart(3)}`);
+                            sessionId++;
+                            serialNum++;
+                            additionalRows++;
+                        }
+                    });
+                    
+                    this.terminal.writeln('');
+                    this.terminal.writeln(`${6 + additionalRows} rows selected.`);
+                } else {
+                    // Simplified output for basic queries
+                    this.terminal.writeln('       SID    SERIAL# USERNAME                       STATUS   PROGRAM');
+                    this.terminal.writeln('---------- ---------- ------------------------------ -------- ------------------------------');
+                    this.terminal.writeln('         1          1                                ACTIVE   oracle@localhost (PMON)');
+                    this.terminal.writeln('         2          1                                ACTIVE   oracle@localhost (PSP0)');
+                    this.terminal.writeln('         3          1                                ACTIVE   oracle@localhost (VKTM)');
+                    this.terminal.writeln('         4          1                                ACTIVE   oracle@localhost (GEN0)');
+                    this.terminal.writeln('         5          1                                ACTIVE   oracle@localhost (MMAN)');
+                    this.terminal.writeln('       156         23 SYS                            ACTIVE   sqlplus@localhost (TNS V1-V3)');
+                    
+                    // Add sessions for any created users
+                    const users = oracleManager.getAllUsers();
+                    let sessionId = 200;
+                    let serialNum = 1;
+                    let additionalRows = 0;
+                    
+                    users.forEach(user => {
+                        if (user.username !== 'SYS' && user.username !== 'SYSTEM' && user.username !== 'PUBLIC') {
+                            this.terminal.writeln(`       ${sessionId.toString().padStart(3)}         ${serialNum.toString().padStart(2)} ${user.username.padEnd(30)} ACTIVE   sqlplus@localhost (TNS V1-V3)`);
+                            sessionId++;
+                            serialNum++;
+                            additionalRows++;
+                        }
+                    });
+                    
+                    this.terminal.writeln('');
+                    this.terminal.writeln(`${6 + additionalRows} rows selected.`);
+                }
             }
             return;
         }
