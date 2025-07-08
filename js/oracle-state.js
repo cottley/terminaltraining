@@ -12,6 +12,8 @@ class OracleManager {
             databaseName: 'ORCL',
             databaseStarted: false,
             databaseState: 'SHUTDOWN', // SHUTDOWN, NOMOUNT, MOUNT, OPEN
+            databaseRestored: false,
+            databaseRecovered: false,
             
             // Listener tracking
             listenerConfigured: false,

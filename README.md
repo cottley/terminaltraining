@@ -23,6 +23,7 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 ### 📦 **Complete Oracle Database Ecosystem**
 - Oracle Database 19c Enterprise Edition simulation
 - **Enhanced SQL*Plus** with comprehensive command support and datafile operations
+- **Advanced database startup modes** - STARTUP, STARTUP MOUNT, STARTUP NOMOUNT with proper state transitions
 - **RMAN (Recovery Manager)** with dynamic backup tracking and separate command history
 - **Advanced tablespace management** - CREATE TABLESPACE with proper file size simulation
 - Oracle Net Services (Listener and TNS configuration)
@@ -53,6 +54,9 @@ This training environment is powered by **[xterm.js](https://xtermjs.org/)**, a 
 - **Dynamic RMAN backup tracking** - User-created backups appear in LIST BACKUP
 - **Comprehensive backup scenarios** (full, incremental, compressed)
 - **Complete restore procedures** - Practice shutdown, mount, restore, recover workflows
+- **RESTORE DATABASE command** - Full database restoration from backup with realistic Oracle output
+- **RECOVER DATABASE command** - Archive log application and media recovery simulation
+- **ALTER DATABASE OPEN RESETLOGS** - Post-recovery database opening with proper validation
 - **Point-in-time recovery simulation** with UNTIL TIME syntax
 - Database validation and recovery testing
 - Export/Import utilities (expdp/impdp)
@@ -229,7 +233,10 @@ netca                 # Network configuration
 
 # Database Operations
 sqlplus               # SQL*Plus interface
-startup/shutdown      # Database control
+startup               # Start database (NOMOUNT -> MOUNT -> OPEN)
+startup mount         # Start database in MOUNT mode
+startup nomount       # Start database in NOMOUNT mode
+shutdown [immediate]  # Shutdown database
 lsnrctl start/stop    # Listener control
 tnsping <service>     # Network connectivity test
 
@@ -299,6 +306,38 @@ LIST RESTORE POINT ALL;                 # List all restore points
 DROP RESTORE POINT before_upgrade;      # Drop restore point
 ```
 
+### SQL*Plus Database Recovery Commands
+```sql
+-- SQL*Plus Database Control Commands (SYSDBA required)
+-- Note: These commands are executed within SQL*Plus after connecting as SYSDBA
+
+-- Database Startup Modes
+STARTUP;                                # Full startup (NOMOUNT -> MOUNT -> OPEN)
+STARTUP MOUNT;                          # Start and mount database (for recovery)
+STARTUP NOMOUNT;                        # Start instance only (no database mount)
+SHUTDOWN IMMEDIATE;                     # Shutdown database immediately
+
+-- Database State Transitions
+ALTER DATABASE MOUNT;                   # Mount database from NOMOUNT state
+ALTER DATABASE OPEN;                    # Open database from MOUNT state
+ALTER DATABASE OPEN RESETLOGS;          # Open with resetlogs after recovery
+
+-- Database Recovery Commands
+RESTORE DATABASE;                       # Restore database from backup
+RECOVER DATABASE;                       # Apply archive logs for recovery
+
+-- Database Status Queries
+SELECT NAME, OPEN_MODE FROM V$DATABASE; # Check database state
+SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE; # Check instance status
+
+-- Example Complete Recovery Workflow:
+-- 1. SHUTDOWN IMMEDIATE;
+-- 2. STARTUP MOUNT;
+-- 3. RESTORE DATABASE;
+-- 4. RECOVER DATABASE;
+-- 5. ALTER DATABASE OPEN RESETLOGS;
+```
+
 ### Oracle Datafile Operations
 ```sql
 -- SQL*Plus Datafile Management Commands
@@ -355,7 +394,8 @@ SELECT * FROM DBA_USERS;                       -- Complete user information
 
 -- Instance Information
 SELECT * FROM V$INSTANCE;                       -- Complete instance details
-SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE;   -- Basic instance status
+SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE;   -- Basic instance status (STARTED/MOUNTED/OPEN)
+SELECT NAME, OPEN_MODE FROM V$DATABASE;         -- Database state (MOUNTED/READ WRITE)
 
 -- System Wait Events Analysis
 SELECT * FROM V$SYSTEM_EVENT;                   -- All system wait events

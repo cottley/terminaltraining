@@ -486,6 +486,152 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     }
                     return;
                 }
+                
+                if (sqlCommand === 'ALTER DATABASE OPEN RESETLOGS' || sqlCommand === 'ALTER DATABASE OPEN RESETLOGS;') {
+                    if (currentState === 'SHUTDOWN') {
+                        this.terminal.writeln('ORA-01034: ORACLE not available');
+                    } else if (currentState === 'NOMOUNT') {
+                        this.terminal.writeln('ORA-01507: database not mounted');
+                    } else if (currentState === 'MOUNT') {
+                        const databaseRecovered = oracleManager.getState('databaseRecovered');
+                        if (!databaseRecovered) {
+                            this.terminal.writeln('ORA-01194: file 1 needs more recovery to be consistent');
+                            this.terminal.writeln('ORA-01110: data file 1: \'/u01/app/oracle/oradata/ORCL/system01.dbf\'');
+                        } else {
+                            this.terminal.writeln('Database opened.');
+                            oracleManager.updateState('databaseState', 'OPEN');
+                            // Reset recovery states after successful resetlogs
+                            oracleManager.updateState('databaseRestored', false);
+                            oracleManager.updateState('databaseRecovered', false);
+                        }
+                    } else {
+                        this.terminal.writeln('Database is already open.');
+                    }
+                    return;
+                }
+            }
+            
+            // RESTORE DATABASE command
+            if (sqlCommand.startsWith('RESTORE DATABASE')) {
+                const currentState = oracleManager.getState('databaseState');
+                
+                if (currentState === 'SHUTDOWN') {
+                    this.terminal.writeln('RMAN-06136: ORACLE error from auxiliary database: ORA-01034: ORACLE not available');
+                    return;
+                }
+                
+                if (currentState === 'NOMOUNT') {
+                    this.terminal.writeln('RMAN-06023: no backup or copy of datafile found to restore');
+                    return;
+                }
+                
+                if (currentState === 'OPEN') {
+                    this.terminal.writeln('RMAN-06004: ORACLE error from recovery catalog database: ORA-01125: cannot use database while it is open');
+                    return;
+                }
+                
+                // Check if backups exist
+                const backups = oracleManager.getBackups();
+                if (!backups || backups.length === 0) {
+                    this.terminal.writeln('RMAN-06025: no backup of datafile found to restore');
+                    return;
+                }
+                
+                // Find the most recent full backup
+                const fullBackups = backups.filter(backup => backup.type === 'Full');
+                if (fullBackups.length === 0) {
+                    this.terminal.writeln('RMAN-06026: some targets not found - aborting restore');
+                    return;
+                }
+                
+                const latestBackup = fullBackups[fullBackups.length - 1];
+                
+                // Simulate restore process
+                this.terminal.writeln('');
+                this.terminal.writeln('Starting restore at ' + new Date().toLocaleString());
+                this.terminal.writeln('using target database control file instead of recovery catalog');
+                this.terminal.writeln('');
+                this.terminal.writeln('allocated channel: ORA_DISK_1');
+                this.terminal.writeln('channel ORA_DISK_1: SID=254 device type=DISK');
+                this.terminal.writeln('');
+                this.terminal.writeln('channel ORA_DISK_1: starting datafile backup set restore');
+                this.terminal.writeln('channel ORA_DISK_1: specifying datafile(s) to restore from backup set');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00001 to /u01/app/oracle/oradata/ORCL/system01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00002 to /u01/app/oracle/oradata/ORCL/sysaux01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00003 to /u01/app/oracle/oradata/ORCL/undotbs01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: restoring datafile 00004 to /u01/app/oracle/oradata/ORCL/users01.dbf');
+                this.terminal.writeln('channel ORA_DISK_1: reading from backup piece ' + latestBackup.pieceName);
+                this.terminal.writeln('channel ORA_DISK_1: piece handle=' + latestBackup.pieceName + ' tag=' + latestBackup.tag);
+                this.terminal.writeln('channel ORA_DISK_1: restored backup piece 1');
+                this.terminal.writeln('channel ORA_DISK_1: restore complete, elapsed time: ' + latestBackup.elapsedTime);
+                this.terminal.writeln('Finished restore at ' + new Date().toLocaleString());
+                this.terminal.writeln('');
+                
+                // Set database state to indicate restoration completed
+                oracleManager.updateState('databaseRestored', true);
+                
+                return;
+            }
+            
+            // RECOVER DATABASE command
+            if (sqlCommand.startsWith('RECOVER DATABASE')) {
+                const currentState = oracleManager.getState('databaseState');
+                
+                if (currentState === 'SHUTDOWN') {
+                    this.terminal.writeln('ORA-01034: ORACLE not available');
+                    return;
+                }
+                
+                if (currentState === 'NOMOUNT') {
+                    this.terminal.writeln('ORA-01507: database not mounted');
+                    return;
+                }
+                
+                if (currentState === 'OPEN') {
+                    this.terminal.writeln('ORA-01113: file 1 needs media recovery');
+                    this.terminal.writeln('ORA-01110: data file 1: \'/u01/app/oracle/oradata/ORCL/system01.dbf\'');
+                    return;
+                }
+                
+                // Check if database was restored
+                const databaseRestored = oracleManager.getState('databaseRestored');
+                if (!databaseRestored) {
+                    this.terminal.writeln('ORA-01547: warning: RECOVER succeeded but OPEN RESETLOGS would get error below');
+                    this.terminal.writeln('ORA-01194: file 1 needs more recovery to be consistent');
+                    this.terminal.writeln('ORA-01110: data file 1: \'/u01/app/oracle/oradata/ORCL/system01.dbf\'');
+                    return;
+                }
+                
+                // Simulate recovery process
+                this.terminal.writeln('');
+                this.terminal.writeln('Starting recover at ' + new Date().toLocaleString());
+                this.terminal.writeln('using target database control file instead of recovery catalog');
+                this.terminal.writeln('');
+                this.terminal.writeln('allocated channel: ORA_DISK_1');
+                this.terminal.writeln('channel ORA_DISK_1: SID=254 device type=DISK');
+                this.terminal.writeln('');
+                this.terminal.writeln('starting media recovery');
+                this.terminal.writeln('');
+                this.terminal.writeln('archived log for thread 1 with sequence 1 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_1_abcdef01_.arc');
+                this.terminal.writeln('archived log for thread 1 with sequence 2 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_2_abcdef02_.arc');
+                this.terminal.writeln('archived log for thread 1 with sequence 3 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_3_abcdef03_.arc');
+                this.terminal.writeln('');
+                this.terminal.writeln('channel ORA_DISK_1: starting archived log restore to default destination');
+                this.terminal.writeln('channel ORA_DISK_1: restoring archived log');
+                this.terminal.writeln('archived log thread=1 sequence=1 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_1_abcdef01_.arc');
+                this.terminal.writeln('channel ORA_DISK_1: restoring archived log');
+                this.terminal.writeln('archived log thread=1 sequence=2 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_2_abcdef02_.arc');
+                this.terminal.writeln('channel ORA_DISK_1: restoring archived log');
+                this.terminal.writeln('archived log thread=1 sequence=3 is already on disk as file /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_3_abcdef03_.arc');
+                this.terminal.writeln('');
+                this.terminal.writeln('media recovery complete, elapsed time: 00:00:15');
+                this.terminal.writeln('Finished recover at ' + new Date().toLocaleString());
+                this.terminal.writeln('');
+                
+                // Set database state to indicate recovery completed
+                oracleManager.updateState('databaseRecovered', true);
+                
+                return;
             }
         }
         
