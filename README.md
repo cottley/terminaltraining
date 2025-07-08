@@ -397,6 +397,10 @@ SELECT * FROM V$INSTANCE;                       -- Complete instance details
 SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE;   -- Basic instance status (STARTED/MOUNTED/OPEN)
 SELECT NAME, OPEN_MODE FROM V$DATABASE;         -- Database state (MOUNTED/READ WRITE)
 
+-- Recovery Configuration
+SELECT * FROM V$RECOVERY_FILE_DEST;             -- Recovery file destination and space usage
+SELECT NAME FROM V$RECOVERY_FILE_DEST;          -- Recovery file destination path
+
 -- System Wait Events Analysis
 SELECT * FROM V$SYSTEM_EVENT;                   -- All system wait events
 SELECT EVENT, TIME_WAITED, TOTAL_WAITS, AVERAGE_WAIT 

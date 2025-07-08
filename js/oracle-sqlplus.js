@@ -1040,6 +1040,51 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             return;
         }
         
+        // V$RECOVERY_FILE_DEST view - recovery file destination information
+        if (sqlCommand.match(/SELECT.*FROM\s+V\$RECOVERY_FILE_DEST/i)) {
+            const currentState = oracleManager.getState('databaseState');
+            
+            if (currentState === 'SHUTDOWN') {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else if (currentState === 'NOMOUNT') {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01507: database not mounted');
+            } else {
+                // Check for specific column queries
+                if (sqlCommand.match(/SELECT\s+NAME\s+FROM\s+V\$RECOVERY_FILE_DEST/i)) {
+                    this.terminal.writeln('');
+                    this.terminal.writeln('NAME');
+                    this.terminal.writeln('------------------------');
+                    this.terminal.writeln('/u01/app/oracle/recovery_area');
+                    this.terminal.writeln('');
+                    this.terminal.writeln('1 row selected.');
+                    this.terminal.writeln('');
+                } else if (sqlCommand.match(/SELECT\s+\*\s+FROM\s+V\$RECOVERY_FILE_DEST/i)) {
+                    // Full table output
+                    this.terminal.writeln('');
+                    this.terminal.writeln('NAME                     SPACE_LIMIT SPACE_USED SPACE_RECLAIMABLE NUMBER_OF_FILES     CON_ID');
+                    this.terminal.writeln('------------------------ ----------- ---------- ----------------- --------------- ----------');
+                    this.terminal.writeln('/u01/app/oracle/recovery_      4294967296 2147483648        1073741824              15          0');
+                    this.terminal.writeln('area');
+                    this.terminal.writeln('');
+                    this.terminal.writeln('1 row selected.');
+                    this.terminal.writeln('');
+                } else {
+                    // Default output for other queries
+                    this.terminal.writeln('');
+                    this.terminal.writeln('NAME                     SPACE_LIMIT SPACE_USED SPACE_RECLAIMABLE NUMBER_OF_FILES     CON_ID');
+                    this.terminal.writeln('------------------------ ----------- ---------- ----------------- --------------- ----------');
+                    this.terminal.writeln('/u01/app/oracle/recovery_      4294967296 2147483648        1073741824              15          0');
+                    this.terminal.writeln('area');
+                    this.terminal.writeln('');
+                    this.terminal.writeln('1 row selected.');
+                    this.terminal.writeln('');
+                }
+            }
+            return;
+        }
+        
         if (sqlCommand.match(/SELECT.*FROM\s+V\$PARAMETER/i)) {
             if (!oracleManager.getState('databaseStarted')) {
                 this.terminal.writeln('ERROR at line 1:');
