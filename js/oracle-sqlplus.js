@@ -635,6 +635,21 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
             }
         }
         
+        // LIST ARCHIVELOG ALL command (RMAN command in SQL*Plus context)
+        if (sqlCommand.startsWith('LIST ARCHIVELOG ALL')) {
+            this.terminal.writeln('SP2-0734: unknown command beginning "LIST ARCH..." - rest of line ignored.');
+            this.terminal.writeln('');
+            this.terminal.writeln('Note: LIST ARCHIVELOG ALL is an RMAN command, not SQL*Plus.');
+            this.terminal.writeln('To view archive log information in SQL*Plus, use:');
+            this.terminal.writeln('  SELECT * FROM V$ARCHIVED_LOG;');
+            this.terminal.writeln('');
+            this.terminal.writeln('To use LIST ARCHIVELOG ALL, connect to RMAN:');
+            this.terminal.writeln('  $ rman target /');
+            this.terminal.writeln('  RMAN> LIST ARCHIVELOG ALL;');
+            this.terminal.writeln('');
+            return;
+        }
+        
         // Common SQL queries
         if (sqlCommand.startsWith('SELECT NAME, OPEN_MODE FROM V$DATABASE')) {
             const currentState = oracleManager.getState('databaseState');
@@ -1079,6 +1094,73 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     this.terminal.writeln('area');
                     this.terminal.writeln('');
                     this.terminal.writeln('1 row selected.');
+                    this.terminal.writeln('');
+                }
+            }
+            return;
+        }
+        
+        // V$ARCHIVED_LOG view - archived log information
+        if (sqlCommand.match(/SELECT.*FROM\s+V\$ARCHIVED_LOG/i)) {
+            const currentState = oracleManager.getState('databaseState');
+            
+            if (currentState === 'SHUTDOWN') {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01034: ORACLE not available');
+            } else if (currentState === 'NOMOUNT') {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln('ORA-01507: database not mounted');
+            } else {
+                // Check for specific column queries
+                if (sqlCommand.match(/SELECT\s+NAME\s+FROM\s+V\$ARCHIVED_LOG/i)) {
+                    this.terminal.writeln('');
+                    this.terminal.writeln('NAME');
+                    this.terminal.writeln('--------------------------------------------------------------------------------');
+                    this.terminal.writeln('/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_1_abcdef01_.arc');
+                    this.terminal.writeln('/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_2_abcdef02_.arc');
+                    this.terminal.writeln('/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_3_abcdef03_.arc');
+                    this.terminal.writeln('/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_4_abcdef04_.arc');
+                    this.terminal.writeln('/u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_5_abcdef05_.arc');
+                    this.terminal.writeln('');
+                    this.terminal.writeln('5 rows selected.');
+                    this.terminal.writeln('');
+                } else if (sqlCommand.match(/SELECT\s+SEQUENCE#.*FROM\s+V\$ARCHIVED_LOG/i)) {
+                    this.terminal.writeln('');
+                    this.terminal.writeln('SEQUENCE#');
+                    this.terminal.writeln('----------');
+                    this.terminal.writeln('         1');
+                    this.terminal.writeln('         2');
+                    this.terminal.writeln('         3');
+                    this.terminal.writeln('         4');
+                    this.terminal.writeln('         5');
+                    this.terminal.writeln('');
+                    this.terminal.writeln('5 rows selected.');
+                    this.terminal.writeln('');
+                } else if (sqlCommand.match(/SELECT\s+\*\s+FROM\s+V\$ARCHIVED_LOG/i)) {
+                    // Full table output
+                    this.terminal.writeln('');
+                    this.terminal.writeln('RECID    STAMP THREAD# SEQUENCE# FIRST_CHANGE# NEXT_CHANGE# FIRST_TIME           NEXT_TIME            RESETLOGS_CHANGE# RESETLOGS_TIME       ARCHIVED STATUS    APPLIED  DELETED  NAME');
+                    this.terminal.writeln('---------- ---------- ---------- ---------- ------------- ------------ -------------------- -------------------- ----------------- -------------------- -------- ---------- -------- -------- --------------------------------------------------------------------------------');
+                    this.terminal.writeln('         1 1063928234          1          1       1234567      1245678 01-JAN-24 09:00:00   01-JAN-24 09:15:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_1_abcdef01_.arc');
+                    this.terminal.writeln('         2 1063928567          1          2       1245678      1256789 01-JAN-24 09:15:00   01-JAN-24 09:30:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_2_abcdef02_.arc');
+                    this.terminal.writeln('         3 1063928890          1          3       1256789      1267890 01-JAN-24 09:30:00   01-JAN-24 09:45:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_3_abcdef03_.arc');
+                    this.terminal.writeln('         4 1063929223          1          4       1267890      1278901 01-JAN-24 09:45:00   01-JAN-24 10:00:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_4_abcdef04_.arc');
+                    this.terminal.writeln('         5 1063929556          1          5       1278901      1289012 01-JAN-24 10:00:00   01-JAN-24 10:15:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_5_abcdef05_.arc');
+                    this.terminal.writeln('');
+                    this.terminal.writeln('5 rows selected.');
+                    this.terminal.writeln('');
+                } else {
+                    // Default output for other queries
+                    this.terminal.writeln('');
+                    this.terminal.writeln('RECID    STAMP THREAD# SEQUENCE# FIRST_CHANGE# NEXT_CHANGE# FIRST_TIME           NEXT_TIME            RESETLOGS_CHANGE# RESETLOGS_TIME       ARCHIVED STATUS    APPLIED  DELETED  NAME');
+                    this.terminal.writeln('---------- ---------- ---------- ---------- ------------- ------------ -------------------- -------------------- ----------------- -------------------- -------- ---------- -------- -------- --------------------------------------------------------------------------------');
+                    this.terminal.writeln('         1 1063928234          1          1       1234567      1245678 01-JAN-24 09:00:00   01-JAN-24 09:15:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_1_abcdef01_.arc');
+                    this.terminal.writeln('         2 1063928567          1          2       1245678      1256789 01-JAN-24 09:15:00   01-JAN-24 09:30:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_2_abcdef02_.arc');
+                    this.terminal.writeln('         3 1063928890          1          3       1256789      1267890 01-JAN-24 09:30:00   01-JAN-24 09:45:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_3_abcdef03_.arc');
+                    this.terminal.writeln('         4 1063929223          1          4       1267890      1278901 01-JAN-24 09:45:00   01-JAN-24 10:00:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_4_abcdef04_.arc');
+                    this.terminal.writeln('         5 1063929556          1          5       1278901      1289012 01-JAN-24 10:00:00   01-JAN-24 10:15:00         1234567 01-JAN-24 08:00:00   YES      A          YES      NO       /u01/app/oracle/recovery_area/ORCL/archivelog/2024_01_15/o1_mf_1_5_abcdef05_.arc');
+                    this.terminal.writeln('');
+                    this.terminal.writeln('5 rows selected.');
                     this.terminal.writeln('');
                 }
             }

@@ -330,6 +330,14 @@ RECOVER DATABASE;                       # Apply archive logs for recovery
 SELECT NAME, OPEN_MODE FROM V$DATABASE; # Check database state
 SELECT INSTANCE_NAME, STATUS FROM V$INSTANCE; # Check instance status
 
+-- Archive Log Information (SQL*Plus)
+SELECT * FROM V$ARCHIVED_LOG;           # View archive log information
+SELECT NAME FROM V$ARCHIVED_LOG;        # Archive log file names
+SELECT SEQUENCE# FROM V$ARCHIVED_LOG;   # Archive log sequence numbers
+
+-- Note: LIST ARCHIVELOG ALL is an RMAN command, not SQL*Plus
+-- If you try it in SQL*Plus, you'll get helpful guidance to use RMAN instead
+
 -- Example Complete Recovery Workflow:
 -- 1. SHUTDOWN IMMEDIATE;
 -- 2. STARTUP MOUNT;
@@ -400,6 +408,11 @@ SELECT NAME, OPEN_MODE FROM V$DATABASE;         -- Database state (MOUNTED/READ 
 -- Recovery Configuration
 SELECT * FROM V$RECOVERY_FILE_DEST;             -- Recovery file destination and space usage
 SELECT NAME FROM V$RECOVERY_FILE_DEST;          -- Recovery file destination path
+
+-- Archive Log Information
+SELECT * FROM V$ARCHIVED_LOG;                   -- Complete archived log information
+SELECT NAME FROM V$ARCHIVED_LOG;                -- Archived log file names
+SELECT SEQUENCE# FROM V$ARCHIVED_LOG;           -- Archive log sequence numbers
 
 -- System Wait Events Analysis
 SELECT * FROM V$SYSTEM_EVENT;                   -- All system wait events
