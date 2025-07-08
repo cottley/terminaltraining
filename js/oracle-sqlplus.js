@@ -906,34 +906,26 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                 this.terminal.writeln('TEMP');
                 this.terminal.writeln('USERS');
                 
-                // Check for PS app tablespaces
-                if (this.fs.exists('/oradata/SDS_TABLE.dbf')) {
-                    this.terminal.writeln('SDS_TABLE');
-                }
-                if (this.fs.exists('/oradata/SDS_INDEX.dbf')) {
-                    this.terminal.writeln('SDS_INDEX');
-                }
-                if (this.fs.exists('/oradata/SDS_LOB.dbf')) {
-                    this.terminal.writeln('SDS_LOB');
-                }
-                if (this.fs.exists('/oradata/SDS_SMALL_LOB.dbf')) {
-                    this.terminal.writeln('SDS_SMALL_LOB');
-                }
-                if (this.fs.exists('/oradata/SDS_MEDIUM_LOB.dbf')) {
-                    this.terminal.writeln('SDS_MEDIUM_LOB');
-                }
-                if (this.fs.exists('/oradata/SDS_LARGE_LOB.dbf')) {
-                    this.terminal.writeln('SDS_LARGE_LOB');
+                // Check for PS app tablespaces using state management
+                const psAppRequirements = oracleManager.getState('psAppRequirements');
+                if (psAppRequirements && psAppRequirements.tablespaces) {
+                    for (const tablespaceName in psAppRequirements.tablespaces) {
+                        if (psAppRequirements.tablespaces[tablespaceName].created) {
+                            this.terminal.writeln(tablespaceName);
+                        }
+                    }
                 }
                 
                 this.terminal.writeln('');
-                const count = 5 + 
-                    (this.fs.exists('/oradata/SDS_TABLE.dbf') ? 1 : 0) +
-                    (this.fs.exists('/oradata/SDS_INDEX.dbf') ? 1 : 0) +
-                    (this.fs.exists('/oradata/SDS_LOB.dbf') ? 1 : 0) +
-                    (this.fs.exists('/oradata/SDS_SMALL_LOB.dbf') ? 1 : 0) +
-                    (this.fs.exists('/oradata/SDS_MEDIUM_LOB.dbf') ? 1 : 0) +
-                    (this.fs.exists('/oradata/SDS_LARGE_LOB.dbf') ? 1 : 0);
+                // Count default tablespaces (5) plus any created PS tablespaces
+                let count = 5;
+                if (psAppRequirements && psAppRequirements.tablespaces) {
+                    for (const tablespaceName in psAppRequirements.tablespaces) {
+                        if (psAppRequirements.tablespaces[tablespaceName].created) {
+                            count++;
+                        }
+                    }
+                }
                 this.terminal.writeln(`${count} rows selected.`);
                 this.terminal.writeln('');
             }
@@ -1365,8 +1357,22 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                 this.terminal.writeln('TEMP                   8192        1048576     1048576           1  2147483645           50    1048576 ONLINE    TEMPORARY NOLOGGING NO            LOCAL             UNIFORM         MANUAL                                                    NO      NONE                 NO');
                 this.terminal.writeln('USERS                  8192          65536               1  2147483645            1      65536 ONLINE    PERMANENT LOGGING   NO            LOCAL             SYSTEM          AUTO                                                      NO      NONE                 NO');
                 
+                // Add created PS tablespaces
+                let count = 5;
+                const psAppRequirements = oracleManager.getState('psAppRequirements');
+                if (psAppRequirements && psAppRequirements.tablespaces) {
+                    for (const tablespaceName in psAppRequirements.tablespaces) {
+                        if (psAppRequirements.tablespaces[tablespaceName].created) {
+                            const tablespace = psAppRequirements.tablespaces[tablespaceName];
+                            // Display tablespace information similar to standard format
+                            this.terminal.writeln(`${tablespaceName.padEnd(15)} 8192          65536               1  2147483645            1      65536 ONLINE    PERMANENT LOGGING   NO            LOCAL             SYSTEM          AUTO                                                      NO      NONE                 NO`);
+                            count++;
+                        }
+                    }
+                }
+                
                 this.terminal.writeln('');
-                this.terminal.writeln('5 rows selected.');
+                this.terminal.writeln(`${count} rows selected.`);
                 this.terminal.writeln('');
             }
             return;
@@ -1942,6 +1948,75 @@ Generated: ${new Date().toLocaleString()}
         
         this.terminal.writeln('');
         this.terminal.writeln(`User ${username} created.`);
+        this.terminal.writeln('');
+    };
+
+    // Handle CREATE TABLESPACE command
+    this.handleCreateTablespace = function(sqlCommand) {
+        if (!oracleManager.getState('databaseStarted')) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-01034: ORACLE not available');
+            return;
+        }
+
+        // Parse CREATE TABLESPACE command
+        // Pattern: CREATE TABLESPACE tablespace_name DATAFILE 'filepath' SIZE size [AUTOEXTEND ON NEXT size]
+        const tablespaceMatch = sqlCommand.match(/create\s+tablespace\s+(\w+)\s+datafile\s+['"]([^'"]+)['"](?:\s+size\s+(\d+)([kmgt]?))?(?:\s+autoextend\s+on\s+next\s+(\d+)([kmgt]?))?/i);
+        
+        if (!tablespaceMatch) {
+            this.terminal.writeln('ERROR at line 1:');
+            this.terminal.writeln('ORA-00922: missing or invalid option');
+            return;
+        }
+
+        const tablespaceName = tablespaceMatch[1].toUpperCase();
+        const datafilePath = tablespaceMatch[2];
+        const size = tablespaceMatch[3] ? parseInt(tablespaceMatch[3]) : 100;
+        const sizeUnit = tablespaceMatch[4] ? tablespaceMatch[4].toUpperCase() : 'M';
+        const autoextendSize = tablespaceMatch[5] ? parseInt(tablespaceMatch[5]) : 10;
+        const autoextendUnit = tablespaceMatch[6] ? tablespaceMatch[6].toUpperCase() : 'M';
+
+        // Check if tablespace already exists
+        const psAppRequirements = oracleManager.getState('psAppRequirements');
+        if (psAppRequirements && psAppRequirements.tablespaces && psAppRequirements.tablespaces[tablespaceName]) {
+            if (psAppRequirements.tablespaces[tablespaceName].created) {
+                this.terminal.writeln('ERROR at line 1:');
+                this.terminal.writeln(`ORA-01543: tablespace '${tablespaceName}' already exists`);
+                return;
+            }
+        }
+
+        // Ensure oradata directory exists
+        if (!this.fs.exists('/u01/app/oracle/oradata')) {
+            this.fs.mkdir('/u01/app/oracle/oradata');
+        }
+        if (!this.fs.exists('/u01/app/oracle/oradata/ORCL')) {
+            this.fs.mkdir('/u01/app/oracle/oradata/ORCL');
+        }
+
+        // Create the datafile
+        const dbfContent = `# Oracle Database Tablespace: ${tablespaceName}
+# Datafile: ${datafilePath}
+# Size: ${size}${sizeUnit}
+# Autoextend: ON NEXT ${autoextendSize}${autoextendUnit}
+# Created: ${new Date().toLocaleString()}
+
+TABLESPACE_${tablespaceName}_CREATED
+`;
+        
+        // Use the basename of the datafile path for the actual file
+        const fileName = datafilePath.split('/').pop();
+        const fullPath = `/u01/app/oracle/oradata/ORCL/${fileName}`;
+        this.fs.updateFile(fullPath, dbfContent);
+
+        // Update the PS app requirements state if this is a PS tablespace
+        if (psAppRequirements && psAppRequirements.tablespaces && psAppRequirements.tablespaces[tablespaceName]) {
+            psAppRequirements.tablespaces[tablespaceName].created = true;
+            oracleManager.setState('psAppRequirements', psAppRequirements);
+        }
+
+        this.terminal.writeln('');
+        this.terminal.writeln(`Tablespace ${tablespaceName} created.`);
         this.terminal.writeln('');
     };
 
