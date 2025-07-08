@@ -768,9 +768,9 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     let serialNum = 1;
                     let additionalRows = 0;
                     
-                    users.forEach(user => {
-                        if (user.username !== 'SYS' && user.username !== 'SYSTEM' && user.username !== 'PUBLIC') {
-                            this.terminal.writeln(`       ${sessionId.toString().padStart(3)}         ${serialNum.toString().padStart(2)} ${user.username.padEnd(30)} ACTIVE   ${user.username.padEnd(30)} oracle                         ${(25000 + sessionId).toString().padStart(12)} proddb01sim                    pts/${sessionId % 10}                          sqlplus@localhost (TNS V1-V3)  USER       070000007F${sessionId.toString(16).padStart(6, '0')}        ${(sessionId * 100).toString().padStart(8)} ${user.username.toLowerCase().padStart(13, 'a')} 070000007F${(sessionId+1).toString(16).padStart(6, '0')}        ${((sessionId+1) * 100).toString().padStart(8)} ${user.username.toLowerCase().padStart(13, 'b')} 01-JAN-24 11:${(sessionId % 60).toString().padStart(2, '0')}:${((sessionId * 7) % 60).toString().padStart(2, '0')}           ${(sessionId % 300).toString().padStart(3)}`);
+                    users.forEach(username => {
+                        if (username !== 'SYS' && username !== 'SYSTEM' && username !== 'PUBLIC') {
+                            this.terminal.writeln(`       ${sessionId.toString().padStart(3)}         ${serialNum.toString().padStart(2)} ${username.padEnd(30)} ACTIVE   ${username.padEnd(30)} oracle                         ${(25000 + sessionId).toString().padStart(12)} proddb01sim                    pts/${sessionId % 10}                          sqlplus@localhost (TNS V1-V3)  USER       070000007F${sessionId.toString(16).padStart(6, '0')}        ${(sessionId * 100).toString().padStart(8)} ${username.toLowerCase().padStart(13, 'a')} 070000007F${(sessionId+1).toString(16).padStart(6, '0')}        ${((sessionId+1) * 100).toString().padStart(8)} ${username.toLowerCase().padStart(13, 'b')} 01-JAN-24 11:${(sessionId % 60).toString().padStart(2, '0')}:${((sessionId * 7) % 60).toString().padStart(2, '0')}           ${(sessionId % 300).toString().padStart(3)}`);
                             sessionId++;
                             serialNum++;
                             additionalRows++;
@@ -796,9 +796,9 @@ CommandProcessor.prototype.enterSqlMode = function(username, asSysdba, isConnect
                     let serialNum = 1;
                     let additionalRows = 0;
                     
-                    users.forEach(user => {
-                        if (user.username !== 'SYS' && user.username !== 'SYSTEM' && user.username !== 'PUBLIC') {
-                            this.terminal.writeln(`       ${sessionId.toString().padStart(3)}         ${serialNum.toString().padStart(2)} ${user.username.padEnd(30)} ACTIVE   sqlplus@localhost (TNS V1-V3)`);
+                    users.forEach(username => {
+                        if (username !== 'SYS' && username !== 'SYSTEM' && username !== 'PUBLIC') {
+                            this.terminal.writeln(`       ${sessionId.toString().padStart(3)}         ${serialNum.toString().padStart(2)} ${username.padEnd(30)} ACTIVE   sqlplus@localhost (TNS V1-V3)`);
                             sessionId++;
                             serialNum++;
                             additionalRows++;
